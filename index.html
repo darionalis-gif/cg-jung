@@ -469,7 +469,7 @@ const PRACTICES = {
         { id: 'interrogation', type: 'each', from: 'disturbedWords', field: 'interrogation', min: 5, leaf: 'Interrogation', prompt: 'What came up at this word?', sub: 'Jung did not stop at the table. He went back through each disturbed reaction and asked what had appeared. Not what it means: what appeared. A face, a room, a sentence, a smell, a name, nothing.', placeholder: 'At this word there was …' },
         { id: 'seed', type: 'seed' }
       ]},
-      { label: 'Carry', steps: [ { id: 'carry', type: 'text', field: 'act', min: 10, leaf: 'The act', rows: 'short', when: d => !descentNow(d) && d.data.again !== 'yes', prompt: 'Carry the word.', sub: d => d.deepClosed ? 'The imagination has been closed for this hour. Carry the word instead: notice where it appears this week, and write what you will watch for.' : descentToday(d) ? 'You went down once today already; Jung allowed one descent a day and no more. Carry the word instead.' : 'The descent is not walked yet: it is earned after four hours, one of them the persona. For now, carry the word into the week. Notice where it appears: in whose mouth, in which room, on which bill. Write what you will watch for.', placeholder: 'This week I will watch for …' } ]},
+      { label: 'Carry', steps: [ { id: 'carry', type: 'text', field: 'act', min: 10, leaf: 'The act', rows: 'short', when: d => !holdNow(d), prompt: 'Carry the word.', sub: d => d.deepClosed ? 'The imagination has been closed for this hour. Carry the word instead: notice where it appears this week, and write what you will watch for.' : descentToday(d) ? 'You went down once today already; Jung allowed one descent a day and no more. Carry the word instead.' : 'The descent is not walked yet: it is earned after four hours, one of them the persona. For now, carry the word into the week. Notice where it appears: in whose mouth, in which room, on which bill. Write what you will watch for.', placeholder: 'This week I will watch for …' } ]},
       { label: 'Descent', deep: true, steps: [
         { id: 'wait', type: 'wait', seed: true, when: d => descentNow(d) && d.data.again !== 'yes', prompt: 'Close your eyes with the word.', sub: 'Don’t look for a picture, and don’t choose one. Wait until one comes by itself. It may be small, dim, or ordinary. When it is there, open your eyes. If the image will not stop when you want it to, or you cannot tell it from the room, close this and telephone a person.', button: 'An image came', quote: 'imaginatio' },
         { id: 'image', type: 'text', field: 'image', min: 20, leaf: 'Image', when: d => descentNow(d) && d.data.again !== 'yes', prompt: 'Describe it.', sub: 'Not what it means. What it looks like: light, distance, size, colour, sound, temperature, what moves and what stands still.', placeholder: 'There is a …', nudge: true },
@@ -722,14 +722,13 @@ function openPromise(d) {
   if (statusOf(last) !== 'open') return null;
   return { of: last.id, text: promiseOf(last), practice: last.practice, at: last.startedAt };
 }
+const thirdClosed = id => S.sessions.some(x => x.data?.thirdCheck?.of === id && (x.data.thirdCheck.status !== 'alive' || x.data.thirdCheck.died === 'yes'));
 function openThird(d) {
-  const hs = S.sessions.filter(h => h.data?.third && !h.data.nothing && (!d || h.id !== d.id)); const last = hs[hs.length - 1]; if (!last) return null;
-  const closed = S.sessions.some(x => x.data?.thirdCheck?.of === last.id && (x.data.thirdCheck.status !== 'alive' || x.data.thirdCheck.died === 'yes'));
-  if (closed) return null;
-  if (daysSince(last.finishedAt || last.startedAt) < 3) return null;
-  return { of: last.id, text: last.data.third, at: last.startedAt, practice: last.practice, mortificatio: last.data.mortificatio || '', asked: S.sessions.filter(x => x.data?.thirdCheck?.of === last.id).length };
+  const hs = S.sessions.filter(h => h.data?.third && !h.data.nothing && (!d || h.id !== d.id) && !thirdClosed(h.id) && daysSince(h.finishedAt || h.startedAt) >= 3);
+  const first = hs[0]; if (!first) return null;
+  return { of: first.id, text: first.data.third, at: first.startedAt, practice: first.practice, mortificatio: first.data.mortificatio || '', asked: S.sessions.filter(x => x.data?.thirdCheck?.of === first.id).length };
 }
-function recentThird(d) { const hs = S.sessions.filter(h => h.data?.third && !h.data.nothing && (!d || h.id !== d.id)); const last = hs[hs.length - 1]; return last && daysSince(last.finishedAt || last.startedAt) < 3 ? last : null; }
+function recentThird(d) { if (openThird(d)) return null; const hs = S.sessions.filter(h => h.data?.third && !h.data.nothing && (!d || h.id !== d.id) && !thirdClosed(h.id)); const last = hs[hs.length - 1]; return last && daysSince(last.finishedAt || last.startedAt) < 3 ? last : null; }
 function lastFlatThird(d) {
   const checks = S.sessions.filter(h => (!d || h.id !== d.id) && ['dead', 'turned'].includes(h.data?.thirdCheck?.status)); const last = checks[checks.length - 1]; if (!last) return null;
   const id = last.data.thirdCheck.of; if (S.sessions.some(h => h.data?.dewOf === id)) return null;
@@ -1699,8 +1698,8 @@ const act = {
     const d = S.draft; d.finishedAt = Date.now(); d.updatedAt = Date.now(); delete d.dlgDraft; delete d.ei; delete d.padColour; delete d.syncEntry; delete d.tripShow; delete d.deepClosed; delete d.tripMatch;
     if (d.data.ops?.length) d.data.colour = colourFrom(d.data.ops, d.data.colourPick, d) || admitted(d.data.ops, d)[0];
     if (gapDays(d) > 21) d.data.gap = { ...(d.data.gap || {}), days: Math.round(gapDays(d)) };
+    if (d.data.thirdCheck?.status === 'alive' && d.data.thirdCheck.died === 'yes') { const e = S.sessions.find(h => h.id === d.data.thirdCheck.of); if (e && e.data) { if (e.data.two === 'merged') { e.data.two = 'both'; d.data.thirdCheck.died = 'seam'; e.updatedAt = Date.now(); pushHour(e); } else if (statusOf(e) !== 'not') { e.data.colour = 'rubedo'; e.updatedAt = Date.now(); pushHour(e); } } }
     S.sessions.push(d); S.sessions.sort((a, b) => a.startedAt - b.startedAt); save('sessions', S.sessions); pushHour(d);
-    if (d.data.thirdCheck?.status === 'alive' && d.data.thirdCheck.died === 'yes') { const e = S.sessions.find(h => h.id === d.data.thirdCheck.of); if (e && e.data) { if (e.data.two === 'merged') { e.data.two = 'both'; d.data.thirdCheck.died = 'seam'; e.updatedAt = Date.now(); save('sessions', S.sessions); pushHour(e); } else if (statusOf(e) !== 'not') { e.data.colour = 'rubedo'; e.updatedAt = Date.now(); save('sessions', S.sessions); pushHour(e); } } }
     S.draft = null; saveDraft(true);
     view = { name: 'home' }; render(); toast(d.practice === 'mundus' ? 'The hour is kept. The circle closed, and opens again.' : 'The hour is kept.');
   }
