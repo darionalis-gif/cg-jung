@@ -219,6 +219,8 @@ html.no-analyst .analyst-note{display:block; margin-top:14px; border-left:2px so
 .chip.lapis.on{border-color:var(--lapis); background:var(--lapis-soft)}
 
 /* the third */
+.transcript{margin-top:14px}
+.transcript .dlg{margin-top:12px}
 .two{display:grid; gap:14px}
 .two .eyebrow{margin-bottom:6px; display:block}
 .two .F .eyebrow{color:var(--lapis)}
@@ -528,30 +530,32 @@ function Descent(d) {
 function Third(d) {
   const F = esc(figureName(d));
   if (d.step === 'wants') return {
-    main: `<h2 class="prompt">Two positions.</h2><p class="sub">One sentence each, at full strength. No compromise yet: a want that is softened cannot generate tension.</p>
-    <div class="two" style="margin-top:18px"><div class="F"><span class="eyebrow">${F} wants</span><textarea class="field" data-field="wants.F" style="min-height:110px" placeholder="…">${esc(d.wants.F)}</textarea></div><div class="I"><span class="eyebrow">I want</span><textarea class="field" data-field="wants.I" style="min-height:110px" placeholder="…">${esc(d.wants.I)}</textarea></div></div>
+    main: `<h2 class="prompt">Two positions.</h2><p class="sub">Nothing new is written here. Take both from the dialogue: what ${F} wants, in its words, and what you want, in yours. One sentence each, at full strength. No compromise yet: a want that is softened cannot generate tension.</p>
+    <details class="transcript"><summary><span class="label" style="margin:0">Read the dialogue again</span></summary><div class="dlg">${lines(d, d.dialogue)}</div></details>
+    <div class="two" style="margin-top:18px"><div class="F"><span class="eyebrow">${F} wants</span><textarea class="field" data-field="wants.F" style="min-height:110px" placeholder="what it wants, as it would say it">${esc(d.wants.F)}</textarea></div><div class="I"><span class="eyebrow">I want</span><textarea class="field" data-field="wants.I" style="min-height:110px" placeholder="what you want, as you would say it">${esc(d.wants.I)}</textarea></div></div>
     ${quote('third')}`,
     bar: `<button class="btn primary" id="wants-go" data-act="go" data-step="hold" ${d.wants.F.trim() && d.wants.I.trim() ? '' : 'disabled'}>Hold both</button>`
   };
   if (d.step === 'hold') return {
-    main: `<h2 class="prompt">Hold both.</h2><p class="sub">Don't choose. Don't reconcile. Let the two press against each other for a minute. The tension is the material: something neither side could have made alone may form in it, or may not.</p>
+    main: `<h2 class="prompt">Hold both.</h2><p class="sub">Don't choose. Don't reconcile. Don't write. Let the two press against each other for a minute and keep half an eye on the image from the descent. The tension is the material: something neither side could have made alone may form in it, or may not.</p>
     <div class="conj" aria-hidden="true"><i class="c1"></i><i class="c2"></i><i class="c3"></i></div>
     <div class="two"><div class="F"><span class="eyebrow">${F} wants</span><p style="font-style:italic">${esc(d.wants.F)}</p></div><div class="I"><span class="eyebrow">I want</span><p>${esc(d.wants.I)}</p></div></div>`,
     bar: `<button class="btn reveal" id="reveal2" data-act="nothing">Nothing came</button><button class="btn primary reveal" id="reveal" data-act="go" data-step="symbol">Something came</button>`
   };
   if (d.step === 'symbol') return d.nothing ? {
-    main: `<h2 class="prompt">Nothing came.</h2><p class="sub">That is an honest result. The symbol cannot be forced, and a forced one is worth nothing. The tension itself is the work for now. Note what the pressure feels like, so that you recognise it when it returns.</p>
+    main: `<h2 class="prompt">Nothing came.</h2><p class="sub">That is an honest result. The symbol cannot be forced, and a forced one is worth nothing. The tension itself is the work for now. Speaking as yourself, note what the pressure feels like and where, so that you recognise it when it returns.</p>
     <textarea class="field" data-field="third" id="third" placeholder="The pressure is like …">${esc(d.third)}</textarea>`,
     bar: `<button class="btn primary" id="third-go" data-act="go" data-step="act" ${d.third.trim().length >= 10 ? '' : 'disabled'}>Keep it</button>`
   } : {
-    main: `<h2 class="prompt">What came?</h2><p class="sub">An image, a gesture, an object, a sentence. Describe it as you did before: how it looks, not what it means. If it holds both wants at once, say how.</p>
-    <textarea class="field" data-field="third" id="third" placeholder="…">${esc(d.third)}</textarea>
+    main: `<h2 class="prompt">What came?</h2><p class="sub">This is neither your voice nor ${F}'s. Neither of you composes it. It is whatever arrived on its own while you held the two, the way the first image arrived at the descent: a change in that image, a new object in it, a gesture, a sentence from nowhere.</p>
+    <p class="sub">You only report it, from the outside: how it looks, not what it means. If it holds both wants at once, say how.</p>
+    <textarea class="field" data-field="third" id="third" placeholder="While I held both, there was…">${esc(d.third)}</textarea>
     ${analystBox('amplification', 'Ask where this image has appeared before', d)}`,
     bar: `<button class="btn primary" id="third-go" data-act="go" data-step="act" ${d.third.trim().length >= 10 ? '' : 'disabled'}>Keep it</button>`
   };
   // act
   return {
-    main: `<h2 class="prompt">One act.</h2><p class="sub">What would honour both sides this week, small enough that you will actually do it? The image makes a claim on your life. Without an act it fades, and the complex keeps its energy.</p>
+    main: `<h2 class="prompt">One act.</h2><p class="sub">You again, as the one who has to live it. What would honour both sides this week, small enough that you will actually do it? The image makes a claim on your life. Without an act it fades, and the complex keeps its energy.</p>
     <textarea class="field" data-field="act" id="act" style="min-height:110px" placeholder="This week I will …">${esc(d.act)}</textarea>`,
     bar: `<button class="btn primary" id="act-go" data-act="go" data-stage="5" data-step="close" ${d.act.trim().length >= 5 ? '' : 'disabled'}>Close the hour</button>`
   };
