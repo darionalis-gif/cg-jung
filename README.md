@@ -14,7 +14,7 @@ One "hour" runs through five movements:
 
 Where the page is opened inside the Claude app or on claude.ai, an optional "analyst" voice (Claude, via the artifact `sample` capability) can read the protocol, hold the frame in the dialogue, offer amplification, and close the hour. It runs on the viewer's own Claude subscription; the app holds no API key. It is instructed never to interpret before the user does and never to supply material.
 
-All hours are stored in the browser's `localStorage`; the journal can be exported as Markdown.
+Hours and the in-progress hour are kept in the artifact's document store (`db` capability, owner-only rules): one document per hour under `hours/<id>`, the draft under `state/draft` with a revision counter. The browser's `localStorage` is a cache so the page opens instantly and keeps working when the store is unreachable; local and remote are reconciled on every definitive snapshot. The journal can be exported as Markdown.
 
 ## Files
 

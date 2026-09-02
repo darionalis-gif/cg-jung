@@ -153,6 +153,7 @@ details[open] summary::after{content:'–'}
 .method p{color:var(--text-2); font-size:16.5px; margin-top:10px}
 .method p b{color:var(--text); font-weight:400}
 .foot{display:flex; gap:18px; flex-wrap:wrap; margin-top:34px; padding-top:14px; border-top:1px solid var(--line)}
+.sync{width:100%; font-size:12px; color:var(--text-3); letter-spacing:.04em}
 .toast{position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:var(--ground-3); border:1px solid var(--line-2); color:var(--text); padding:10px 16px; border-radius:2px; font-size:15px; z-index:9; box-shadow:0 6px 24px rgba(0,0,0,.25)}
 
 /* threshold */
@@ -285,8 +286,8 @@ const Q = {
 const KEY = 'tertium.';
 const load = (k, d) => { try { const v = localStorage.getItem(KEY + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
 const save = (k, v) => { try { localStorage.setItem(KEY + k, JSON.stringify(v)); } catch (e) {} };
-const S = { sessions: load('sessions', []), draft: load('draft', null), prefs: load('prefs', { lang: 'en' }) };
-const saveDraft = () => save('draft', S.draft);
+const S = { sessions: load('sessions', []), draft: load('draft', null), prefs: load('prefs', { lang: 'en' }), draftRev: load('draftrev', 0), synced: new Set(load('synced', [])) };
+const saveDraft = now => { save('draft', S.draft); S.draftRev = (S.draftRev || 0) + 1; save('draftrev', S.draftRev); queueDraftWrite(now); };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const norm = s => String(s || '').toLowerCase().trim().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -406,10 +407,10 @@ function Home() {
       <p><b>The association experiment</b> (CW 2) finds complexes by their effects, not by introspection: prolonged reaction time, a missing answer, a failed reproduction, several words where one would do. You cannot fake them or reason them away. That is why the hour starts with the stopwatch rather than with a question.</p>
       <p><b>Active imagination</b> asks for description before meaning, and for a dialogue in which the figure is not corrected and the ego is not silenced. The instrument keeps you from interpreting too early and from agreeing too fast.</p>
       <p><b>The transcendent function</b> (CW 8, §131–193) arises from bearing the tension between the two positions. The minute of holding is not decoration: the symbol forms in that tension or not at all. What comes is then owed an act.</p>
-      <p><b>The analyst</b> is a voice from Claude that holds the frame: it never interprets before you do and never supplies material. It runs through the Claude app you open this page in, on your subscription's usage, with no key of its own. Your hours stay in this browser only, and you can export them at any time.</p>
+      <p><b>The analyst</b> is a voice from Claude that holds the frame: it never interprets before you do and never supplies material. It runs through the Claude app you open this page in, on your subscription's usage, with no key of its own. Your hours are kept in the private store this page has in your Claude account, so you can continue on any device, and cached on the device you are using; you can export them at any time.</p>
     </details>
     ${quote(n ? 'soul' : 'alone')}
-    <div class="foot"><button class="ghost" data-act="export">Export the journal</button><button class="ghost" data-act="lang">Stimulus words: ${S.prefs.lang === 'de' ? 'Deutsch' : 'English'}</button></div>
+    <div class="foot"><button class="ghost" data-act="export">Export the journal</button><button class="ghost" data-act="lang">Stimulus words: ${S.prefs.lang === 'de' ? 'Deutsch' : 'English'}</button><span class="sync mono" id="sync">${SYNC_COPY[syncState]}</span></div>
   </main></div>`;
 }
 
@@ -717,6 +718,55 @@ async function initAnalyst() {
   document.documentElement.classList.toggle('no-analyst', !analyst);
 }
 
+/* ---------- the journal store ---------- */
+let db = null, syncState = 'local', draftTimer = 0;
+const SYNC_COPY = { local: 'journal kept on this device only', syncing: 'saving to your Claude account…', synced: 'journal kept in your Claude account', error: 'journal store unreachable; kept on this device for now' };
+function setSync(st) { syncState = st; const el = document.getElementById('sync'); if (el) el.textContent = SYNC_COPY[st] || ''; }
+function queueDraftWrite(now) { if (!db) return; clearTimeout(draftTimer); if (now) { flushDraft(); return; } draftTimer = setTimeout(flushDraft, 800); }
+async function flushDraft() {
+  if (!db) return; clearTimeout(draftTimer); draftTimer = 0;
+  try { setSync('syncing'); await db.doc('state/draft').set({ rev: S.draftRev, draft: S.draft, at: Date.now() }); setSync('synced'); } catch (e) { setSync('error'); }
+}
+async function pushHour(h) {
+  if (!db) return;
+  try { setSync('syncing'); await db.doc('hours/' + h.id).set(h); S.synced.add(h.id); save('synced', [...S.synced]); setSync('synced'); } catch (e) { setSync('error'); }
+}
+async function removeHour(id) {
+  S.synced.delete(id); save('synced', [...S.synced]); if (!db) return;
+  try { await db.doc('hours/' + id).delete(); } catch (e) { setSync('error'); }
+}
+function mergeHours(snap) {
+  const remote = new Map(snap.docs.filter(x => x.exists).map(x => [x.id, x.data()]));
+  const local = new Map(S.sessions.map(h => [h.id, h]));
+  const definitive = !snap.metadata.fromCache; let changed = false;
+  for (const [id, h] of remote) { if (!local.has(id)) { local.set(id, h); changed = true; } S.synced.add(id); }
+  if (definitive) for (const [id, h] of [...local]) { if (!remote.has(id)) { if (S.synced.has(id)) { local.delete(id); changed = true; } else pushHour(h); } }
+  save('synced', [...S.synced]);
+  if (definitive && syncState !== 'error') setSync('synced');
+  if (changed) { S.sessions = [...local.values()].sort((a, b) => (a.startedAt || 0) - (b.startedAt || 0)); save('sessions', S.sessions); if (view.name !== 'session') render(); }
+}
+function mergeDraft(snap) {
+  if (!snap.exists) { if (S.draft || S.draftRev) queueDraftWrite(true); return; }
+  const r = snap.data() || {}, rrev = +r.rev || 0;
+  if (rrev > (S.draftRev || 0)) {
+    S.draft = r.draft || null; S.draftRev = rrev; save('draft', S.draft); save('draftrev', rrev);
+    if (view.name === 'session' && !S.draft) view = { name: 'home' };
+    render();
+  } else if (rrev < (S.draftRev || 0)) queueDraftWrite(true);
+}
+async function initDb() {
+  try { db = window.claude?.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
+  if (!db) { setSync('local'); return; }
+  setSync('syncing');
+  const dead = () => { db = null; setSync('error'); };
+  try {
+    db.collection('hours').onSnapshot(mergeHours, dead);
+    db.doc('state/draft').onSnapshot(mergeDraft, dead);
+  } catch (e) { dead(); }
+  addEventListener('pagehide', () => { if (draftTimer) flushDraft(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && draftTimer) flushDraft(); });
+}
+
 /* ---------- export ---------- */
 function journalMarkdown() {
   return `# Tertium Datur — journal\n\n` + S.sessions.map(s => {
@@ -737,11 +787,11 @@ async function exportJournal() {
 const act = {
   begin() { S.draft = newDraft(); saveDraft(); view = { name: 'session' }; render(); },
   resume() { view = { name: 'session' }; render(); },
-  discard(b) { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Really discard this hour?'; return; } S.draft = null; saveDraft(); view = { name: 'home' }; render(); },
+  discard(b) { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Really discard this hour?'; return; } S.draft = null; saveDraft(true); view = { name: 'home' }; render(); },
   pause() { view = { name: 'home' }; render(); },
   home() { view = { name: 'home' }; render(); },
   open(b) { view = { name: 'entry', id: b.dataset.id }; render(); },
-  delete(b) { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Really delete? It cannot be recovered.'; return; } S.sessions = S.sessions.filter(s => s.id !== b.dataset.id); save('sessions', S.sessions); view = { name: 'home' }; render(); },
+  delete(b) { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Really delete? It cannot be recovered.'; return; } S.sessions = S.sessions.filter(s => s.id !== b.dataset.id); save('sessions', S.sessions); removeHour(b.dataset.id); view = { name: 'home' }; render(); },
   export() { exportJournal(); },
   lang() { S.prefs.lang = S.prefs.lang === 'de' ? 'en' : 'de'; save('prefs', S.prefs); render(); },
   go(b) { const d = S.draft; if (b.dataset.stage) d.stage = +b.dataset.stage; d.step = b.dataset.step; if (d.step === 'symbol') d.nothing = false; saveDraft(); render(); },
@@ -760,7 +810,7 @@ const act = {
   stop() { ctl?.abort(); },
   keep() {
     const d = S.draft; d.finishedAt = Date.now();
-    S.sessions.push(d); save('sessions', S.sessions); S.draft = null; saveDraft();
+    S.sessions.push(d); save('sessions', S.sessions); pushHour(d); S.draft = null; saveDraft(true);
     view = { name: 'home' }; render(); toast('The hour is kept. The mandala has grown.');
   }
 };
@@ -804,6 +854,7 @@ function render() {
 }
 render();
 initAnalyst();
+initDb();
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (view.name === 'home') animateMandala(); });
 })();
 </script>
