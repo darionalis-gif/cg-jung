@@ -16,6 +16,7 @@
   --gold:#CFA850; --gold-soft:rgba(207,168,80,.14);
   --lapis:#7A97E6; --lapis-soft:rgba(122,151,230,.14);
   --focus:#F1C76C; --mandala-l:62%; --blend:screen;
+  --nigredo:#0A0A0E; --albedo:#EDE9DF; --citrinitas:#D8B547; --rubedo:#B8321C;
   --serif:'Cardo','Iowan Old Style','Palatino Linotype','Book Antiqua',Georgia,serif;
   --caps:'Marcellus','Cardo',Georgia,serif;
   --mono:'Courier Prime','Courier New',Courier,monospace;
@@ -30,6 +31,7 @@
     --gold:#8C6C1F; --gold-soft:rgba(140,108,31,.12);
     --lapis:#2C4DA3; --lapis-soft:rgba(44,77,163,.10);
     --focus:#8C6C1F; --mandala-l:42%; --blend:multiply;
+    --nigredo:#15151C; --albedo:#F7F4EC; --citrinitas:#C9A227; --rubedo:#A82C17;
   }
 }
 :root[data-theme="light"]{
@@ -41,15 +43,12 @@
   --gold:#8C6C1F; --gold-soft:rgba(140,108,31,.12);
   --lapis:#2C4DA3; --lapis-soft:rgba(44,77,163,.10);
   --focus:#8C6C1F; --mandala-l:42%; --blend:multiply;
+  --nigredo:#15151C; --albedo:#F7F4EC; --citrinitas:#C9A227; --rubedo:#A82C17;
 }
 
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{
-  margin:0; background:var(--ground); color:var(--text);
-  font-family:var(--serif); font-size:18px; line-height:1.55;
-  -webkit-font-smoothing:antialiased;
-}
+body{margin:0; background:var(--ground); color:var(--text); font-family:var(--serif); font-size:18px; line-height:1.55; -webkit-font-smoothing:antialiased}
 button{font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer}
 button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, summary:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
 h1,h2,h3,p{margin:0}
@@ -60,33 +59,20 @@ a{color:var(--gold)}
 .top{display:flex; align-items:center; gap:12px; padding:14px 22px 0}
 .top .stage{flex:1}
 .ring{flex:none}
-.bar{
-  position:sticky; bottom:0; display:flex; gap:10px; align-items:center;
-  padding:12px 22px calc(14px + env(safe-area-inset-bottom));
-  background:linear-gradient(to top, var(--ground) 72%, transparent);
-}
+.bar{position:sticky; bottom:0; display:flex; gap:10px; align-items:center; padding:12px 22px calc(14px + env(safe-area-inset-bottom)); background:linear-gradient(to top, var(--ground) 72%, transparent)}
 .bar .btn.primary{flex:1}
 .bar:empty{display:none}
 
-.stage, .label, .who, .eyebrow{
-  font-family:var(--caps); text-transform:uppercase; letter-spacing:.22em;
-  font-size:12px; color:var(--text-2);
-}
+.stage, .label, .who, .eyebrow{font-family:var(--caps); text-transform:uppercase; letter-spacing:.22em; font-size:12px; color:var(--text-2)}
 .label{margin:26px 0 10px}
-.prompt{
-  font-family:var(--serif); font-weight:400; font-size:28px; line-height:1.22;
-  text-wrap:balance; margin:10px 0 12px;
-}
+.prompt{font-family:var(--serif); font-weight:400; font-size:28px; line-height:1.22; text-wrap:balance; margin:10px 0 12px}
 .sub{color:var(--text-2); font-size:17.5px; max-width:36em}
 .sub.small{font-size:15.5px}
 .sub + .sub{margin-top:10px}
 .mono{font-family:var(--mono); font-size:.86em; font-variant-numeric:tabular-nums}
+.big-item{font-family:var(--caps); text-transform:uppercase; letter-spacing:.2em; font-size:24px; color:var(--lapis); margin:8px 0 14px}
 
-.btn{
-  font-family:var(--caps); letter-spacing:.14em; text-transform:uppercase; font-size:13px;
-  padding:14px 18px; border:1px solid var(--line-2); background:var(--ground-2); color:var(--text);
-  border-radius:2px; text-align:center; line-height:1.2; transition:opacity .2s, background .2s;
-}
+.btn{font-family:var(--caps); letter-spacing:.14em; text-transform:uppercase; font-size:13px; padding:14px 18px; border:1px solid var(--line-2); background:var(--ground-2); color:var(--text); border-radius:2px; text-align:center; line-height:1.2; transition:opacity .2s, background .2s}
 .btn.primary{background:var(--verm); border-color:var(--verm); color:var(--on-verm)}
 .btn:disabled{opacity:.38; cursor:default}
 .btn.small{padding:10px 14px; font-size:12px}
@@ -95,23 +81,24 @@ a{color:var(--gold)}
 .btn.reveal.show{opacity:1; pointer-events:auto}
 .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px}
 
-.field{
-  width:100%; background:var(--ground-2); border:1px solid var(--line); color:var(--text);
-  font:inherit; padding:13px 14px; border-radius:2px; min-height:150px; resize:vertical;
-}
+.field{width:100%; background:var(--ground-2); border:1px solid var(--line); color:var(--text); font:inherit; padding:13px 14px; border-radius:2px; min-height:150px; resize:vertical}
 .field.line{min-height:0; resize:none}
 .field.big{font-size:24px; padding:14px 16px; min-height:0; resize:none; text-align:center}
+.field.short{min-height:100px}
 .field::placeholder{color:var(--text-3); font-style:italic}
 .field + .field, .field + .label{margin-top:12px}
+.field.interim{color:var(--text-2)}
 
 .chips{display:flex; flex-wrap:wrap; gap:8px; margin:14px 0}
-.chip{
-  border:1px solid var(--line-2); border-radius:999px; padding:7px 14px; font-size:16.5px;
-  background:var(--ground-2); color:var(--text); transition:background .15s, border-color .15s;
-}
+.chip{border:1px solid var(--line-2); border-radius:999px; padding:7px 14px; font-size:16.5px; background:var(--ground-2); color:var(--text); transition:background .15s, border-color .15s; text-align:left}
 .chip.on{border-color:var(--verm); background:var(--verm-soft)}
 .chip.gold.on{border-color:var(--gold); background:var(--gold-soft)}
+.chip.lapis.on{border-color:var(--lapis); background:var(--lapis-soft)}
+.chip:disabled{opacity:.4; cursor:default}
 .chip .n{font-family:var(--mono); font-size:12px; color:var(--text-3); margin-left:6px}
+.chip .x{margin-left:8px; color:var(--text-3)}
+.chip small{display:block; font-size:14px; color:var(--text-2); font-style:italic}
+.chip .swatch{display:inline-block; width:12px; height:12px; border-radius:50%; border:1px solid var(--line-2); margin-right:8px; vertical-align:-1px}
 
 .dots{display:flex; align-items:center; gap:10px; margin:6px 0 4px}
 .dot{width:22px; height:22px; border-radius:50%; border:1px solid var(--line-2); background:var(--ground-2)}
@@ -129,22 +116,31 @@ a{color:var(--gold)}
 .mast h1{font-family:var(--caps); font-weight:400; font-size:30px; letter-spacing:.2em; text-transform:uppercase; line-height:1.15}
 .mast .tag{font-style:italic; color:var(--text-2); margin-top:6px}
 .home .screen{padding-top:4px}
-.begin{display:block; width:100%; margin:22px 0 6px}
+.opusline{display:flex; align-items:center; justify-content:center; gap:6px; margin:6px 0 18px; flex-wrap:wrap}
+.opusline i{display:inline-block; width:10px; height:10px; border-radius:50%; border:1px solid var(--line-2)}
+.opusline .mono{margin-left:8px; color:var(--text-3); font-size:12px}
+.card{border:1px solid var(--line-2); border-radius:2px; padding:16px 18px; margin:8px 0 6px; background:var(--ground-2)}
+.card .nm{font-family:var(--caps); letter-spacing:.16em; text-transform:uppercase; font-size:13px; display:block}
+.card .latin{font-style:italic; color:var(--text-3); font-size:15px}
+.card p{color:var(--text-2); font-size:16.5px; margin:8px 0 12px}
+.begin{display:block; width:100%; margin:8px 0 6px}
 .entries{margin-top:8px}
-.entry{
-  display:grid; grid-template-columns:auto 1fr; column-gap:14px; row-gap:2px; width:100%; text-align:left;
-  padding:13px 0; border-top:1px solid var(--line);
-}
+.entry{display:grid; grid-template-columns:auto 1fr; column-gap:14px; row-gap:2px; width:100%; text-align:left; padding:13px 0; border-top:1px solid var(--line)}
 .entry:last-child{border-bottom:1px solid var(--line)}
 .entry .date{font-family:var(--mono); font-size:12.5px; color:var(--text-3); padding-top:5px; grid-row:span 2}
 .entry .seed{font-family:var(--caps); letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:var(--verm)}
+.entry .seed .pr{color:var(--text-3); margin-left:8px; letter-spacing:.1em}
 .entry .third{font-style:italic; color:var(--text-2); font-size:16.5px}
-.movements{list-style:none; margin:0; padding:0}
-.movements li{display:grid; grid-template-columns:34px 1fr; gap:10px; padding:12px 0; border-top:1px solid var(--line); align-items:baseline}
-.movements li:last-child{border-bottom:1px solid var(--line)}
-.movements .num{font-family:var(--caps); color:var(--verm); letter-spacing:.1em; font-size:14px}
-.movements .nm{font-family:var(--caps); letter-spacing:.16em; text-transform:uppercase; font-size:12.5px; display:block; margin-bottom:2px}
-.movements p{color:var(--text-2); font-size:16.5px}
+.practices{list-style:none; margin:0; padding:0}
+.practices li{border-top:1px solid var(--line)}
+.practices li:last-child{border-bottom:1px solid var(--line)}
+.practices button{display:grid; grid-template-columns:34px 1fr; gap:10px; padding:12px 0; align-items:baseline; width:100%; text-align:left}
+.practices .num{font-family:var(--caps); color:var(--verm); letter-spacing:.1em; font-size:14px}
+.practices .nm{font-family:var(--caps); letter-spacing:.16em; text-transform:uppercase; font-size:12.5px; display:block; margin-bottom:2px}
+.practices .nm i{font-family:var(--serif); text-transform:none; letter-spacing:0; color:var(--text-3); font-size:14px; margin-left:8px}
+.practices p{color:var(--text-2); font-size:16px}
+.practices .done{font-family:var(--mono); font-size:11.5px; color:var(--text-3); margin-left:8px}
+.group{margin:18px 0 6px}
 details{margin-top:8px}
 summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px}
 summary::-webkit-details-marker{display:none}
@@ -154,37 +150,23 @@ details[open] summary::after{content:'–'}
 .method p b{color:var(--text); font-weight:400}
 .foot{display:flex; gap:18px; flex-wrap:wrap; margin-top:34px; padding-top:14px; border-top:1px solid var(--line)}
 .sync{width:100%; font-size:12px; color:var(--text-3); letter-spacing:.04em}
-.toast{position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:var(--ground-3); border:1px solid var(--line-2); color:var(--text); padding:10px 16px; border-radius:2px; font-size:15px; z-index:9; box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.toast{position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:var(--ground-3); border:1px solid var(--line-2); color:var(--text); padding:10px 16px; border-radius:2px; font-size:15px; z-index:9; box-shadow:0 6px 24px rgba(0,0,0,.25); max-width:90vw}
 
 /* threshold */
-.breath{
-  width:170px; height:170px; border-radius:50%; border:1px solid var(--text-3);
-  margin:44px auto 40px; animation:breathe 10s ease-in-out infinite;
-  box-shadow:0 0 0 1px transparent;
-}
-@keyframes breathe{
-  0%,100%{transform:scale(.78); border-color:var(--text-3); box-shadow:0 0 0 0 var(--gold-soft)}
-  50%{transform:scale(1.14); border-color:var(--gold); box-shadow:0 0 0 14px var(--gold-soft)}
-}
+.breath{width:170px; height:170px; border-radius:50%; border:1px solid var(--text-3); margin:44px auto 40px; animation:breathe 10s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(.78); border-color:var(--text-3); box-shadow:0 0 0 0 var(--gold-soft)} 50%{transform:scale(1.14); border-color:var(--gold); box-shadow:0 0 0 14px var(--gold-soft)}}
 
 /* association */
 .wae{display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:14vh}
 .wae .count{font-family:var(--mono); font-size:13px; color:var(--text-3); letter-spacing:.1em}
-.stim{
-  font-size:46px; line-height:1.1; margin:26px 0 30px; min-height:1.1em; letter-spacing:.01em;
-  transition:opacity .12s;
-}
+.stim{font-size:46px; line-height:1.1; margin:26px 0 30px; min-height:1.1em; letter-spacing:.01em; transition:opacity .12s}
 .stim.blank{opacity:0}
 .wae .field{max-width:320px}
-.field.interim{color:var(--text-2)}
-.chip:disabled{opacity:.4; cursor:default}
 .listen{font-family:var(--mono); font-size:12px; letter-spacing:.1em; color:var(--text-3); display:flex; gap:9px; align-items:center; justify-content:center; margin-top:16px; min-height:18px; visibility:hidden}
 .listen.on{visibility:visible}
 .listen i{width:8px; height:8px; border-radius:50%; background:var(--verm); animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.35; transform:scale(.8)} 50%{opacity:1; transform:scale(1.1)}}
 .wae .ghost{margin-top:18px}
-.analyst-note{display:none}
-html.no-analyst .analyst-note{display:block; margin-top:14px; border-left:2px solid var(--line-2); padding-left:12px}
 .protocol{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:13.5px; margin:16px 0 4px; font-variant-numeric:tabular-nums}
 .protocol th{font-weight:400; color:var(--text-3); text-align:left; padding:6px 6px 8px; border-bottom:1px solid var(--line-2); letter-spacing:.06em}
 .protocol td{padding:5px 6px; border-bottom:1px solid var(--line); vertical-align:top}
@@ -196,6 +178,11 @@ html.no-analyst .analyst-note{display:block; margin-top:14px; border-left:2px so
 .protocol tr.d2 .fl{color:var(--verm); opacity:.8}
 .tablewrap{overflow-x:auto}
 .legend{font-family:var(--mono); font-size:12px; color:var(--text-3); margin-top:8px; line-height:1.6}
+
+/* file / dossier */
+.file{font-family:var(--mono); font-size:13.5px; line-height:1.6; background:var(--ground-2); border:1px solid var(--line); padding:14px 16px; margin:14px 0; white-space:pre-wrap; color:var(--text-2)}
+.file b{color:var(--text); font-weight:400}
+.file .k{color:var(--gold)}
 
 /* descent */
 .seedword{font-family:var(--caps); text-transform:uppercase; letter-spacing:.24em; font-size:30px; color:var(--verm); text-align:center; margin:40px 0 44px; text-wrap:balance}
@@ -216,7 +203,6 @@ html.no-analyst .analyst-note{display:block; margin-top:14px; border-left:2px so
 .composer .line.next .who{margin-bottom:6px}
 .line.I.next .field{border-color:var(--verm)}
 .line.F.next .field{border-color:var(--lapis); font-style:italic}
-.chip.lapis.on{border-color:var(--lapis); background:var(--lapis-soft)}
 
 /* the third */
 .transcript{margin-top:14px}
@@ -234,6 +220,15 @@ html.no-analyst .analyst-note{display:block; margin-top:14px; border-left:2px so
 @keyframes c2{from{transform:translateX(96px)} to{transform:translateX(34px)}}
 @keyframes c3{0%,82%{opacity:0; transform:scale(.4)} 100%{opacity:1; transform:scale(1)}}
 
+/* drawing */
+.pad{display:block; width:100%; aspect-ratio:1; background:var(--ground-2); border:1px solid var(--line-2); border-radius:2px; touch-action:none; margin-top:14px}
+.pad.small{width:min(60vw,240px); margin:10px 0; border-color:var(--line)}
+.palette{display:flex; gap:10px; align-items:center; margin-top:12px}
+.palette .sw{width:30px; height:30px; border-radius:50%; border:2px solid transparent}
+.palette .sw.on{border-color:var(--text)}
+.palette .sw.verm{background:var(--verm)} .palette .sw.lapis{background:var(--lapis)} .palette .sw.gold{background:var(--gold)} .palette .sw.text{background:var(--text)}
+.palette .ghost{margin-left:auto}
+
 /* return / entry */
 .leaf{border-top:3px double var(--line-2); border-bottom:3px double var(--line-2); padding:20px 0; margin:14px 0 6px}
 .leaf .eyebrow{display:block; margin:14px 0 4px}
@@ -242,6 +237,23 @@ html.no-analyst .analyst-note{display:block; margin-top:14px; border-left:2px so
 .leaf .third{font-style:italic; font-size:21px; line-height:1.35}
 .leaf p{white-space:pre-wrap}
 .leaf .dlg{margin:6px 0 0}
+.leaf .colour{display:inline-flex; align-items:center; gap:8px}
+
+/* liber */
+.liber h3.label{margin-top:30px}
+.kv{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:16.5px}
+.kv .mono{color:var(--text-3); padding-top:3px}
+.item{padding:10px 0; border-top:1px solid var(--line)}
+.item:last-child{border-bottom:1px solid var(--line)}
+.item .nm{font-family:var(--caps); letter-spacing:.14em; text-transform:uppercase; font-size:12.5px}
+.item .nm .n{font-family:var(--mono); color:var(--text-3); letter-spacing:0; margin-left:8px; text-transform:none}
+.item p{color:var(--text-2); font-size:16px; white-space:pre-wrap}
+.item p i{color:var(--text)}
+.status{font-family:var(--mono); font-size:11.5px; letter-spacing:.06em; margin-left:8px}
+.status.kept{color:var(--gold)} .status.partly{color:var(--text-2)} .status.not{color:var(--verm)} .status.open{color:var(--lapis)}
+.motif{display:inline-flex; align-items:baseline; gap:6px; margin:0 12px 6px 0; font-size:17px}
+.motif .n{font-family:var(--mono); font-size:12px; color:var(--text-3)}
+.motif.hot{color:var(--verm)}
 
 /* analyst */
 .analyst{border-left:2px solid var(--gold); padding:10px 14px 12px; margin-top:16px; background:var(--ground-2)}
@@ -251,6 +263,8 @@ html.no-analyst .analyst-note{display:block; margin-top:14px; border-left:2px so
 .analyst .tier{font-size:11.5px; color:var(--text-3); letter-spacing:.04em; margin-top:8px}
 .analyst .stop{margin-top:8px}
 html:not(.has-analyst) .analyst-only{display:none !important}
+.analyst-note{display:none}
+html.no-analyst .analyst-note{display:block; margin-top:14px; border-left:2px solid var(--line-2); padding-left:12px}
 
 @media (min-width:480px){ .two{grid-template-columns:1fr 1fr} }
 @media (prefers-reduced-motion: reduce){
@@ -269,7 +283,7 @@ html:not(.has-analyst) .analyst-only{display:none !important}
 (() => {
 'use strict';
 
-/* ---------- material ---------- */
+/* ================= material ================= */
 const WORDS = {
   en: ['head','green','water','to sing','death','long','ship','to pay','window','friendly','table','to ask','village','cold','stem','to dance','lake','sick','pride','to cook','ink','angry','needle','to swim','journey','blue','lamp','to sin','bread','rich','tree','to prick','pity','yellow','mountain','to die','salt','new','custom','to pray','money','foolish','notebook','to despise','finger','expensive','bird','to fall','book','unjust','frog','to part','hunger','white','child','to take care','pencil','sad','plum','to marry','house','dear','glass','to quarrel','fur','big','carrot','to paint','part','old','flower','to beat','box','wild','family','to wash','cow','stranger','luck','lie','decency','narrow','brother','to fear','stork','false','anxiety','to kiss','bride','pure','door','to choose','hay','contented','ridicule','to sleep','month','pretty','woman','to abuse'],
   de: ['Kopf','grün','Wasser','singen','Tod','lang','Schiff','zahlen','Fenster','freundlich','Tisch','fragen','Dorf','kalt','Stengel','tanzen','See','krank','Stolz','kochen','Tinte','böse','Nadel','schwimmen','Reise','blau','Lampe','sündigen','Brot','reich','Baum','stechen','Mitleid','gelb','Berg','sterben','Salz','neu','Sitte','beten','Geld','dumm','Heft','verachten','Finger','teuer','Vogel','fallen','Buch','ungerecht','Frosch','scheiden','Hunger','weiss','Kind','aufpassen','Bleistift','traurig','Pflaume','heiraten','Haus','lieb','Glas','streiten','Pelz','gross','Rübe','malen','Teil','alt','Blume','schlagen','Kasten','wild','Familie','waschen','Kuh','fremd','Glück','lügen','Anstand','eng','Bruder','fürchten','Storch','falsch','Angst','küssen','Braut','rein','Türe','wählen','Heu','zufrieden','Spott','schlafen','Monat','hübsch','Frau','schimpfen']
@@ -277,30 +291,47 @@ const WORDS = {
 const N_WORDS = 24;
 const AFFECTS = ['restless','heavy','tense','empty','sad','irritable','ashamed','afraid','longing','numb','elated','guilty'];
 const HUES = {restless:35,heavy:225,tense:10,empty:250,sad:215,irritable:15,ashamed:330,afraid:275,longing:45,numb:200,elated:55,guilty:300};
-const BODY = ['throat','chest','stomach','jaw','shoulders','hands','head','everywhere','nowhere'];
+const PRACTICE_HUE = {hour:0, dream:225, shadow:265, persona:35, soul:325, mandala:50, unio:45, corpus:20, mundus:48};
+const BODY = ['throat','chest','stomach','jaw','shoulders','hands','head','belly','back','everywhere','nowhere'];
 const INTENSITY = ['faint','noticeable','strong','gripping','overwhelming'];
-const STAGES = ['', 'Threshold', 'Association', 'Descent', 'The Third', 'Return'];
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
+const ROMAN = ['I','II','III','IV','V','VI','VII','VIII'];
+const COLOURS = [
+  ['nigredo', 'Nigredo', 'black: dark, heavy, dissolving; the confrontation'],
+  ['albedo', 'Albedo', 'white: clear, cold, reflective; something was washed'],
+  ['citrinitas', 'Citrinitas', 'yellow: a first warmth, a dawning; not yet lived'],
+  ['rubedo', 'Rubedo', 'red: united, alive, in the body; it holds']
+];
+const COLOUR_VAR = {nigredo:'--nigredo', albedo:'--albedo', citrinitas:'--citrinitas', rubedo:'--rubedo'};
+const FUNCTIONS = ['thinking','feeling','sensation','intuition'];
+const OPPOSITE = {thinking:'feeling', feeling:'thinking', sensation:'intuition', intuition:'sensation'};
 const Q = {
   affect: ['In the intensity of the emotional disturbance itself lies the value, the energy which he should have at his disposal in order to remedy the state of reduced adaptation.', 'C. G. Jung, CW 8 §166'],
   complex: ['Everyone knows nowadays that people “have complexes”. What is not so well known, though far more important theoretically, is that complexes can have us.', 'C. G. Jung, CW 8 §200'],
   dialogue: ['It is exactly as if a dialogue were taking place between two human beings with equal rights, each of whom gives the other credit for a valid argument.', 'C. G. Jung, CW 8 §186'],
   third: ['The confrontation of the two positions generates a tension charged with energy and creates a living, third thing — not a logical stillbirth in accordance with the principle tertium non datur but a movement out of the suspension between opposites.', 'C. G. Jung, CW 8 §189'],
   alone: ['The patient must be alone if he is to find out what it is that supports him when he can no longer support himself.', 'C. G. Jung, CW 12 §32'],
-  soul: ['People will do anything, no matter how absurd, in order to avoid facing their own souls.', 'C. G. Jung, CW 12 §126']
+  soul: ['People will do anything, no matter how absurd, in order to avoid facing their own souls.', 'C. G. Jung, CW 12 §126'],
+  mirror: ['Whoever looks into the mirror of the water will see first of all his own face. Whoever goes to himself risks a confrontation with himself. The mirror does not flatter, it faithfully shows whatever looks into it.', 'C. G. Jung, CW 9i §43'],
+  shadow: ['Everyone carries a shadow, and the less it is embodied in the individual’s conscious life, the blacker and denser it is.', 'C. G. Jung, CW 11 §131'],
+  shadow2: ['The shadow is a moral problem that challenges the whole ego-personality, for no one can become conscious of the shadow without considerable moral effort.', 'C. G. Jung, CW 9ii §14'],
+  persona: ['The persona is a complicated system of relations between individual consciousness and society, fittingly enough a kind of mask, designed on the one hand to make a definite impression upon others, and, on the other, to conceal the true nature of the individual.', 'C. G. Jung, CW 7 §305'],
+  dreamdoor: ['The dream is a little hidden door in the innermost and most secret recesses of the soul.', 'C. G. Jung, CW 10 §304'],
+  theatre: ['The dream is the theatre where the dreamer is at once scene, player, prompter, producer, author, public, and critic.', 'C. G. Jung, CW 8 §509'],
+  individuation: ['Individuation means becoming a single, homogeneous being, and, in so far as “individuality” embraces our innermost, last, and incomparable uniqueness, it also implies becoming one’s own self.', 'C. G. Jung, CW 7 §266'],
+  afternoon: ['We cannot live the afternoon of life according to the programme of life’s morning; for what was great in the morning will be little at evening, and what in the morning was true will at evening have become a lie.', 'C. G. Jung, CW 8 §784'],
+  mandala: ['I knew that in finding the mandala as an expression of the self I had attained what was for me the ultimate.', 'C. G. Jung, Memories, Dreams, Reflections'],
+  meeting: ['The meeting of two personalities is like the contact of two chemical substances: if there is any reaction, both are transformed.', 'C. G. Jung, Modern Man in Search of a Soul']
 };
 
-/* ---------- store ---------- */
+/* ================= store ================= */
 const KEY = 'tertium.';
 const load = (k, d) => { try { const v = localStorage.getItem(KEY + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
 const save = (k, v) => { try { localStorage.setItem(KEY + k, JSON.stringify(v)); } catch (e) {} };
-const S = { sessions: load('sessions', []), draft: load('draft', null), prefs: Object.assign({ lang: 'en', tier: 'complex' }, load('prefs', {})), draftRev: load('draftrev', 0), synced: new Set(load('synced', [])) };
-const saveDraft = now => { save('draft', S.draft); S.draftRev = (S.draftRev || 0) + 1; save('draftrev', S.draftRev); queueDraftWrite(now); };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const norm = s => String(s || '').toLowerCase().trim().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
-const fold = s => norm(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ß/g, 'ss').replace(/^(the|a|an|to|der|die|das|ein|eine|zu) /, '');
+const fold = s => norm(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/^(the|a|an|to|der|die|das|ein|eine|zu) /, '');
 function editDistance(a, b) {
   const m = a.length, k = b.length; if (!m) return k; if (!k) return m;
   const d = Array.from({ length: m + 1 }, (_, i) => { const r = new Array(k + 1).fill(0); r[0] = i; return r; });
@@ -322,30 +353,261 @@ const secs = ms => ms == null ? '—' : (ms / 1000).toFixed(2);
 const SHORT = { 'prolonged': 'slow', 'no reaction': 'none', 'not reproduced': 'lost', 'reproduced differently': 'changed', 'several words': '3+ words', 'echoes stimulus': 'echo', 'perseveration': 'persev.' };
 const flagCell = it => it.flags.map(f => SHORT[f] || f).join(' · ');
 const KEY_TEXT = 's = seconds to your first sound when spoken, to your first keystroke when typed · again: · reproduced exactly, ≈ reproduced with a slip of the tongue or keyboard (not a change) · slow = beyond the threshold · none = no answer · lost = not reproduced · changed = reproduced differently · echo = repeats the stimulus · persev. = carried over from the word before · red = two or more indicators';
-const app = document.getElementById('app');
-let view = { name: 'home' };
-let raf = 0, timers = [];
-const later = (fn, ms) => timers.push(setTimeout(fn, ms));
 
-function getPath(o, p) { return p.split('.').reduce((a, k) => a == null ? a : a[k], o); }
-function setPath(o, p, v) { const ks = p.split('.'); const last = ks.pop(); const t = ks.reduce((a, k) => (a[k] ??= {}), o); t[last] = v; }
-
-function newDraft() {
-  const order = [...Array(100).keys()].sort(() => Math.random() - .5).slice(0, N_WORDS);
-  return {
-    id: Date.now().toString(36), startedAt: Date.now(), stage: 1, step: 'breathe',
-    affect: { word: '', custom: '', intensity: 0, body: '' },
-    wae: { lang: S.prefs.lang || 'en', mode: S.prefs.mode === 'type' || !SR ? 'type' : 'voice', order, i: 0, phase: 'run', items: order.map(ix => ({ ix, resp: '', rt: null, repro: '', reproOk: false, flags: [] })), median: 0, thr: 0, done: false },
-    seed: null, image: '', figure: '', dialogue: [], dlgWho: 'I',
-    wants: { F: '', I: '' }, third: '', nothing: false, act: '', analyst: {}, dlgDraft: ''
-  };
+// migration from the first version (one practice, fields at top level)
+function migrate(s) {
+  if (!s || s.practice) return s;
+  const { id, startedAt, finishedAt, analyst, affect, wae, seed, image, figure, dialogue, wants, third, nothing, act } = s;
+  return { id, practice: 'hour', startedAt, finishedAt: finishedAt || startedAt, analyst: analyst || {}, data: { affect, wae, seed, image, figure, dialogue: dialogue || [], wants: wants || { F: '', I: '' }, third: third || '', nothing: !!nothing, act: act || '' } };
 }
-const affectWord = d => (d.affect.custom || '').trim() || d.affect.word;
-const wordOf = (d, it) => WORDS[d.wae.lang][it.ix];
-const figureName = d => (d.figure || '').trim() || 'the figure';
-const hueOf = s => { const w = (s.affect?.custom || '').trim() || s.affect?.word || ''; if (HUES[w] != null) return HUES[w]; let h = 0; for (const c of w) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+function migrateDraft(d) {
+  if (!d || d.practice) return d;
+  const map = { 1: { breathe: [0, 0], affect: [0, 2] }, 2: { intro: [1, 0], run: [1, 1], 'repro-intro': [1, 2], repro: [1, 3], protocol: [1, 4] }, 3: { wait: [2, 0], image: [2, 1], figure: [2, 2], dialogue: [2, 3] }, 4: { wants: [3, 0], hold: [3, 1], symbol: [3, 2], act: [3, 4] }, 5: { close: [4, 1] } };
+  const pos = (map[d.stage] || {})[d.step] || [0, 0];
+  const m = migrate(d); m.mi = pos[0]; m.si = pos[1]; m.dlgWho = d.dlgWho || 'I'; m.dlgDraft = d.dlgDraft || ''; delete m.finishedAt;
+  if (m.data.wae) { m.data.wae.order = d.wae.order; m.data.wae.i = d.wae.i; m.data.wae.mode = d.wae.mode || 'type'; }
+  return m;
+}
+const S = {
+  sessions: load('sessions', []).map(migrate), draft: migrateDraft(load('draft', null)),
+  prefs: Object.assign({ lang: 'en', tier: 'complex' }, load('prefs', {})),
+  draftRev: load('draftrev', 0), synced: new Set(load('synced', [])),
+  portrait: load('portrait', { at: 0 }), sync: load('synclog', { at: 0, items: [] })
+};
+const saveDraft = now => { save('draft', S.draft); S.draftRev = (S.draftRev || 0) + 1; save('draftrev', S.draftRev); queueDraftWrite(now); };
+const app = document.getElementById('app');
+let view = { name: 'home' }, raf = 0, timers = [];
+const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+function setPath(o, p, v) { const ks = p.split('.'); const last = ks.pop(); const t = ks.reduce((a, k) => (a[k] ??= {}), o); t[last] = v; }
+function getPath(o, p) { return p.split('.').reduce((a, k) => a == null ? a : a[k], o); }
+const affectWord = s => ((s.data?.affect?.custom || '').trim()) || s.data?.affect?.word || '';
+const wordOf = (s, it) => WORDS[s.data.wae.lang || 'en'][it.ix];
+const figureName = s => (s.data?.figure || '').trim() || 'the figure';
+const D = (d, f, dflt = '') => { const v = getPath(d.data, f); return v == null ? dflt : v; };
 
-/* ---------- mandala ---------- */
+/* ================= the practices ================= */
+const PRACTICES = {
+  hour: {
+    name: 'The Hour', latin: 'circumambulatio', one: 'Mood, the association experiment, active imagination, the third, one act. The core practice; the complex found by its own resistance.',
+    movements: [
+      { label: 'Threshold', steps: [
+        { id: 'breathe', type: 'breathe', seconds: 20 },
+        { id: 'promise', type: 'promise' },
+        { id: 'affect', type: 'affect', leaf: 'Mood' }
+      ]},
+      { label: 'Association', steps: [
+        { id: 'waeIntro', type: 'waeIntro' }, { id: 'wae', type: 'wae' }, { id: 'reproIntro', type: 'reproIntro' }, { id: 'repro', type: 'repro' }, { id: 'protocol', type: 'protocol', leaf: 'Disturbed words' }
+      ]},
+      { label: 'Descent', steps: [
+        { id: 'wait', type: 'wait', seed: true, prompt: 'Close your eyes with the word.', sub: 'Don’t look for a picture, and don’t choose one. Wait until one comes by itself. It may be small, dim, or ordinary. When it is there, open your eyes.', button: 'An image came' },
+        { id: 'image', type: 'text', field: 'image', min: 40, leaf: 'Image', prompt: 'Describe it.', sub: 'Not what it means. What it looks like: light, distance, size, colour, sound, temperature, what moves and what stands still.', placeholder: 'There is a …', nudge: true },
+        { id: 'figure', type: 'figure', leaf: 'Figure', prompt: 'Something in it is alive.', sub: 'A figure, an animal, a thing that watches or waits. If nothing is alive, the place itself can speak. Give it the name it has, or ask it for one.' },
+        { id: 'dialogue', type: 'dialogue', leaf: 'Dialogue' }
+      ]},
+      { label: 'The Third', steps: [
+        { id: 'wants', type: 'fields', leaf: 'Two positions', transcript: true, prompt: 'Two positions.', sub: 'Nothing new is written here. Take both from the dialogue: what {F} wants, in its words, and what you want, in yours. One sentence each, at full strength. No compromise yet: a want that is softened cannot generate tension.', fields: [{ label: '{F} wants', field: 'wants.F', cls: 'F', placeholder: 'what it wants, as it would say it', min: 3 }, { label: 'I want', field: 'wants.I', cls: 'I', placeholder: 'what you want, as you would say it', min: 3 }], quote: 'third' },
+        { id: 'hold', type: 'hold' },
+        { id: 'symbol', type: 'symbol', leaf: 'The third' },
+        { id: 'form', type: 'draw', field: 'drawing', optional: true, leaf: 'Given form', prompt: 'Give it form.', sub: 'Jung had his patients paint what came, badly if need be. A line with the finger fixes the image better than any sentence. Draw the third, or the image it changed. Or go on without.' },
+        { id: 'act', type: 'text', field: 'act', min: 5, leaf: 'The act', rows: 'short', prompt: 'One act.', sub: 'You again, as the one who has to live it. What would honour both sides this week, small enough that you will actually do it? The image makes a claim on your life. Without an act it fades, and the complex keeps its energy. You will be asked about it at the next threshold.', placeholder: 'This week I will …' }
+      ]},
+      { label: 'Return', steps: [ { id: 'colour', type: 'colour' }, { id: 'summary', type: 'summary' } ]}
+    ]
+  },
+  dream: {
+    name: 'The Dream', latin: 'somnium', one: 'The exact record, its dramatic structure, associations by circumambulation, the subjective level, compensation, then your reading and the analyst’s. Dreams are the main road; the series is what counts.',
+    movements: [
+      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 10, prompt: 'Before it fades.', sub: 'Sit. Let the dream come back as a whole before you touch any part of it.' }, { id: 'promise', type: 'promise' } ]},
+      { label: 'The Dream', steps: [
+        { id: 'record', type: 'text', field: 'record', min: 60, leaf: 'The dream', prompt: 'Write it down as it happened.', sub: 'Present tense, first person, nothing left out because it seems silly, nothing explained. Where you cannot remember, say so. Speak it with the keyboard’s microphone if that is faster.', placeholder: 'I am in …', quote: 'theatre' },
+        { id: 'structure', type: 'fields', leaf: 'Dramatic structure', prompt: 'Its dramatic structure.', sub: 'Jung read a dream like a play. Fill what is there; a dream may have no solution, and that too is a finding.', fields: [{ label: 'Exposition', field: 'structure.exposition', placeholder: 'place, time, who is there', min: 3 }, { label: 'Development', field: 'structure.development', placeholder: 'the plot thickens: what happens', min: 3 }, { label: 'Peripeteia', field: 'structure.crisis', placeholder: 'the turn, the crisis, the decisive moment', min: 0 }, { label: 'Lysis', field: 'structure.lysis', placeholder: 'how it ends: the solution, or none', min: 0 }] },
+        { id: 'elements', type: 'list', field: 'elements', max: 6, leaf: 'Elements', prompt: 'The things and figures in it.', sub: 'Up to six. The place, the people, the animal, the object that stood out. Each will be circled in turn.', placeholder: 'a name, a thing, a place' }
+      ]},
+      { label: 'Circumambulation', steps: [
+        { id: 'assoc', type: 'each', from: 'elements', field: 'assoc', min: 10, leaf: 'Associations', prompt: 'What does this bring up in you?', sub: 'Not a chain of thoughts leading away. Jung circled the image: what it brings up, and back to the image, and what else, and back. Where the mind drifts to something unrelated, return to the word.', placeholder: 'It brings up …' }
+      ]},
+      { label: 'Levels', steps: [
+        { id: 'subjective', type: 'text', field: 'subjective', min: 20, leaf: 'Subjective level', prompt: 'Take it as a play inside you.', sub: 'Every figure and thing as a part of yourself. Which part of you is each of them? Say it plainly, even the ugly ones.', placeholder: 'The … is the part of me that …' },
+        { id: 'compensation', type: 'text', field: 'compensation', min: 20, leaf: 'Compensation', prompt: 'What does it set against the day?', sub: 'Jung held that dreams compensate the conscious attitude. What were you sure of, or avoiding, the day before? What does the dream put beside it?', placeholder: 'The day before I …; the dream …' }
+      ]},
+      { label: 'Reading', steps: [
+        { id: 'message', type: 'text', field: 'message', min: 10, leaf: 'The dream’s message', rows: 'short', prompt: 'Now, one sentence.', sub: 'Only now: what does the dream want? Your reading first, before the analyst’s. If you do not know, write that you do not know and what you suspect.', placeholder: 'The dream wants …' },
+        { id: 'reading', type: 'analystStep', show: 'message', kind: 'reading', label: 'Ask the analyst to read the dream', prompt: 'The dream, read twice.', sub: 'Your sentence stands. The analyst may add amplification from myth and story, and say what it sees in the structure, but never before you.' }
+      ]},
+      { label: 'Return', steps: [ { id: 'colour', type: 'colour' }, { id: 'summary', type: 'summary' } ]}
+    ]
+  },
+  shadow: {
+    name: 'The Shadow', latin: 'umbra', one: 'The projection hook, the turn back onto yourself, the shadow given a face, dialogue, and what of it you can take back. The first test of courage on the inner way.',
+    movements: [
+      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 15 }, { id: 'promise', type: 'promise' } ]},
+      { label: 'The Hook', steps: [
+        { id: 'hook', type: 'text', field: 'hook', min: 15, leaf: 'The hook', rows: 'short', prompt: 'Who got under your skin?', sub: 'Someone this week irritated you out of all proportion, or you admired them beyond reason. The disproportion is the hook. Initials are enough.', placeholder: 'M., because …', quote: 'mirror' },
+        { id: 'quality', type: 'text', field: 'quality', min: 20, leaf: 'The quality', prompt: 'The quality, exactly.', sub: 'Not “arrogant”. What did they do, say, or fail to do? Which gesture. Describe it as a witness would.', placeholder: 'They …' }
+      ]},
+      { label: 'The Turn', steps: [
+        { id: 'inme', type: 'text', field: 'inme', min: 30, leaf: 'Where it is in me', prompt: 'Where is that in you?', sub: '“Nowhere” is not an answer; the strength of the reaction says otherwise. One instance, however small, however long ago, however well disguised as its opposite.', placeholder: 'I did the same when …', nudgeRe: /\b(nowhere|never|not in me|not me|nirgends|niemals|nie|nicht bei mir)\b/i, nudgeText: 'That is the shadow declining to be seen. One instance.', quote: 'shadow2' }
+      ]},
+      { label: 'The Face', steps: [
+        { id: 'wait', type: 'wait', prompt: 'Let the quality take a face.', sub: 'Not the person’s face. Close your eyes and let the quality itself come as a figure: a person you do not know, an animal, a thing. Wait for it.', button: 'A figure came' },
+        { id: 'image', type: 'text', field: 'image', min: 40, leaf: 'The figure', prompt: 'Describe the figure.', sub: 'How it stands, what it wears, where it looks, how close it is. Not what it means.', placeholder: 'It is …', nudge: true },
+        { id: 'figure', type: 'figure', leaf: 'Its name', prompt: 'Its name.', sub: 'The name it has, or the one it gives itself.' }
+      ]},
+      { label: 'Dialogue', steps: [ { id: 'dialogue', type: 'dialogue', leaf: 'Dialogue', first: 'Ask what it wants from you, or why you refused it.' } ]},
+      { label: 'Integration', steps: [
+        { id: 'refused', type: 'text', field: 'refused', min: 15, leaf: 'What it wants that I refused', rows: 'short', prompt: 'What does it want that you refused?', sub: 'Say it as a want, not a fault. The shadow is what was not allowed to live.', placeholder: 'It wants …' },
+        { id: 'act', type: 'text', field: 'act', min: 5, leaf: 'The act', rows: 'short', prompt: 'What of it can you take back this week?', sub: 'A conscious, small, deliberate act of the quality itself, in your own name. Not a confession to the person; an integration. You will be asked about it at the next threshold.', placeholder: 'This week I will …' }
+      ]},
+      { label: 'Return', steps: [ { id: 'colour', type: 'colour' }, { id: 'summary', type: 'summary' } ]}
+    ]
+  },
+  persona: {
+    name: 'The Persona', latin: 'persona', one: 'The roles you are seen in, the mask that grew to the face, its cost, and the crack in it. Early work, and worth repeating.',
+    movements: [
+      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 10 }, { id: 'promise', type: 'promise' } ]},
+      { label: 'The Masks', steps: [
+        { id: 'roles', type: 'list', field: 'roles', max: 6, leaf: 'Roles', prompt: 'The roles you are seen in.', sub: 'At work, at home, among friends, in the family, online. The ones people count on. Up to six.', placeholder: 'the reliable one, the father, the expert…', quote: 'persona' },
+        { id: 'fused', type: 'chipsFrom', from: 'roles', field: 'fused', leaf: 'Fused to the face', prompt: 'Which one has grown to the face?', sub: 'The one you cannot take off in the evening. The one you would defend as “simply who I am”.' },
+        { id: 'cost', type: 'text', field: 'cost', min: 20, leaf: 'Its cost', prompt: 'What it costs.', sub: 'What cannot be said, felt, or done while the mask is on. Who in you goes unfed.', placeholder: 'While I am the …, I cannot …' }
+      ]},
+      { label: 'The Crack', steps: [
+        { id: 'secret', type: 'text', field: 'secret', min: 20, leaf: 'The crack', prompt: 'What must nobody in that role find out?', sub: 'Not a crime. A weakness, a wish, a fear, a taste. The crack in the mask is the door to the shadow; you will meet it again.', placeholder: 'They must not know that I …' }
+      ]},
+      { label: 'Behind', steps: [
+        { id: 'nobody', type: 'text', field: 'nobody', min: 20, leaf: 'When nobody needs me', prompt: 'Who are you when nobody needs you to be anything?', sub: 'Describe an hour when that was true, or say honestly that there has not been one.', placeholder: 'When nobody needs me, I …' }
+      ]},
+      { label: 'Return', steps: [
+        { id: 'act', type: 'text', field: 'act', min: 5, leaf: 'The act', rows: 'short', prompt: 'One act with the mask off.', sub: 'Small. Once this week, in the role that has grown to the face, say or do the thing the mask forbids. You will be asked about it.', placeholder: 'This week I will …' },
+        { id: 'colour', type: 'colour' }, { id: 'summary', type: 'summary' } ]}
+    ]
+  },
+  soul: {
+    name: 'The Soul-Image', latin: 'anima · animus', one: 'Who carries the projection now, its withdrawal, the inner figure, dialogue, the figure as guide, and the stage it stands at. Jung called this the master-piece.',
+    movements: [
+      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 15 }, { id: 'promise', type: 'promise' } ]},
+      { label: 'The Projection', steps: [
+        { id: 'carrier', type: 'text', field: 'carrier', min: 15, leaf: 'The carrier', rows: 'short', prompt: 'Who fascinates or exasperates you now?', sub: 'Beyond anything they have actually done. The one your thoughts return to. Initials are enough.', placeholder: 'A., who …' },
+        { id: 'seen', type: 'text', field: 'seen', min: 20, leaf: 'What I see in them', prompt: 'What do you see in them?', sub: 'The quality, the promise, the danger. Say it fully, as if they really had it. Then consider: this is the shape of your own soul-image, hung on them.', placeholder: 'In them there is …' }
+      ]},
+      { label: 'The Figure', steps: [
+        { id: 'wait', type: 'wait', prompt: 'Take it back.', sub: 'Close your eyes. Let what you saw in them come as a figure of its own: not the person. Someone you do not know, from a dream, a story, a country you have not been to. Wait for it.', button: 'A figure came' },
+        { id: 'image', type: 'text', field: 'image', min: 40, leaf: 'The figure', prompt: 'Describe the figure.', sub: 'Age, dress, bearing, where it stands, whether it looks at you. Not what it means.', placeholder: 'She is … / He is …', nudge: true },
+        { id: 'figure', type: 'figure', leaf: 'Its name', prompt: 'Its name.', sub: 'The name it has, or gives itself.' }
+      ]},
+      { label: 'Dialogue', steps: [ { id: 'dialogue', type: 'dialogue', leaf: 'Dialogue', first: 'Ask: what do you want me to see?' } ]},
+      { label: 'Led', steps: [
+        { id: 'lead', type: 'text', field: 'lead', min: 30, leaf: 'Where it led', prompt: 'Ask it to lead you.', sub: 'The soul-image is a guide to the images behind it. In the imagination, ask it to take you somewhere and follow. Describe where you arrive and what is there.', placeholder: 'It takes me to …' }
+      ]},
+      { label: 'Reflection', steps: [
+        { id: 'stage', type: 'chips', field: 'stage', leaf: 'Its stage', prompt: 'Which does it most resemble now?', sub: 'Jung described four stages of the soul-image (CW 16 §361). Not a grade: a reading of where the figure stands today.', options: [
+          ['eve', 'Eve · the athlete', 'body, instinct, power; the biological'], ['helen', 'Helen · the man of action', 'romance, initiative, achievement'], ['mary', 'Mary · the professor', 'devotion, the word, meaning received'], ['sophia', 'Sophia · the guide', 'wisdom, mediation, meaning found'] ] }
+      ]},
+      { label: 'Return', steps: [
+        { id: 'act', type: 'text', field: 'act', min: 5, leaf: 'The act', rows: 'short', prompt: 'One act.', sub: 'Something the figure asked for, done in your own life this week, without the carrier. You will be asked about it.', placeholder: 'This week I will …' },
+        { id: 'colour', type: 'colour' }, { id: 'summary', type: 'summary' } ]}
+    ]
+  },
+  mandala: {
+    name: 'The Mandala', latin: 'mandala', one: 'Draw one with the finger, no plan, then read it: the centre, the four, the disturbance. Jung drew them daily in the years of his own descent, as a way of holding the whole.',
+    movements: [
+      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 15, prompt: 'Arrive.', sub: 'A mandala is drawn when things are in pieces, to see whether they still have a centre. Breathe with the circle.' } ]},
+      { label: 'Drawing', steps: [ { id: 'draw', type: 'draw', field: 'drawing', leaf: 'The mandala', prompt: 'Draw.', sub: 'Start from the centre or from the rim, without a plan. Let the hand decide. Symmetry is not required; what is required is that you stop when it is finished, not when it is good.', quote: 'mandala' } ]},
+      { label: 'Reading', steps: [
+        { id: 'centre', type: 'text', field: 'centre', min: 10, leaf: 'The centre', rows: 'short', prompt: 'What is at the centre?', sub: 'Or is the centre empty, or missing? Say what is there.', placeholder: 'At the centre …' },
+        { id: 'four', type: 'text', field: 'four', min: 10, leaf: 'The four', rows: 'short', prompt: 'Where are the four?', sub: 'Jung found a fourfold structure in most mandalas: a cross, four gates, four colours. Where is the four in yours, and what is it made of? If there are three, note that; the missing fourth was always his question.', placeholder: 'The four are …' },
+        { id: 'disturbance', type: 'text', field: 'disturbance', min: 10, leaf: 'The disturbance', rows: 'short', prompt: 'Where is the disturbance?', sub: 'The part that does not fit, the line that went wrong, the colour you avoided. That is where the work is.', placeholder: 'The disturbance is …' }
+      ]},
+      { label: 'Return', steps: [ { id: 'colour', type: 'colour' }, { id: 'summary', type: 'summary' } ]}
+    ]
+  },
+  unio: {
+    name: 'Unio mentalis', latin: 'coniunctio · I', one: 'The first conjunction, after Dorn as Jung reads him in Mysterium Coniunctionis: the whole file laid out, the self read as if it were someone else’s, the affects separated from the self, and the caelum distilled.',
+    movements: [
+      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 20, prompt: 'The first conjunction.', sub: 'Dorn called it unio mentalis: the union of mind and soul, achieved by drawing them out of the body’s affects. Jung read it as self-knowledge that has become stable. Breathe with the circle.' } ]},
+      { label: 'The File', steps: [ { id: 'insight', type: 'material', field: 'insight', min: 40, leaf: 'What the file knows', prompt: 'Read it as someone else’s file.', sub: 'Everything the opus has recorded is below. Read it coldly. What does the file know about this person that the person keeps not knowing?', placeholder: 'This person does not know that …' } ]},
+      { label: 'Separatio', steps: [ { id: 'separation', type: 'text', field: 'separation', min: 40, leaf: 'Separatio', prompt: 'Which of your moods are not you?', sub: 'The alchemists separated before they united. Name the moods and reactions in the file that belong to a complex and not to you: the ones that have you. Give each its sign, the word or figure that announces it.', placeholder: 'The heaviness that comes when … is not me; it is …' } ]},
+      { label: 'Caelum', steps: [ { id: 'caelum', type: 'text', field: 'caelum', min: 40, leaf: 'Caelum', prompt: 'Distil it.', sub: 'Dorn’s caelum: the quintessence drawn from the whole of the material. Three sentences at most, in your own words, that you would still recognise as true on a bad day. This is what the next conjunction returns to the body.', placeholder: 'I know that …', analyst: { kind: 'distill', label: 'Ask the analyst what the file left out' } } ]},
+      { label: 'Return', steps: [ { id: 'colour', type: 'colour' }, { id: 'summary', type: 'summary' } ]}
+    ]
+  },
+  corpus: {
+    name: 'Union with the body', latin: 'coniunctio · II', one: 'The second conjunction: the caelum brought back into the body and the week. Where the flesh disagrees, a bodily practice, and the moment it was true in the flesh.',
+    movements: [
+      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 20, prompt: 'The second conjunction.', sub: 'Insight that stays in the head is, for Dorn, only half the work. The unio mentalis must be reunited with the body: lived, in the flesh, in ordinary days.' }, { id: 'promise', type: 'promise' } ]},
+      { label: 'The Caelum', steps: [ { id: 'disagree', type: 'caelum', field: 'disagree', leaf: 'Where the body disagrees', prompt: 'Where does the body disagree?', sub: 'Read your caelum. Then listen for the place in the body that tightens, sinks, or goes numb when you read it. That is where it is not yet true.', placeholder: 'When I read it, my … ' } ]},
+      { label: 'Practice', steps: [ { id: 'act', type: 'text', field: 'act', min: 15, leaf: 'The bodily practice', rows: 'short', prompt: 'One bodily practice.', sub: 'Daily, small, of the body: a walk to a place, a posture held, a gesture, a meal, a way of breathing before a certain person. Something the caelum would do if it had hands. You will be asked about it.', placeholder: 'Every day this week I will …' } ]},
+      { label: 'Flesh', steps: [ { id: 'moment', type: 'text', field: 'moment', min: 0, optional: true, leaf: 'True in the flesh', prompt: 'The moment it was true in the flesh.', sub: 'If there has already been one, describe it: where you were, what the body did. If not yet, leave this and return to this conjunction after the week.', placeholder: 'It was true when …' } ]},
+      { label: 'Return', steps: [ { id: 'colour', type: 'colour' }, { id: 'summary', type: 'summary' } ]}
+    ]
+  },
+  mundus: {
+    name: 'Unus mundus', latin: 'coniunctio · III', one: 'The third conjunction: the union of the whole person with the one world. Coincidence that meant something, the symbol of the whole, and what would be lost if it were only psychology.',
+    movements: [
+      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 30, prompt: 'The third conjunction.', sub: 'Dorn’s last stage: the union of the whole person with the unus mundus, the one world in which psyche and matter are not yet two. Jung thought this could only be experienced, never possessed. Breathe with the circle, longer.' } ]},
+      { label: 'Coincidence', steps: [ { id: 'sync', type: 'sync', field: 'sync', leaf: 'Coincidences', prompt: 'Coincidences that meant something.', sub: 'Synchronicity: an outer event and an inner state that matched without a cause between them, and the match meant something to you. These weeks, these months. Add what you remember; the log keeps them.', placeholder: 'The day I …, a …' } ]},
+      { label: 'The Whole', steps: [
+        { id: 'wait', type: 'wait', prompt: 'Let an image come for the whole of it.', sub: 'Not for one hour, not for one complex. For the whole opus, from the first stopwatch to now. Close your eyes and wait. It may be small.', button: 'An image came' },
+        { id: 'whole', type: 'text', field: 'whole', min: 40, leaf: 'The symbol of the whole', prompt: 'Describe it.', sub: 'The alchemists called the goal the lapis, and could never say what it was made of. Describe yours from the outside, as you have learned to.', placeholder: 'There is …', nudge: true },
+        { id: 'form', type: 'draw', field: 'drawing', optional: true, leaf: 'Given form', prompt: 'Give it form.', sub: 'Draw it, or go on without.' }
+      ]},
+      { label: 'Beyond', steps: [ { id: 'beyond', type: 'text', field: 'beyond', min: 30, leaf: 'Beyond psychology', prompt: 'What would be lost if this were only psychology?', sub: 'Jung insisted the psyche has a religious function, whether or not one has a religion. If the opus were only a technique for feeling better, what in it would be lost? Answer for yourself, not for him.', placeholder: 'If it were only psychology, …', quote: 'individuation' } ]},
+      { label: 'Return', steps: [ { id: 'colour', type: 'colour' }, { id: 'summary', type: 'summary', last: true } ]}
+    ]
+  }
+};
+const ORDER = ['hour', 'dream', 'persona', 'shadow', 'soul', 'mandala', 'unio', 'corpus', 'mundus'];
+const stepsOf = p => PRACTICES[p].movements.flatMap((m, mi) => m.steps.map((s, si) => ({ ...s, mi, si })));
+const curStep = d => PRACTICES[d.practice].movements[d.mi].steps[d.si];
+const applies = (st, d) => st.type === 'promise' ? !!openPromise(d) : st.type === 'each' ? (D(d, st.from, []).length > 0) : true;
+
+/* ================= derived: the opus ================= */
+const promiseOf = h => (h.data?.act || '').trim();
+function statusOf(h) { const later = S.sessions.find(x => x.startedAt > h.startedAt && x.data?.promise?.of === h.id); return later ? later.data.promise.status : 'open'; }
+function openPromise(d) {
+  const past = S.sessions.filter(h => promiseOf(h) && (!d || h.id !== d.id));
+  const last = past[past.length - 1]; if (!last) return null;
+  if (statusOf(last) !== 'open') return null;
+  return { of: last.id, text: promiseOf(last), practice: last.practice, at: last.startedAt };
+}
+function facts() {
+  const H = S.sessions, byP = {}, words = {}, figures = {}, motifs = {};
+  H.forEach(h => { byP[h.practice] = (byP[h.practice] || 0) + 1; });
+  H.forEach(h => (h.data?.wae?.disturbed || []).forEach(ix => { const w = wordOf(h, h.data.wae.items[ix]); words[w] = (words[w] || 0) + 1; }));
+  H.forEach(h => { const f = (h.data?.figure || '').trim(); if (!f) return; const key = f.toLowerCase(); const e = (figures[key] ||= { name: f, hours: [], practices: new Set(), wants: '', said: '' }); e.hours.push(h.id); e.practices.add(h.practice); const w = h.data.wants?.F || h.data.refused; if (w) e.wants = w; const last = [...(h.data.dialogue || [])].reverse().find(l => l.who === 'F'); if (last) e.said = last.text; });
+  H.filter(h => h.practice === 'dream').forEach(h => (h.data.elements || []).forEach(e => { const k = e.trim().toLowerCase(); if (k) motifs[k] = (motifs[k] || 0) + 1; }));
+  const thirds = H.filter(h => h.data?.third && !h.data.nothing).map(h => ({ at: h.startedAt, text: h.data.third }));
+  const promises = H.filter(h => promiseOf(h)).map(h => ({ id: h.id, at: h.startedAt, text: promiseOf(h), status: statusOf(h), practice: h.practice, note: (S.sessions.find(x => x.data?.promise?.of === h.id) || {}).data?.promise?.note || '' }));
+  const dreams = H.filter(h => h.practice === 'dream').map(h => ({ id: h.id, at: h.startedAt, message: h.data.message || '', elements: h.data.elements || [] }));
+  const colours = H.map(h => h.data?.colour).filter(Boolean);
+  const caelum = [...H].reverse().find(h => h.practice === 'unio' && h.data.caelum)?.data.caelum || '';
+  const whole = [...H].reverse().find(h => h.practice === 'mundus' && h.data.whole)?.data.whole || '';
+  const topWords = Object.entries(words).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  const topMotifs = Object.entries(motifs).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  return { byP, words, topWords, figures: Object.values(figures), motifs, topMotifs, thirds, promises, dreams, colours, caelum, whole, total: H.length };
+}
+function portraitText() {
+  const p = S.portrait; if (!p.superior && !p.attitude && !p.phase) return '';
+  return [p.attitude ? p.attitude : '', p.superior ? `superior function ${p.superior}, inferior ${OPPOSITE[p.superior]}` : '', p.phase ? `${p.phase} of life` : ''].filter(Boolean).join('; ');
+}
+function dossierText(f) {
+  const L = [];
+  const pt = portraitText(); if (pt) L.push(`Portrait: ${pt}.`);
+  L.push(`Hours: ${f.total} (${Object.entries(f.byP).map(([k, v]) => `${PRACTICES[k].name} ×${v}`).join(', ') || 'none'}).`);
+  if (f.colours.length) L.push(`Colours of the hours, in order: ${f.colours.join(', ')}.`);
+  if (f.topWords.length) L.push(`Disturbed words across hours (word: hours in which it was disturbed): ${f.topWords.map(([w, n]) => `${w}: ${n}`).join(', ')}.`);
+  if (f.figures.length) L.push(`Figures: ` + f.figures.map(g => `${g.name} (${g.hours.length} hour${g.hours.length === 1 ? '' : 's'}${g.wants ? `; wants: ${g.wants}` : ''}${g.said ? `; last said: “${g.said.slice(0, 160)}”` : ''})`).join(' · '));
+  if (f.thirds.length) L.push(`Thirds that came: ` + f.thirds.slice(-5).map(t => `“${t.text.slice(0, 200)}”`).join(' · '));
+  if (f.promises.length) L.push(`Promises: ` + f.promises.slice(-8).map(p => `“${p.text.slice(0, 120)}” — ${p.status}${p.note ? ` (${p.note.slice(0, 120)})` : ''}`).join(' · '));
+  if (f.dreams.length) L.push(`Dreams: ${f.dreams.length}; recurring elements: ${f.topMotifs.filter(m => m[1] > 1).map(([m, n]) => `${m} ×${n}`).join(', ') || 'none yet'}; messages: ` + f.dreams.slice(-4).map(d => `“${d.message.slice(0, 160)}”`).join(' · '));
+  if (f.caelum) L.push(`Caelum (distilled at the first conjunction): “${f.caelum}”`);
+  if (f.whole) L.push(`Symbol of the whole: “${f.whole.slice(0, 300)}”`);
+  if (S.sync.items.length) L.push(`Synchronicities logged: ${S.sync.items.length}.`);
+  return L.join('\n');
+}
+
+/* ================= mandala & drawing ================= */
+const hueOf = s => { const w = affectWord(s); if (w && HUES[w] != null) return HUES[w]; if (w) { let h = 0; for (const c of w) h = (h * 31 + c.charCodeAt(0)) % 360; return h; } return PRACTICE_HUE[s.practice] ?? 0; };
+const lobesOf = s => { const d = s.data || {}; if (s.practice === 'mandala') return 4; const n = (d.wae?.disturbed || []).length || (d.elements || []).length || (d.roles || []).length; return 3 + Math.min(9, n); };
 function drawMandala(cv, sessions, t) {
   const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth || 300;
   if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(w * dpr); }
@@ -358,7 +620,7 @@ function drawMandala(cv, sessions, t) {
   ctx.beginPath(); ctx.moveTo(c - R, c); ctx.lineTo(c + R, c); ctx.moveTo(c, c - R); ctx.lineTo(c, c + R); ctx.stroke();
   ctx.setLineDash([2, 5]); ctx.beginPath(); ctx.arc(c, c, R * .5, 0, 7); ctx.stroke(); ctx.setLineDash([]);
   sessions.forEach((s, i) => {
-    const hue = hueOf(s), k = 3 + Math.min(9, (s.wae?.disturbed || []).length), inten = s.affect?.intensity || 2;
+    const hue = hueOf(s), k = lobesOf(s), inten = s.data?.affect?.intensity || 2;
     const r0 = R * (.2 + .7 * (i + 1) / (n + 1)), a = .12 + .05 * inten;
     const rot = (reduced ? 0 : t * .00004) * (i % 2 ? 1 : -1) + i * .7;
     ctx.beginPath();
@@ -367,8 +629,10 @@ function drawMandala(cv, sessions, t) {
     ctx.fillStyle = `hsla(${hue} 65% ${L} / .07)`; ctx.fill();
     ctx.strokeStyle = `hsla(${hue} 65% ${L} / .72)`; ctx.lineWidth = 1.2; ctx.stroke();
     for (let m = 0; m < k; m++) { const th = 2 * Math.PI * m / k - rot, r = r0 * (1 + a); ctx.beginPath(); ctx.arc(c + r * Math.cos(th), c + r * Math.sin(th), 2.2, 0, 7); ctx.fillStyle = `hsla(${hue} 65% ${L} / .95)`; ctx.fill(); }
-    if (s.third && !s.nothing) { ctx.beginPath(); ctx.arc(c + r0 * Math.cos(-rot), c + r0 * Math.sin(-rot), 3.6, 0, 7); ctx.fillStyle = col('--gold'); ctx.fill(); }
+    if (s.data?.third && !s.data.nothing) { ctx.beginPath(); ctx.arc(c + r0 * Math.cos(-rot), c + r0 * Math.sin(-rot), 3.6, 0, 7); ctx.fillStyle = col('--gold'); ctx.fill(); }
+    if (s.data?.colour) { const th = Math.PI / k - rot; ctx.beginPath(); ctx.arc(c + r0 * Math.cos(th), c + r0 * Math.sin(th), 3, 0, 7); ctx.fillStyle = col(COLOUR_VAR[s.data.colour]); ctx.fill(); ctx.strokeStyle = col('--line-2'); ctx.lineWidth = .8; ctx.stroke(); }
   });
+  if (sessions.some(s => s.practice === 'mundus')) { ctx.beginPath(); ctx.arc(c, c, R - 2.5, 0, 7); ctx.strokeStyle = col('--gold'); ctx.lineWidth = 1.5; ctx.stroke(); }
   ctx.beginPath(); ctx.arc(c, c, n ? 3.5 : 2.5, 0, 7); ctx.fillStyle = n ? col('--verm') : col('--text-2'); ctx.fill();
 }
 function animateMandala() {
@@ -376,248 +640,286 @@ function animateMandala() {
   const step = t => { drawMandala(cv, S.sessions, t); if (!reduced) raf = requestAnimationFrame(step); };
   step(performance.now());
 }
+function paintStrokes(cv, data) {
+  const dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth || 300;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(w * dpr); }
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, w);
+  const cs = getComputedStyle(document.documentElement), col = n => cs.getPropertyValue('--' + n).trim();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(1.5, w * .009);
+  for (const st of (data?.strokes || [])) { if (!st.p.length) continue; ctx.strokeStyle = col(st.c) || col('text'); ctx.beginPath(); st.p.forEach(([x, y], i) => i ? ctx.lineTo(x * w, y * w) : ctx.moveTo(x * w, y * w)); if (st.p.length === 1) ctx.lineTo(st.p[0][0] * w + .1, st.p[0][1] * w); ctx.stroke(); }
+}
+function paintAll() { document.querySelectorAll('canvas.pad[data-src]').forEach(cv => { const [id, field] = cv.dataset.src.split(':'); const s = id === 'draft' ? S.draft : S.sessions.find(x => x.id === id); if (s) paintStrokes(cv, getPath(s.data, field)); }); }
+function initPad(cv, d, field) {
+  const data = getPath(d.data, field) || (setPath(d.data, field, { strokes: [] }), getPath(d.data, field));
+  let cur = null;
+  const pos = e => { const r = cv.getBoundingClientRect(); return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))]; };
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); cur = { c: d.padColour || 'verm', p: [pos(e)] }; data.strokes.push(cur); paintStrokes(cv, data); });
+  cv.addEventListener('pointermove', e => { if (!cur) return; e.preventDefault(); cur.p.push(pos(e)); paintStrokes(cv, data); });
+  const up = () => { if (!cur) return; cur = null; saveDraft(); refreshReady(); };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); cv.addEventListener('lostpointercapture', up);
+  paintStrokes(cv, data);
+}
 
-/* ---------- pieces ---------- */
-function ring(st) {
-  const cx = 16, cy = 16, r = 11, P = i => { const a = -Math.PI / 2 + i * 2 * Math.PI / 5; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
+/* ================= pieces ================= */
+function ring(mi, total) {
+  const cx = 16, cy = 16, r = 11, P = i => { const a = -Math.PI / 2 + i * 2 * Math.PI / total; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
   let arc = '';
-  if (st > 1) { const [x0, y0] = P(0), [x1, y1] = P(st - 1); arc = `<path d="M${x0} ${y0} A${r} ${r} 0 ${st >= 4 ? 1 : 0} 1 ${x1} ${y1}" fill="none" stroke="var(--verm)" stroke-width="1.5"/>`; }
-  const dots = [1, 2, 3, 4, 5].map(i => { const [x, y] = P(i - 1), cur = i === st; return `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${cur ? 3.2 : 2}" fill="${cur ? 'var(--verm)' : i < st ? 'var(--text-2)' : 'var(--ground)'}" stroke="${i > st ? 'var(--text-3)' : 'none'}"/>`; }).join('');
+  if (mi > 0) { const [x0, y0] = P(0), [x1, y1] = P(mi); arc = `<path d="M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${mi / total > .5 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}" fill="none" stroke="var(--verm)" stroke-width="1.5"/>`; }
+  const dots = [...Array(total).keys()].map(i => { const [x, y] = P(i), cur = i === mi; return `<circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${cur ? 3.2 : 2}" fill="${cur ? 'var(--verm)' : i < mi ? 'var(--text-2)' : 'var(--ground)'}" stroke="${i > mi ? 'var(--text-3)' : 'none'}"/>`; }).join('');
   return `<svg class="ring" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="var(--line)"/>${arc}${dots}</svg>`;
 }
-const quote = k => `<aside class="quote"><p>${esc(Q[k][0])}</p><div class="cite">${esc(Q[k][1])}</div></aside>`;
+const quote = k => Q[k] ? `<aside class="quote"><p>${esc(Q[k][0])}</p><div class="cite">${esc(Q[k][1])}</div></aside>` : '';
+const ANALYST_NOTE = `<p class="analyst-note sub small">The analyst appears when this page is open in the Claude app or on claude.ai. It runs on your Claude subscription through that app; there is no key and nothing to buy.</p>`;
 const analystBox = (kind, label, d) => {
   const t = d.analyst?.[kind];
   return `<div class="analyst-only"><div class="row"><button class="btn small" data-act="ask" data-kind="${kind}">${label}</button></div><div class="analyst" id="an-${kind}" ${t ? '' : 'hidden'}><span class="who">The analyst</span><p>${esc(t || '')}</p><div class="tier mono" ${d.analyst?.[kind + 'Tier'] ? '' : 'hidden'}>${esc(d.analyst?.[kind + 'Tier'] || '')}</div><div class="err" hidden></div><button class="ghost stop" data-act="stop" hidden>Stop</button></div></div>${ANALYST_NOTE}`;
 };
-const ANALYST_NOTE = `<p class="analyst-note sub small">The analyst appears when this page is open in the Claude app or on claude.ai. It runs on your Claude subscription through that app; there is no key and nothing to buy.</p>`;
-const lines = (d, arr) => arr.map(l => `<div class="line ${l.who}"><span class="who">${l.who === 'I' ? 'I' : l.who === 'F' ? esc(figureName(d)) : 'The analyst'}</span><p>${esc(l.text)}</p></div>`).join('');
+const lines = (s, arr) => arr.map(l => `<div class="line ${l.who}"><span class="who">${l.who === 'I' ? 'I' : l.who === 'F' ? esc(figureName(s)) : 'The analyst'}</span><p>${esc(l.text)}</p></div>`).join('');
+const colourDot = c => c ? `<i class="swatch" style="background:var(${COLOUR_VAR[c]})" title="${c}"></i>` : '';
+const fill = (str, s) => String(str || '').replace(/\{F\}/g, esc(figureName(s)));
+function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3000); }
 
-/* ---------- screens ---------- */
-function Home() {
-  const d = S.draft, n = S.sessions.length;
-  const entries = n ? `<section class="entries"><h3 class="label">Hours</h3>${[...S.sessions].reverse().map(s => `<button class="entry" data-act="open" data-id="${s.id}"><span class="date">${fmtDate(s.startedAt)}</span><span class="seed">${esc(s.seed?.word || affectWord(s) || '—')}</span><span class="third">${esc(s.nothing ? 'nothing came — the tension held' : (s.third || '').slice(0, 90) || 'no third yet')}</span></button>`).join('')}</section>` : '';
-  return `<div class="shell home">
-  <header class="mast"><canvas id="mandala" class="mandala" aria-label="Your mandala, grown from ${n} hour${n === 1 ? '' : 's'}"></canvas><h1>Tertium Datur</h1><p class="tag">an instrument for the transcendent function</p></header>
-  <main class="screen">
-    ${d ? `<button class="btn primary begin" data-act="resume">Continue the hour · ${ROMAN[d.stage]} ${STAGES[d.stage]}</button><div class="row" style="justify-content:center;margin-top:0"><button class="ghost" data-act="discard">Discard it and begin afresh</button></div>` : `<button class="btn primary begin" data-act="begin">Begin an hour</button><p class="sub small" style="text-align:center">About forty minutes. Alone, undisturbed.</p>`}
-    ${entries}
-    <h3 class="label">How the hour goes</h3>
-    <ol class="movements">
-      <li><span class="num">I</span><div><span class="nm">Threshold</span><p>You arrive, and take the present mood as the object — not the thought behind it.</p></div></li>
-      <li><span class="num">II</span><div><span class="nm">Association</span><p>Jung's experiment of 1904: twenty-four stimulus words, a hidden stopwatch, a reproduction test. The protocol shows where a complex is constellated.</p></div></li>
-      <li><span class="num">III</span><div><span class="nm">Descent</span><p>Active imagination on the disturbed word. An image comes, something in it speaks, and you answer with equal rights.</p></div></li>
-      <li><span class="num">IV</span><div><span class="nm">The Third</span><p>Both positions at full strength, held without choosing, until something appears that neither could have made alone.</p></div></li>
-      <li><span class="num">V</span><div><span class="nm">Return</span><p>The hour is set down. One act carries it into the week. The mandala grows by one ring.</p></div></li>
-    </ol>
-    <details class="method"><summary><span class="label" style="margin:0">Why it is built this way</span></summary>
-      <p><b>Self-analysis usually fails</b> because the ego does the analysing: it explains, chooses, interprets, and stays in charge. Jung's method needs the ego to step back at some points and to stand its ground at others. Alone, nobody enforces the difference. This instrument does, by its sequence.</p>
-      <p><b>The association experiment</b> (CW 2) finds complexes by their effects, not by introspection: prolonged reaction time, a missing answer, a failed reproduction, several words where one would do. You cannot fake them or reason them away. That is why the hour starts with the stopwatch rather than with a question.</p>
-      <p><b>Active imagination</b> asks for description before meaning, and for a dialogue in which the figure is not corrected and the ego is not silenced. The instrument keeps you from interpreting too early and from agreeing too fast.</p>
-      <p><b>The transcendent function</b> (CW 8, §131–193) arises from bearing the tension between the two positions. The minute of holding is not decoration: the symbol forms in that tension or not at all. What comes is then owed an act.</p>
-      <p><b>The analyst</b> is a voice from Claude that holds the frame: it never interprets before you do and never supplies material. It runs through the Claude app you open this page in, on your subscription's usage, with no key of its own. Your hours are kept in the private store this page has in your Claude account, so you can continue on any device, and cached on the device you are using; you can export them at any time.</p>
-    </details>
-    <h3 class="label analyst-only">The analyst thinks</h3>
-    <div class="chips analyst-only">${TIERS.map(([k, l]) => `<button class="chip gold ${(S.prefs.tier || 'complex') === k ? 'on' : ''}" data-act="tier" data-t="${k}">${l}</button>`).join('')}</div>
-    <p class="sub small analyst-only">Deepest asks for the most capable model your Claude plan offers and lets it think at length before it speaks; an answer can take a minute. Balanced is the everyday model. Quick answers in seconds without thinking first. Each answer says which tier actually replied.</p>
-    ${quote(n ? 'soul' : 'alone')}
-    <div class="foot"><button class="ghost" data-act="export">Export the journal</button><button class="ghost" data-act="lang">Stimulus words: ${S.prefs.lang === 'de' ? 'Deutsch' : 'English'}</button><span class="sync mono" id="sync">${SYNC_COPY[syncState]}</span></div>
-  </main></div>`;
+/* ================= leaf: an hour set down ================= */
+function leaf(s, full) {
+  const d = s.data || {}, out = [];
+  const eb = (label, cls = '') => `<span class="eyebrow ${cls}">${esc(label)}</span>`;
+  for (const st of stepsOf(s.practice)) {
+    if (!st.leaf) continue;
+    const v = st.field ? getPath(d, st.field) : null;
+    switch (st.type) {
+      case 'affect': if (affectWord(s)) out.push(eb('Mood') + `<p>${esc(affectWord(s))}${d.affect.intensity ? `, ${INTENSITY[d.affect.intensity - 1]}` : ''}${d.affect.body ? `, in the ${esc(d.affect.body)}` : ''}</p>`); break;
+      case 'protocol': { const dist = (d.wae?.disturbed || []).map(ix => wordOf(s, d.wae.items[ix])); if (dist.length) out.push(eb('Disturbed words') + `<p>${esc(dist.join(' · '))}</p>`); if (d.seed) out.push(eb('Seed') + `<div class="big">${esc(d.seed.word)}</div>`); break; }
+      case 'text': case 'material': case 'caelum': if (v && String(v).trim()) out.push(eb(st.leaf) + `<p${st.field === 'caelum' || st.field === 'whole' ? ' class="third"' : ''}>${esc(v)}</p>`); break;
+      case 'figure': if (v) out.push(eb(st.leaf) + `<p>${esc(v)}${d.figureReturn ? ' <span class="mono">(returned)</span>' : ''}</p>`); break;
+      case 'dialogue': if (d.dialogue?.length) out.push(full ? eb(`Dialogue with ${figureName(s)}`) + `<div class="dlg">${lines(s, d.dialogue)}</div>` : eb('Dialogue') + `<p class="mono">${d.dialogue.filter(l => l.who !== 'A').length} lines with ${esc(figureName(s))}</p>`); break;
+      case 'fields': { const parts = st.fields.map(f => { const x = getPath(d, f.field); return x ? `<i>${fill(f.label, s)}:</i> ${esc(x)}` : ''; }).filter(Boolean); if (parts.length) out.push(eb(st.leaf) + `<p>${parts.join('<br>')}</p>`); break; }
+      case 'symbol': if (d.third) out.push(eb(d.nothing ? 'The tension' : 'The third') + `<p class="third">${esc(d.third)}</p>`); break;
+      case 'draw': if (v?.strokes?.length) out.push(eb(st.leaf) + `<canvas class="pad small" data-src="${s === S.draft ? 'draft' : s.id}:${st.field}"></canvas>`); break;
+      case 'list': case 'sync': if (Array.isArray(v) && v.length) out.push(eb(st.leaf) + `<p>${v.map(esc).join(' · ')}</p>`); break;
+      case 'each': { const o = v || {}; const ks = Object.keys(o).filter(k => o[k]); if (ks.length) out.push(eb(st.leaf) + `<p>${ks.map(k => `<i>${esc(k)}:</i> ${esc(o[k])}`).join('<br>')}</p>`); break; }
+      case 'chips': { const opt = (st.options || []).find(o => o[0] === v); if (opt) out.push(eb(st.leaf) + `<p>${esc(opt[1])}</p>`); break; }
+      case 'chipsFrom': if (v) out.push(eb(st.leaf) + `<p>${esc(v)}</p>`); break;
+    }
+  }
+  if (d.promise?.status) out.unshift(eb('Last promise') + `<p><span class="status ${d.promise.status}">${d.promise.status}</span>${d.promise.note ? ` · ${esc(d.promise.note)}` : ''}</p>`);
+  if (d.colour) out.push(eb('Colour') + `<p class="colour">${colourDot(d.colour)}${esc(COLOURS.find(c => c[0] === d.colour)?.[1] || d.colour)}</p>`);
+  if (full && s.analyst?.closing) out.push(`<span class="eyebrow" style="color:var(--gold)">The analyst</span><p>${esc(s.analyst.closing)}</p>`);
+  return `<div class="leaf">${out.join('')}</div>`;
 }
 
-function Session() {
-  const d = S.draft, st = d.stage;
-  const b = [null, Threshold, Association, Descent, Third, Return][st](d);
-  return `<div class="shell session"><header class="top">${ring(st)}<div class="stage">${ROMAN[st]} · ${STAGES[st]}</div><button class="ghost" data-act="pause">Pause</button></header><main class="screen">${b.main}</main><footer class="bar">${b.bar || ''}</footer></div>`;
+/* ================= step renderers ================= */
+function ready(st, d) {
+  const v = st.field ? getPath(d.data, st.field) : null;
+  switch (st.type) {
+    case 'text': case 'material': return st.optional || String(v || '').trim().length >= (st.min ?? 10);
+    case 'caelum': return true;
+    case 'fields': return st.fields.every(f => String(getPath(d.data, f.field) || '').trim().length >= (f.min ?? 3));
+    case 'list': return (v || []).length >= 1;
+    case 'sync': return true;
+    case 'each': { const items = D(d, st.from, []), i = d.ei || 0; return String((v || {})[items[i]] || '').trim().length >= (st.min ?? 10); }
+    case 'chips': case 'chipsFrom': case 'colour': return !!(st.type === 'colour' ? d.data.colour : v);
+    case 'figure': return !!(d.data.figure || '').trim();
+    case 'dialogue': return (d.data.dialogue || []).filter(l => l.who !== 'A').length >= 4;
+    case 'draw': return st.optional || ((v?.strokes || []).length >= 1);
+    case 'promise': return !!d.data.promise?.status;
+    case 'affect': return !!affectWord(d);
+    case 'symbol': return String(d.data.third || '').trim().length >= 10;
+    case 'protocol': return !!d.data.seed;
+    default: return true;
+  }
 }
+function refreshReady() { const d = S.draft; if (!d) return; const go = document.getElementById('go'); if (go && !go.classList.contains('reveal')) go.disabled = !ready(curStep(d), d); }
+const goBtn = (st, d, label) => `<button class="btn primary" id="go" data-act="next" ${ready(st, d) ? '' : 'disabled'}>${label || st.button || 'Go on'}</button>`;
+const NUDGE_RE = /\b(means?|meaning|represents?|symboli[sz]es?|stands for|because|bedeutet|steht für|weil|symbolisiert)\b/i;
 
-function Threshold(d) {
-  if (d.step === 'breathe') return {
-    main: `<h2 class="prompt">Arrive.</h2><p class="sub">Put the phone on Do Not Disturb. Sit so that you could stay a while. Breathe with the circle: in as it grows, out as it shrinks.</p><div class="breath" aria-hidden="true"></div><p class="sub small" style="text-align:center">Nothing is asked of you yet. The door opens in a moment.</p>`,
-    bar: `<button class="btn primary reveal" id="reveal" data-act="go" data-step="affect">I am here</button>`
-  };
-  const a = d.affect;
-  return {
-    main: `<h2 class="prompt">What is the mood, right now?</h2><p class="sub">Not the thought behind it. The mood itself, reported the way you would report weather.</p>
+const STEP = {
+  breathe(st, d) { return { main: `<h2 class="prompt">${esc(st.prompt || 'Arrive.')}</h2><p class="sub">${esc(st.sub || 'Put the phone on Do Not Disturb. Sit so that you could stay a while. Breathe with the circle: in as it grows, out as it shrinks.')}</p><div class="breath" aria-hidden="true"></div><p class="sub small" style="text-align:center">Nothing is asked of you yet. The door opens in a moment.</p>`, bar: `<button class="btn primary reveal" id="go" data-act="next">I am here</button>` }; },
+  promise(st, d) {
+    const p = openPromise(d), pr = d.data.promise || {};
+    return { main: `<h2 class="prompt">Last time you undertook something.</h2><div class="leaf"><span class="eyebrow">${esc(PRACTICES[p.practice].name)} · ${fmtDate(p.at)}</span><p class="third">${esc(p.text)}</p></div><p class="sub">Did it happen?</p>
+      <div class="chips">${[['kept', 'It happened'], ['partly', 'Partly'], ['not', 'It did not']].map(([v, l]) => `<button class="chip ${pr.status === v ? 'on' : ''}" data-act="promise" data-v="${v}">${l}</button>`).join('')}</div>
+      <p class="sub small">What got in the way is material, not failure: the complex defends itself by making the act seem unnecessary, or by arranging the week so there was no time.</p>
+      <textarea class="field short" data-field="promise.note" placeholder="${pr.status === 'kept' ? 'What happened when you did it…' : 'What got in the way…'}">${esc(pr.note || '')}</textarea>`, bar: goBtn(st, d) };
+  },
+  affect(st, d) {
+    const a = d.data.affect || (d.data.affect = { word: '', custom: '', intensity: 0, body: '' });
+    return { main: `<h2 class="prompt">What is the mood, right now?</h2><p class="sub">Not the thought behind it. The mood itself, reported the way you would report weather.</p>
     <div class="chips">${AFFECTS.map(w => `<button class="chip ${a.word === w && !a.custom ? 'on' : ''}" data-act="affect" data-w="${w}">${w}</button>`).join('')}</div>
     <input class="field line" data-field="affect.custom" placeholder="or a word of your own" value="${esc(a.custom || '')}" autocomplete="off">
     <h3 class="label">How strong</h3><div class="dots">${INTENSITY.map((l, i) => `<button class="dot ${a.intensity > i ? 'on' : ''}" data-act="intensity" data-n="${i + 1}" aria-label="${l}"></button>`).join('')}<span class="dotlabel">${a.intensity ? INTENSITY[a.intensity - 1] : ''}</span></div>
-    <h3 class="label">Where in the body</h3><div class="chips">${BODY.map(w => `<button class="chip ${a.body === w ? 'on' : ''}" data-act="body" data-w="${w}">${w}</button>`).join('')}</div>
-    ${quote('affect')}`,
-    bar: `<button class="btn primary" data-act="go" data-stage="2" data-step="intro" ${affectWord(d) ? '' : 'disabled'}>Take it along</button>`
-  };
-}
-
-function Association(d) {
-  const w = d.wae;
-  if (d.step === 'intro') return {
-    main: `<h2 class="prompt">The association experiment.</h2>
-    <p class="sub">Burghölzli, 1904. Twenty-four words drawn from Jung's list of a hundred, one at a time. Answer each with the first word that comes. Say it aloud if you can, then type it. Speed over sense.</p>
-    <p class="sub">A stopwatch runs from the moment a word appears until your first keystroke. You will not see it. Afterwards the words come past a second time and you say what you answered.</p>
+    <h3 class="label">Where in the body</h3><div class="chips">${BODY.map(w => `<button class="chip ${a.body === w ? 'on' : ''}" data-act="body" data-w="${w}">${w}</button>`).join('')}</div>${quote('affect')}`, bar: goBtn(st, d, 'Take it along') };
+  },
+  waeIntro(st, d) {
+    const w = d.data.wae || (d.data.wae = newWae());
+    return { main: `<h2 class="prompt">The association experiment.</h2>
+    <p class="sub">Burghölzli, 1904. Twenty-four words drawn from Jung’s list of a hundred, one at a time. Answer each with the first word that comes. Speed over sense.</p>
+    <p class="sub">A stopwatch runs from the moment a word appears until you react. You will not see it. Afterwards the words come past a second time and you say what you answered.</p>
     <h3 class="label">Words in</h3><div class="chips"><button class="chip ${w.lang === 'en' ? 'on' : ''}" data-act="wae-lang" data-l="en">English</button><button class="chip ${w.lang === 'de' ? 'on' : ''}" data-act="wae-lang" data-l="de">Deutsch</button></div>
     <p class="sub small">The mother tongue reaches deeper.</p>
     <h3 class="label">Answer by</h3><div class="chips"><button class="chip ${w.mode === 'voice' ? 'on' : ''}" data-act="wae-mode" data-m="voice" ${SR ? '' : 'disabled'}>Speaking</button><button class="chip ${w.mode === 'type' ? 'on' : ''}" data-act="wae-mode" data-m="type">Typing</button></div>
-    <p class="sub small">${SR ? 'Spoken, the stopwatch stops at your first sound, as Jung’s did. The phone asks for the microphone once; only the words are kept. Typed, it stops at the first keystroke.' : 'This browser does not offer speech recognition here, so the words are typed. The keyboard’s microphone key still works in the field.'}</p>
-    ${quote('complex')}`,
-    bar: `<button class="btn primary" data-act="go" data-step="run">Begin</button>`
-  };
-  if (d.step === 'run' || d.step === 'repro') {
-    const repro = d.step === 'repro', voice = w.mode === 'voice';
-    return {
-      main: `<div class="wae"><div class="count" id="count"></div><div class="stim blank" id="stim"></div><input id="wae-in" class="field big" placeholder="${repro ? (voice ? 'say what you answered' : 'what you answered') : (voice ? 'say it' : 'first word')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="next">${voice ? '<div class="listen" id="listen"><i></i>listening</div><button class="ghost" data-act="wae-mode" data-m="type">Type instead</button>' : SR ? '<button class="ghost" data-act="wae-mode" data-m="voice">Speak instead</button>' : ''}</div>`,
-      bar: `<button class="btn" data-act="wae-none">${repro ? 'Don’t know' : 'Nothing comes'}</button><button class="btn primary" data-act="wae-next">Next</button>`
-    };
-  }
-  if (d.step === 'repro-intro') return {
-    main: `<h2 class="prompt">Once more.</h2><p class="sub">The same twenty-four words. This time, say what you answered the first time. Where the answer has gone, that too is a finding.</p>`,
-    bar: `<button class="btn primary" data-act="go" data-step="repro">Begin</button>`
-  };
-  // protocol
-  const items = w.items, dist = w.disturbed || [];
-  const rows = items.map((it, i) => { const sc = it.flags.length; return `<tr class="d${Math.min(2, sc)}"><td>${i + 1}</td><td>${esc(wordOf(d, it))}</td><td>${esc(it.resp || '—')}</td><td class="rt">${secs(it.rt)}</td><td>${it.reproOk ? (it.reproNear ? '≈' : '·') : esc(it.repro || '—')}</td><td class="fl">${esc(flagCell(it))}</td></tr>`; }).join('');
-  const chips = dist.map(ix => { const it = items[ix]; return `<button class="chip ${d.seed?.ix === ix ? 'on' : ''}" data-act="seed" data-ix="${ix}">${esc(wordOf(d, it))}<span class="n">${it.flags.length}</span></button>`; }).join('');
-  const aw = affectWord(d);
-  return {
-    main: `<h2 class="prompt">The protocol.</h2>
-    <p class="sub">Your median reaction was <span class="mono">${secs(w.median)} s</span>. Reactions slower than <span class="mono">${secs(w.thr)} s</span>, a missing answer, a failed reproduction, several words where one would do, an echo of the stimulus: these are Jung's complex indicators. Where they gather, something is constellated.</p>
+    <p class="sub small">${SR ? 'Spoken, the stopwatch stops at your first sound, as Jung’s did. The phone asks for the microphone once; only the words are kept. Typed, it stops at the first keystroke.' : 'This browser does not offer speech recognition here, so the words are typed. The keyboard’s microphone key still works in the field.'}</p>${quote('complex')}`, bar: goBtn(st, d, 'Begin') };
+  },
+  wae(st, d) { return waeScreen(d, false); },
+  repro(st, d) { return waeScreen(d, true); },
+  reproIntro(st, d) { return { main: `<h2 class="prompt">Once more.</h2><p class="sub">The same twenty-four words. This time, say what you answered the first time. Where the answer has gone, that too is a finding.</p>`, bar: goBtn(st, d, 'Begin') }; },
+  protocol(st, d) {
+    const w = d.data.wae, items = w.items, dist = w.disturbed || [], aw = affectWord(d);
+    const rows = items.map((it, i) => `<tr class="d${Math.min(2, it.flags.length)}"><td>${i + 1}</td><td>${esc(wordOf(d, it))}</td><td>${esc(it.resp || '—')}</td><td class="rt">${secs(it.rt)}</td><td>${it.reproOk ? (it.reproNear ? '≈' : '·') : esc(it.repro || '—')}</td><td class="fl">${esc(flagCell(it))}</td></tr>`).join('');
+    const chips = dist.map(ix => { const it = items[ix]; return `<button class="chip ${d.data.seed?.ix === ix ? 'on' : ''}" data-act="seed" data-ix="${ix}">${esc(wordOf(d, it))}<span class="n">${it.flags.length}</span></button>`; }).join('');
+    const f = facts(); const recurring = dist.map(ix => wordOf(d, items[ix])).filter(wd => (f.words[wd] || 0) >= 1);
+    return { main: `<h2 class="prompt">The protocol.</h2>
+    <p class="sub">Your median reaction was <span class="mono">${secs(w.median)} s</span>. Reactions slower than <span class="mono">${secs(w.thr)} s</span>, a missing answer, a failed reproduction, several words where one would do, an echo of the stimulus: these are Jung’s complex indicators. Where they gather, something is constellated.</p>
     <div class="tablewrap"><table class="protocol"><tr><th>#</th><th>word</th><th>answer</th><th>s</th><th>again</th><th></th></tr>${rows}</table></div>
     <p class="legend">${KEY_TEXT}</p>
     <h3 class="label">Disturbed words</h3>
-    ${dist.length ? `<p class="sub">Look at them. Say nothing yet. Which one pulls?</p><div class="chips">${chips}<button class="chip gold ${d.seed?.source === 'affect' ? 'on' : ''}" data-act="seed" data-ix="-1">the mood: ${esc(aw)}</button></div>` : `<p class="sub">No indicator rose above the threshold this time. The mood itself will be the way down.</p><div class="chips"><button class="chip gold ${d.seed?.source === 'affect' ? 'on' : ''}" data-act="seed" data-ix="-1">the mood: ${esc(aw)}</button></div>`}
-    ${analystBox('constellation', 'Ask the analyst to read the protocol', d)}`,
-    bar: `<button class="btn primary" data-act="go" data-stage="3" data-step="wait" ${d.seed ? '' : 'disabled'}>${d.seed ? `Go down with “${esc(d.seed.word)}”` : 'Choose a word'}</button>`
-  };
-}
-
-function Descent(d) {
-  const F = esc(figureName(d));
-  if (d.step === 'wait') return {
-    main: `<h2 class="prompt">Close your eyes with the word.</h2><div class="seedword">${esc(d.seed.word)}</div><p class="sub">Don't look for a picture, and don't choose one. Wait until one comes by itself. It may be small, dim, or ordinary. When it is there, open your eyes.</p>`,
-    bar: `<button class="btn primary" data-act="go" data-step="image">An image came</button>`
-  };
-  if (d.step === 'image') return {
-    main: `<h2 class="prompt">Describe it.</h2><p class="sub">Not what it means. What it looks like: light, distance, size, colour, sound, temperature, what moves and what stands still.</p>
-    <textarea class="field" data-field="image" id="image" placeholder="There is a …">${esc(d.image)}</textarea><p class="note" id="nudge" hidden>That is a meaning. Meanings come later. What does it look like?</p>`,
-    bar: `<button class="btn primary" id="image-go" data-act="go" data-step="figure" ${d.image.trim().length >= 40 ? '' : 'disabled'}>Go on</button>`
-  };
-  if (d.step === 'figure') return {
-    main: `<h2 class="prompt">Something in it is alive.</h2><p class="sub">A figure, an animal, a thing that watches or waits. If nothing is alive, the place itself can speak. Give it the name it has, or ask it for one.</p>
-    <input class="field line" data-field="figure" placeholder="the old woman, the dog, the door…" value="${esc(d.figure)}" autocomplete="off">
-    ${quote('dialogue')}`,
-    bar: `<button class="btn primary" data-act="go" data-step="dialogue" ${d.figure.trim() ? '' : 'disabled'}>Address it</button>`
-  };
-  // dialogue
-  const n = d.dialogue.filter(l => l.who !== 'A').length, who = d.dlgWho, isI = who === 'I';
-  const hints = {
-    I: [ `Ask ${F} what it wants, or why it is here.`, 'Answer it honestly. You have equal rights here: you may refuse, argue, ask again.', 'Do not agree to be polite. Say what you actually think of what it said.', 'Stay with it. If it changes shape, say so.' ],
-    F: [ 'Let it answer. Don’t compose. Write what comes, even if it is nonsense or rude.', 'Let it push back.', 'Let it say the thing you would rather it did not.', 'Give it the last word for now, then take yours.' ]
-  };
-  const hint = hints[who][Math.min(3, Math.floor(n / 2))];
-  const heading = n === 0 ? 'Address it.' : isI ? 'Your turn.' : `${F} answers.`;
-  const intro = n === 0 ? `You write both voices, one line at a time. First say something to ${F}. Then switch to its voice and write what it answers: its words come from you too, but not from the part of you that plans.` : 'Two voices with equal rights. Neither is corrected; neither is silenced.';
-  return {
-    main: `<h2 class="prompt">${heading}</h2><p class="sub small">${intro}</p>
-    <div class="dlg">${lines(d, d.dialogue)}</div>
+    ${dist.length ? `<p class="sub">Look at them. Say nothing yet. Which one pulls?</p>${recurring.length ? `<p class="sub small">Disturbed before, in earlier hours: <b>${recurring.map(esc).join(', ')}</b>. A word that returns is a complex announcing itself.</p>` : ''}<div class="chips">${chips}<button class="chip gold ${d.data.seed?.source === 'affect' ? 'on' : ''}" data-act="seed" data-ix="-1">the mood: ${esc(aw)}</button></div>` : `<p class="sub">No indicator rose above the threshold this time. The mood itself will be the way down.</p><div class="chips"><button class="chip gold ${d.data.seed?.source === 'affect' ? 'on' : ''}" data-act="seed" data-ix="-1">the mood: ${esc(aw)}</button></div>`}
+    ${analystBox('constellation', 'Ask the analyst to read the protocol', d)}`, bar: goBtn(st, d, d.data.seed ? `Go down with “${esc(d.data.seed.word)}”` : 'Choose a word') };
+  },
+  wait(st, d) { return { main: `<h2 class="prompt">${esc(st.prompt)}</h2>${st.seed && d.data.seed ? `<div class="seedword">${esc(d.data.seed.word)}</div>` : ''}<p class="sub">${esc(st.sub)}</p>`, bar: goBtn(st, d, st.button) }; },
+  text(st, d) {
+    const v = D(d, st.field);
+    const nudgeRe = st.nudge ? NUDGE_RE : st.nudgeRe;
+    return { main: `<h2 class="prompt">${fill(st.prompt, d)}</h2><p class="sub">${fill(st.sub, d)}</p>
+    <textarea class="field ${st.rows === 'short' ? 'short' : ''}" data-field="${st.field}" id="f-${st.field}" placeholder="${esc(st.placeholder || '')}">${esc(v)}</textarea>
+    ${nudgeRe ? `<p class="note" id="nudge" ${nudgeRe.test(v) ? '' : 'hidden'}>${esc(st.nudgeText || 'That is a meaning. Meanings come later. What does it look like?')}</p>` : ''}
+    ${st.analyst ? analystBox(st.analyst.kind, st.analyst.label, d) : ''}${st.quote ? quote(st.quote) : ''}`, bar: goBtn(st, d, st.optional && !String(v).trim() ? 'Go on without' : st.button) };
+  },
+  fields(st, d) {
+    return { main: `<h2 class="prompt">${fill(st.prompt, d)}</h2><p class="sub">${fill(st.sub, d)}</p>
+    ${st.transcript && d.data.dialogue?.length ? `<details class="transcript"><summary><span class="label" style="margin:0">Read the dialogue again</span></summary><div class="dlg">${lines(d, d.data.dialogue)}</div></details>` : ''}
+    <div class="two" style="margin-top:18px">${st.fields.map(f => `<div class="${f.cls || ''}"><span class="eyebrow">${fill(f.label, d)}</span><textarea class="field short" data-field="${f.field}" placeholder="${esc(f.placeholder || '')}">${esc(getPath(d.data, f.field) || '')}</textarea></div>`).join('')}</div>
+    ${st.quote ? quote(st.quote) : ''}`, bar: goBtn(st, d, st.button || (st.id === 'wants' ? 'Hold both' : 'Go on')) };
+  },
+  list(st, d) {
+    const items = D(d, st.field, []);
+    return { main: `<h2 class="prompt">${esc(st.prompt)}</h2><p class="sub">${esc(st.sub)}</p>
+    <div class="chips">${items.map((x, i) => `<button class="chip on" data-act="list-remove" data-f="${st.field}" data-i="${i}">${esc(x)}<span class="x">×</span></button>`).join('')}</div>
+    ${items.length < st.max ? `<input class="field line" id="list-in" placeholder="${esc(st.placeholder || '')}" autocomplete="off" enterkeyhint="done"><div class="row"><button class="btn small" data-act="list-add" data-f="${st.field}">Add</button></div>` : `<p class="sub small">That is enough.</p>`}
+    ${st.quote ? quote(st.quote) : ''}`, bar: goBtn(st, d) };
+  },
+  chipsFrom(st, d) {
+    const items = D(d, st.from, []), v = D(d, st.field);
+    return { main: `<h2 class="prompt">${esc(st.prompt)}</h2><p class="sub">${esc(st.sub)}</p><div class="chips">${items.map(x => `<button class="chip ${v === x ? 'on' : ''}" data-act="set" data-f="${st.field}" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`, bar: goBtn(st, d) };
+  },
+  chips(st, d) {
+    const v = D(d, st.field);
+    return { main: `<h2 class="prompt">${esc(st.prompt)}</h2><p class="sub">${esc(st.sub)}</p><div class="chips" style="flex-direction:column; align-items:stretch">${st.options.map(([val, l, desc]) => `<button class="chip lapis ${v === val ? 'on' : ''}" data-act="set" data-f="${st.field}" data-v="${val}">${esc(l)}<small>${esc(desc)}</small></button>`).join('')}</div>`, bar: goBtn(st, d) };
+  },
+  colour(st, d) {
+    const v = d.data.colour;
+    return { main: `<h2 class="prompt">The colour of this hour.</h2><p class="sub">The alchemists judged the work by the colour of the material. Not a score; your reading of where this hour stood in the opus.</p><div class="chips" style="flex-direction:column; align-items:stretch">${COLOURS.map(([val, l, desc]) => `<button class="chip gold ${v === val ? 'on' : ''}" data-act="set" data-f="colour" data-v="${val}"><i class="swatch" style="background:var(${COLOUR_VAR[val]})"></i>${esc(l)}<small>${esc(desc)}</small></button>`).join('')}</div>`, bar: goBtn(st, d) };
+  },
+  each(st, d) {
+    const items = D(d, st.from, []), i = Math.min(d.ei || 0, items.length - 1), item = items[i], o = D(d, st.field, {});
+    return { main: `<h2 class="prompt">${esc(st.prompt)}</h2><div class="big-item">${esc(item)}</div><p class="sub">${esc(st.sub)}</p><p class="mono" style="color:var(--text-3);margin-top:10px">${i + 1} / ${items.length}</p>
+    <textarea class="field" data-field="${st.field}.${esc(item)}" placeholder="${esc(st.placeholder || '')}">${esc(o[item] || '')}</textarea>
+    ${(o[item] || '').length > 80 ? `<p class="sub small" style="margin-top:8px">Back to <i>${esc(item)}</i>: anything else?</p>` : ''}`, bar: goBtn(st, d, i < items.length - 1 ? 'Next element' : 'Go on') };
+  },
+  figure(st, d) {
+    const f = facts().figures.filter(g => g.name.toLowerCase() !== (d.data.figure || '').toLowerCase());
+    return { main: `<h2 class="prompt">${esc(st.prompt)}</h2><p class="sub">${esc(st.sub)}</p>
+    <input class="field line" data-field="figure" id="f-figure" placeholder="the old woman, the dog, the door…" value="${esc(d.data.figure || '')}" autocomplete="off" enterkeyhint="done">
+    ${f.length ? `<h3 class="label">Figures who have come before</h3><p class="sub small">If this is one of them, say so: figures return, and what they said last still stands.</p><div class="chips">${f.slice(-8).map(g => `<button class="chip lapis ${d.data.figureReturn && d.data.figure === g.name ? 'on' : ''}" data-act="figure-return" data-n="${esc(g.name)}">${esc(g.name)}<span class="n">${g.hours.length}</span></button>`).join('')}</div>` : ''}
+    ${quote('dialogue')}`, bar: goBtn(st, d, 'Address it') };
+  },
+  dialogue(st, d) {
+    const F = esc(figureName(d)), dl = d.data.dialogue || (d.data.dialogue = []), n = dl.filter(l => l.who !== 'A').length, who = d.dlgWho || 'I', isI = who === 'I';
+    const g = facts().figures.find(x => x.name.toLowerCase() === figureName(d).toLowerCase() && d.data.figureReturn);
+    const hints = {
+      I: [ st.first || `Ask ${F} what it wants, or why it is here.`, 'Answer it honestly. You have equal rights here: you may refuse, argue, ask again.', 'Do not agree to be polite. Say what you actually think of what it said.', 'Stay with it. If it changes shape, say so.' ],
+      F: [ 'Let it answer. Don’t compose. Write what comes, even if it is nonsense or rude.', 'Let it push back.', 'Let it say the thing you would rather it did not.', 'Give it the last word for now, then take yours.' ]
+    };
+    const hint = hints[who][Math.min(3, Math.floor(n / 2))];
+    const heading = n === 0 ? 'Address it.' : isI ? 'Your turn.' : `${F} answers.`;
+    const intro = n === 0 ? `You write both voices, one line at a time. First say something to ${F}. Then switch to its voice and write what it answers: its words come from you too, but not from the part of you that plans.` : 'Two voices with equal rights. Neither is corrected; neither is silenced.';
+    return { main: `<h2 class="prompt">${heading}</h2><p class="sub small">${intro}</p>
+    ${g && n === 0 && g.said ? `<div class="leaf"><span class="eyebrow">${F}, last time</span><p style="font-style:italic">${esc(g.said)}</p>${g.wants ? `<span class="eyebrow">It wanted</span><p>${esc(g.wants)}</p>` : ''}</div>` : ''}
+    <div class="dlg">${lines(d, dl)}</div>
     <div class="composer" id="composer"><span class="label" style="margin:0 0 8px">Who speaks now</span>
     <div class="chips"><button class="chip ${isI ? 'on' : ''}" data-act="who" data-w="I">I speak</button><button class="chip lapis ${isI ? '' : 'on'}" data-act="who" data-w="F">${F} speaks</button></div>
     <div class="line next ${who}"><span class="who">${isI ? 'I' : F}</span><p class="hint">${hint}</p>
     <textarea class="field" id="dlg-in" data-field="dlgDraft" placeholder="${isI ? `What I say to ${F}…` : `What ${F} says back…`}">${esc(d.dlgDraft || '')}</textarea></div>
     <div class="row"><button class="btn" data-act="dlg-add">${isI ? 'Set down my words' : `Set down ${F}’s words`}</button>${n >= 2 ? `<button class="btn small analyst-only" data-act="ask" data-kind="frame">Hold the frame</button>` : ''}</div>
     <div class="analyst analyst-only" id="an-frame" hidden><span class="who">The analyst</span><p></p><div class="err" hidden></div><button class="ghost stop" data-act="stop" hidden>Stop</button></div>${n >= 2 ? ANALYST_NOTE : ''}</div>`,
-    bar: `<button class="btn primary" data-act="go" data-stage="4" data-step="wants" ${n >= 4 ? '' : 'disabled'}>${n >= 4 ? 'This is enough for now' : `${4 - n} more line${4 - n === 1 ? '' : 's'} first`}</button>`
-  };
-}
-function Third(d) {
-  const F = esc(figureName(d));
-  if (d.step === 'wants') return {
-    main: `<h2 class="prompt">Two positions.</h2><p class="sub">Nothing new is written here. Take both from the dialogue: what ${F} wants, in its words, and what you want, in yours. One sentence each, at full strength. No compromise yet: a want that is softened cannot generate tension.</p>
-    <details class="transcript"><summary><span class="label" style="margin:0">Read the dialogue again</span></summary><div class="dlg">${lines(d, d.dialogue)}</div></details>
-    <div class="two" style="margin-top:18px"><div class="F"><span class="eyebrow">${F} wants</span><textarea class="field" data-field="wants.F" style="min-height:110px" placeholder="what it wants, as it would say it">${esc(d.wants.F)}</textarea></div><div class="I"><span class="eyebrow">I want</span><textarea class="field" data-field="wants.I" style="min-height:110px" placeholder="what you want, as you would say it">${esc(d.wants.I)}</textarea></div></div>
-    ${quote('third')}`,
-    bar: `<button class="btn primary" id="wants-go" data-act="go" data-step="hold" ${d.wants.F.trim() && d.wants.I.trim() ? '' : 'disabled'}>Hold both</button>`
-  };
-  if (d.step === 'hold') return {
-    main: `<h2 class="prompt">Hold both.</h2><p class="sub">Don't choose. Don't reconcile. Don't write. Let the two press against each other for a minute and keep half an eye on the image from the descent. The tension is the material: something neither side could have made alone may form in it, or may not.</p>
+    bar: `<button class="btn primary" id="go" data-act="next" ${n >= 4 ? '' : 'disabled'}>${n >= 4 ? 'This is enough for now' : `${4 - n} more line${4 - n === 1 ? '' : 's'} first`}</button>` };
+  },
+  hold(st, d) {
+    const F = esc(figureName(d)), w = d.data.wants || {};
+    return { main: `<h2 class="prompt">Hold both.</h2><p class="sub">Don’t choose. Don’t reconcile. Don’t write. Let the two press against each other for a minute and keep half an eye on the image from the descent. The tension is the material: something neither side could have made alone may form in it, or may not.</p>
     <div class="conj" aria-hidden="true"><i class="c1"></i><i class="c2"></i><i class="c3"></i></div>
-    <div class="two"><div class="F"><span class="eyebrow">${F} wants</span><p style="font-style:italic">${esc(d.wants.F)}</p></div><div class="I"><span class="eyebrow">I want</span><p>${esc(d.wants.I)}</p></div></div>`,
-    bar: `<button class="btn reveal" id="reveal2" data-act="nothing">Nothing came</button><button class="btn primary reveal" id="reveal" data-act="go" data-step="symbol">Something came</button>`
-  };
-  if (d.step === 'symbol') return d.nothing ? {
-    main: `<h2 class="prompt">Nothing came.</h2><p class="sub">That is an honest result. The symbol cannot be forced, and a forced one is worth nothing. The tension itself is the work for now. Speaking as yourself, note what the pressure feels like and where, so that you recognise it when it returns.</p>
-    <textarea class="field" data-field="third" id="third" placeholder="The pressure is like …">${esc(d.third)}</textarea>`,
-    bar: `<button class="btn primary" id="third-go" data-act="go" data-step="act" ${d.third.trim().length >= 10 ? '' : 'disabled'}>Keep it</button>`
-  } : {
-    main: `<h2 class="prompt">What came?</h2><p class="sub">This is neither your voice nor ${F}'s. Neither of you composes it. It is whatever arrived on its own while you held the two, the way the first image arrived at the descent: a change in that image, a new object in it, a gesture, a sentence from nowhere.</p>
-    <p class="sub">You only report it, from the outside: how it looks, not what it means. If it holds both wants at once, say how.</p>
-    <textarea class="field" data-field="third" id="third" placeholder="While I held both, there was…">${esc(d.third)}</textarea>
-    ${analystBox('amplification', 'Ask where this image has appeared before', d)}`,
-    bar: `<button class="btn primary" id="third-go" data-act="go" data-step="act" ${d.third.trim().length >= 10 ? '' : 'disabled'}>Keep it</button>`
-  };
-  // act
-  return {
-    main: `<h2 class="prompt">One act.</h2><p class="sub">You again, as the one who has to live it. What would honour both sides this week, small enough that you will actually do it? The image makes a claim on your life. Without an act it fades, and the complex keeps its energy.</p>
-    <textarea class="field" data-field="act" id="act" style="min-height:110px" placeholder="This week I will …">${esc(d.act)}</textarea>`,
-    bar: `<button class="btn primary" id="act-go" data-act="go" data-stage="5" data-step="close" ${d.act.trim().length >= 5 ? '' : 'disabled'}>Close the hour</button>`
-  };
-}
+    <div class="two"><div class="F"><span class="eyebrow">${F} wants</span><p style="font-style:italic">${esc(w.F)}</p></div><div class="I"><span class="eyebrow">I want</span><p>${esc(w.I)}</p></div></div>`,
+    bar: `<button class="btn reveal" id="reveal2" data-act="nothing">Nothing came</button><button class="btn primary reveal" id="go" data-act="next">Something came</button>` };
+  },
+  symbol(st, d) {
+    const F = esc(figureName(d)), v = d.data.third || '';
+    return d.data.nothing ? { main: `<h2 class="prompt">Nothing came.</h2><p class="sub">That is an honest result. The symbol cannot be forced, and a forced one is worth nothing. The tension itself is the work for now. Speaking as yourself, note what the pressure feels like and where, so that you recognise it when it returns.</p>
+      <textarea class="field" data-field="third" placeholder="The pressure is like …">${esc(v)}</textarea>`, bar: goBtn(st, d, 'Keep it') }
+    : { main: `<h2 class="prompt">What came?</h2><p class="sub">This is neither your voice nor ${F}’s. Neither of you composes it. It is whatever arrived on its own while you held the two, the way the first image arrived at the descent: a change in that image, a new object in it, a gesture, a sentence from nowhere.</p>
+      <p class="sub">You only report it, from the outside: how it looks, not what it means. If it holds both wants at once, say how.</p>
+      <textarea class="field" data-field="third" placeholder="While I held both, there was…">${esc(v)}</textarea>
+      ${analystBox('amplification', 'Ask where this image has appeared before', d)}`, bar: goBtn(st, d, 'Keep it') };
+  },
+  draw(st, d) {
+    const data = getPath(d.data, st.field), c = d.padColour || 'verm';
+    return { main: `<h2 class="prompt">${esc(st.prompt)}</h2><p class="sub">${esc(st.sub)}</p>
+    <canvas class="pad" id="pad"></canvas>
+    <div class="palette">${['verm', 'lapis', 'gold', 'text'].map(k => `<button class="sw ${k} ${c === k ? 'on' : ''}" data-act="pad-colour" data-c="${k}" aria-label="${k}"></button>`).join('')}<button class="ghost" data-act="pad-undo">Undo</button><button class="ghost" data-act="pad-clear">Clear</button></div>
+    ${st.quote ? quote(st.quote) : ''}`, bar: goBtn(st, d, st.optional && !(data?.strokes || []).length ? 'Go on without' : 'Keep it') };
+  },
+  material(st, d) {
+    const f = facts();
+    return { main: `<h2 class="prompt">${esc(st.prompt)}</h2><p class="sub">${esc(st.sub)}</p>
+    <div class="file">${esc(dossierText(f)).replace(/^([A-Z][a-z ()]+):/gm, '<span class="k">$1:</span>')}</div>
+    ${f.total < 5 ? `<p class="note">The file holds ${f.total} hour${f.total === 1 ? '' : 's'}. A distillation is thin before five or so; it is allowed, but come back to it.</p>` : ''}
+    <textarea class="field" data-field="${st.field}" placeholder="${esc(st.placeholder)}">${esc(D(d, st.field))}</textarea>`, bar: goBtn(st, d) };
+  },
+  caelum(st, d) {
+    const f = facts(), b = d.data.body || '';
+    return { main: `<h2 class="prompt">${esc(st.prompt)}</h2>
+    ${f.caelum ? `<div class="leaf"><span class="eyebrow">Your caelum</span><p class="third">${esc(f.caelum)}</p></div>` : `<p class="note">No caelum has been distilled yet. The first conjunction, Unio mentalis, produces it; this conjunction returns it to the body. You may go on, but it will have nothing to return.</p>`}
+    <p class="sub">${esc(st.sub)}</p>
+    <div class="chips">${BODY.map(w => `<button class="chip ${b === w ? 'on' : ''}" data-act="set" data-f="body" data-v="${w}">${w}</button>`).join('')}</div>
+    <textarea class="field short" data-field="${st.field}" placeholder="${esc(st.placeholder)}">${esc(D(d, st.field))}</textarea>`, bar: goBtn(st, d) };
+  },
+  sync(st, d) {
+    const items = D(d, st.field, []);
+    return { main: `<h2 class="prompt">${esc(st.prompt)}</h2><p class="sub">${esc(st.sub)}</p>
+    ${S.sync.items.length ? `<h3 class="label">Already in the log</h3>${S.sync.items.slice(-6).map(x => `<div class="item"><p><span class="mono">${fmtDate(x.at)}</span> ${esc(x.text)}</p></div>`).join('')}` : ''}
+    <h3 class="label">Add</h3><div class="chips">${items.map((x, i) => `<button class="chip on" data-act="list-remove" data-f="${st.field}" data-i="${i}">${esc(x)}<span class="x">×</span></button>`).join('')}</div>
+    <textarea class="field short" id="list-in" placeholder="${esc(st.placeholder)}"></textarea><div class="row"><button class="btn small" data-act="list-add" data-f="${st.field}">Add to the log</button></div>`, bar: goBtn(st, d, items.length || S.sync.items.length ? 'Go on' : 'None that I remember') };
+  },
+  analystStep(st, d) {
+    return { main: `<h2 class="prompt">${esc(st.prompt)}</h2><p class="sub">${esc(st.sub)}</p><div class="leaf"><span class="eyebrow">Your reading</span><p class="third">${esc(D(d, st.show))}</p></div>${analystBox(st.kind, st.label, d)}`, bar: goBtn(st, d) };
+  },
+  summary(st, d) {
+    return { main: `<h2 class="prompt">${st.last ? 'The opus does not end.' : 'The hour.'}</h2><p class="sub small">${st.last ? 'The circle is walked again. What was united here will separate, and be united at a higher place. Read this once, then set it down.' : 'Read it once, as you would read a page written by someone else.'}</p>${leaf(d, false)}${analystBox('closing', 'Ask the analyst for a word on the hour', d)}`, bar: `<button class="ghost" data-act="discard">Discard</button><button class="btn primary" data-act="keep">Keep this hour</button>` };
+  }
+};
 
-function leaf(s, full) {
-  const F = esc(figureName(s)), dist = (s.wae?.disturbed || []).map(ix => wordOf(s, s.wae.items[ix]));
-  return `<div class="leaf">
-    <span class="eyebrow">Mood</span><p>${esc(affectWord(s) || '—')}${s.affect.intensity ? `, ${INTENSITY[s.affect.intensity - 1]}` : ''}${s.affect.body ? `, in the ${esc(s.affect.body)}` : ''}</p>
-    ${dist.length ? `<span class="eyebrow">Disturbed words</span><p>${esc(dist.join(' · '))}</p>` : ''}
-    <span class="eyebrow">Seed</span><div class="big">${esc(s.seed?.word || '—')}</div>
-    ${s.image ? `<span class="eyebrow">Image</span><p>${esc(s.image)}</p>` : ''}
-    ${full && s.dialogue?.length ? `<span class="eyebrow">Dialogue with ${F}</span><div class="dlg">${lines(s, s.dialogue)}</div>` : s.figure ? `<span class="eyebrow">Figure</span><p>${F}</p>` : ''}
-    ${s.wants?.F || s.wants?.I ? `<span class="eyebrow">Two positions</span><p><i>${F} wants:</i> ${esc(s.wants.F)}<br><i>I want:</i> ${esc(s.wants.I)}</p>` : ''}
-    <span class="eyebrow">${s.nothing ? 'The tension' : 'The third'}</span><p class="third">${esc(s.third || '—')}</p>
-    ${s.act ? `<span class="eyebrow">The act</span><p>${esc(s.act)}</p>` : ''}
-    ${full && s.analyst?.closing ? `<span class="eyebrow" style="color:var(--gold)">The analyst</span><p>${esc(s.analyst.closing)}</p>` : ''}
-  </div>`;
+/* ================= association mechanics ================= */
+function newWae() {
+  const order = [...Array(100).keys()].sort(() => Math.random() - .5).slice(0, N_WORDS);
+  return { lang: S.prefs.lang || 'en', mode: S.prefs.mode === 'type' || !SR ? 'type' : 'voice', order, i: 0, items: order.map(ix => ({ ix, resp: '', rt: null, repro: '', reproOk: false, flags: [] })), median: 0, thr: 0, done: false };
 }
-
-function Return(d) {
-  return {
-    main: `<h2 class="prompt">The hour.</h2><p class="sub small">Read it once, as you would read a page written by someone else.</p>${leaf(d, false)}${analystBox('closing', 'Ask the analyst for a word on the hour', d)}`,
-    bar: `<button class="ghost" data-act="discard">Discard</button><button class="btn primary" data-act="keep">Keep this hour</button>`
-  };
+function waeScreen(d, repro) {
+  const w = d.data.wae, voice = w.mode === 'voice';
+  return { main: `<div class="wae"><div class="count" id="count"></div><div class="stim blank" id="stim"></div><input id="wae-in" class="field big" placeholder="${repro ? (voice ? 'say what you answered' : 'what you answered') : (voice ? 'say it' : 'first word')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="next">${voice ? '<div class="listen" id="listen"><i></i>listening</div><button class="ghost" data-act="wae-mode" data-m="type">Type instead</button>' : SR ? '<button class="ghost" data-act="wae-mode" data-m="voice">Speak instead</button>' : ''}</div>`,
+    bar: `<button class="btn" data-act="wae-none">${repro ? 'Don’t know' : 'Nothing comes'}</button><button class="btn primary" data-act="wae-next">Next</button>` };
 }
-
-function Entry(id) {
-  const s = S.sessions.find(x => x.id === id); if (!s) { view = { name: 'home' }; return Home(); }
-  const w = s.wae, rows = w?.items?.length ? w.items.map((it, i) => `<tr class="d${Math.min(2, it.flags.length)}"><td>${i + 1}</td><td>${esc(wordOf(s, it))}</td><td>${esc(it.resp || '—')}</td><td class="rt">${secs(it.rt)}</td><td>${it.reproOk ? (it.reproNear ? '≈' : '·') : esc(it.repro || '—')}</td><td class="fl">${esc(flagCell(it))}</td></tr>`).join('') : '';
-  return `<div class="shell"><header class="top"><button class="ghost" data-act="home">← Hours</button><div class="stage" style="text-align:right"><span class="mono">${fmtDate(s.startedAt)}</span></div></header><main class="screen">
-    ${leaf(s, true)}
-    ${rows ? `<details><summary><span class="label" style="margin:0">Association protocol</span></summary><div class="tablewrap"><table class="protocol"><tr><th>#</th><th>word</th><th>answer</th><th>s</th><th>again</th><th></th></tr>${rows}</table></div><p class="legend">median ${secs(w.median)} s · threshold ${secs(w.thr)} s · ${KEY_TEXT}</p></details>` : ''}
-    ${s.analyst?.constellation ? `<div class="analyst"><span class="who">The analyst, on the protocol</span><p>${esc(s.analyst.constellation)}</p></div>` : ''}
-    ${s.analyst?.amplification ? `<div class="analyst"><span class="who">Amplification</span><p>${esc(s.analyst.amplification)}</p></div>` : ''}
-    <div class="foot"><button class="ghost" data-act="delete" data-id="${s.id}">Delete this hour</button></div>
-  </main></div>`;
-}
-
-/* ---------- association mechanics ---------- */
 const wae = { t0: 0, first: 0, via: '', rec: null, heard: '', err: null, tries: 0, revealed: false, readyAt: 0 };
 function setListening(on) { const el = document.getElementById('listen'); if (el) el.classList.toggle('on', !!on); }
 function stopListening() { const r = wae.rec; wae.rec = null; if (r) { try { r.abort(); } catch (e) {} } setListening(false); }
-function stimReveal() {
-  if (wae.revealed) return; wae.revealed = true;
-  const stim = document.getElementById('stim'); if (!stim) return;
-  stim.classList.remove('blank'); wae.t0 = performance.now();
-}
+function stimReveal() { if (wae.revealed) return; wae.revealed = true; const stim = document.getElementById('stim'); if (!stim) return; stim.classList.remove('blank'); wae.t0 = performance.now(); }
 function markFirst(via) { if (!wae.first) { wae.first = performance.now(); wae.via = via; } }
 function listen(reveal) {
   const d = S.draft; if (!SR || !d) return false;
   let r; try { r = new SR(); } catch (e) { return false; }
   wae.rec = r; wae.heard = ''; wae.err = null;
-  r.lang = d.wae.lang === 'de' ? 'de-CH' : 'en-US'; r.interimResults = true; r.maxAlternatives = 1; r.continuous = false;
+  r.lang = d.data.wae.lang === 'de' ? 'de-CH' : 'en-US'; r.interimResults = true; r.maxAlternatives = 1; r.continuous = false;
   const show = () => { if (!reveal || wae.revealed) return; later(stimReveal, Math.max(0, wae.readyAt - performance.now())); };
   r.onstart = () => { setListening(true); show(); };
   r.onspeechstart = () => markFirst('voice');
-  r.onresult = ev => {
-    markFirst('voice'); let t = ''; for (const res of ev.results) t += res[0].transcript;
-    wae.heard = t.trim(); const inp = document.getElementById('wae-in');
-    if (inp) { inp.value = wae.heard; inp.classList.toggle('interim', !ev.results[ev.results.length - 1].isFinal); }
-  };
+  r.onresult = ev => { markFirst('voice'); let t = ''; for (const res of ev.results) t += res[0].transcript; wae.heard = t.trim(); const inp = document.getElementById('wae-in'); if (inp) { inp.value = wae.heard; inp.classList.toggle('interim', !ev.results[ev.results.length - 1].isFinal); } };
   r.onerror = ev => { wae.err = ev.error; };
   r.onend = () => {
     if (wae.rec !== r) return; wae.rec = null; setListening(false);
@@ -632,13 +934,9 @@ function listen(reveal) {
   if (reveal) later(stimReveal, 1400);
   return true;
 }
-function switchMode(mode, msg) {
-  const d = S.draft; if (!d) return; stopListening();
-  d.wae.mode = mode; S.prefs.mode = mode; save('prefs', S.prefs); saveDraft();
-  if (msg) toast(msg); render();
-}
+function switchMode(mode, msg) { const d = S.draft; if (!d) return; stopListening(); d.data.wae.mode = mode; S.prefs.mode = mode; save('prefs', S.prefs); saveDraft(); if (msg) toast(msg); render(); }
 function waeShow() {
-  const d = S.draft, w = d.wae, stim = document.getElementById('stim'), inp = document.getElementById('wae-in'), cnt = document.getElementById('count');
+  const d = S.draft, w = d.data.wae, stim = document.getElementById('stim'), inp = document.getElementById('wae-in'), cnt = document.getElementById('count');
   if (!stim || !inp) return;
   stopListening();
   const it = w.items[w.i];
@@ -650,21 +948,17 @@ function waeShow() {
   later(stimReveal, 520);
 }
 function waeCommit(value) {
-  const d = S.draft; if (!d || d.stage !== 2 || (d.step !== 'run' && d.step !== 'repro')) return;
-  const w = d.wae; stopListening(); timers.forEach(clearTimeout); timers = [];
+  const d = S.draft; if (!d) return; const st = curStep(d); if (st.type !== 'wae' && st.type !== 'repro') return;
+  const w = d.data.wae; stopListening(); timers.forEach(clearTimeout); timers = [];
   const it = w.items[w.i], v = value.trim();
-  if (d.step === 'run') { it.resp = v; it.rt = v && wae.first ? Math.max(0, Math.round(wae.first - wae.t0)) : null; it.via = v ? (wae.via || 'type') : ''; }
+  if (st.type === 'wae') { it.resp = v; it.rt = v && wae.first ? Math.max(0, Math.round(wae.first - wae.t0)) : null; it.via = v ? (wae.via || 'type') : ''; }
   else { it.repro = v; const same = sameWord(v, it.resp); it.reproOk = same.same; it.reproNear = same.same && !same.exact; }
   w.i++;
-  if (w.i >= N_WORDS) {
-    w.i = 0;
-    if (d.step === 'run') { d.step = 'repro-intro'; } else { analyze(d); d.step = 'protocol'; }
-    saveDraft(); render(); return;
-  }
+  if (w.i >= N_WORDS) { w.i = 0; if (st.type === 'repro') analyze(d); saveDraft(); advance(); return; }
   saveDraft(); waeShow();
 }
 function analyze(d) {
-  const w = d.wae, items = w.items;
+  const w = d.data.wae, items = w.items;
   const rts = items.filter(x => x.rt != null).map(x => x.rt).sort((a, b) => a - b);
   w.median = rts.length ? rts[Math.floor(rts.length / 2)] : 0; w.thr = Math.round(w.median * 1.5);
   items.forEach((it, i) => {
@@ -680,35 +974,56 @@ function analyze(d) {
   w.done = true;
 }
 
-/* ---------- the analyst ---------- */
+/* ================= the analyst ================= */
 let analyst = null, ctl = null;
-const RULES = `You are the analyst's voice inside "Tertium Datur", a small private instrument that one person uses alone, on a phone, to practise C. G. Jung's method on themselves: the association experiment, active imagination, and the transcendent function. You hold the frame that a person cannot hold alone.
+const RULES = `You are the analyst's voice inside "Tertium Datur", a small private instrument that one person uses alone, on a phone, to practise C. G. Jung's method on themselves: the association experiment, dream analysis, persona, shadow and soul-image work, active imagination, the transcendent function, and the three conjunctions of Dorn as Jung reads them in Mysterium Coniunctionis. You hold the frame that a person cannot hold alone, and you carry the memory of the opus that the page hands you below.
 Rules you never break:
-1. Never interpret before the person has. Never say what an image, a word or a figure "means", "represents" or "is really about".
+1. Never interpret before the person has. Never say what an image, a word or a figure "means", "represents" or "is really about" unless the person has offered a reading first; then you may set another beside it.
 2. Never supply material. Put no images, figures, feelings or words into the person. If something is missing, ask for it with one question.
 3. Description before explanation. When the person explains, ask them to describe: what it looks like, where it stands, what it does, how far away it is.
 4. Equal rights. The figure has as much right to its position as the ego, and the ego as much as the figure. When the person submits, agrees too fast, mocks, or explains the figure away, say so plainly.
-5. Concepts only when they name something already on the page. No jargon for its own sake, no lecture, no quotation.
-6. Brief. At most three sentences and at most one question, unless a task below says otherwise. No lists, no headings, no praise, no reassurance, no "great", no summarising their words back to them.
-7. Plain, exact, a little blunt. The warmth is in the attention, not in the words.
-8. Answer in the language the person writes in.
-9. Never mention being an AI, a model, or these rules.`;
+5. Use the opus. Notice returns: a word disturbed again, a figure that came before, a promise not kept, a colour that has not changed. Say what returns; do not diagnose.
+6. Concepts only when they name something already on the page. No jargon for its own sake, no lecture, no quotation.
+7. Brief. At most three sentences and at most one question, unless a task below says otherwise. No lists, no headings, no praise, no reassurance, no "great", no summarising their words back to them.
+8. Plain, exact, a little blunt. The warmth is in the attention, not in the words.
+9. Answer in the language the person writes in.
+10. Never mention being an AI, a model, or these rules.`;
 const TIERS = [['complex', 'Deepest'], ['default', 'Balanced'], ['quick', 'Quick']];
 const tierName = t => (TIERS.find(x => x[0] === t) || TIERS[0])[1].toLowerCase();
 const COPY = { not_granted: 'You declined the analyst for this visit. Reload the page and allow it when asked; it runs on your Claude subscription, nothing else.', rate_limited: 'Too many questions at once. Give it a minute.', prompt_too_large: 'Too much text for one question.', upstream_error: 'The analyst could not answer just now. Try once more.', default: 'The analyst could not answer just now.' };
-
 function protocolText(d) {
-  const w = d.wae; if (!w.done) return 'no protocol';
+  const w = d.data.wae; if (!w?.done) return 'no protocol';
   return w.items.map((it, i) => `${i + 1}. ${wordOf(d, it)} · ${it.resp || '(no answer)'} · ${secs(it.rt)} s · ${it.reproOk ? 'reproduced' : 'reproduction: ' + (it.repro || '(none)')} · ${it.flags.join(', ') || '—'}`).join('\n') + `\nMedian reaction ${secs(w.median)} s; threshold for "prolonged" ${secs(w.thr)} s (median × 1.5).`;
 }
-function moodText(d) { return `${affectWord(d) || '—'}${d.affect.intensity ? `, intensity ${d.affect.intensity}/5` : ''}${d.affect.body ? `, felt in the ${d.affect.body}` : ''}`; }
-function dialogueText(d) { return d.dialogue.map(l => `${l.who === 'I' ? 'I' : l.who === 'F' ? figureName(d) : 'Analyst'}: ${l.text}`).join('\n'); }
+function moodText(d) { const a = d.data.affect || {}; return `${affectWord(d) || '—'}${a.intensity ? `, intensity ${a.intensity}/5` : ''}${a.body ? `, felt in the ${a.body}` : ''}`; }
+function dialogueText(d) { return (d.data.dialogue || []).map(l => `${l.who === 'I' ? 'I' : l.who === 'F' ? figureName(d) : 'Analyst'}: ${l.text}`).join('\n'); }
+function hourText(d) {
+  const P = PRACTICES[d.practice], out = [`Practice: ${P.name} (${P.latin})`];
+  for (const st of stepsOf(d.practice)) {
+    if (!st.leaf) continue; const v = st.field ? getPath(d.data, st.field) : null;
+    if (st.type === 'affect') out.push(`Mood: ${moodText(d)}`);
+    else if (st.type === 'protocol') { out.push(`Disturbed words: ${(d.data.wae?.disturbed || []).map(ix => wordOf(d, d.data.wae.items[ix])).join(', ') || 'none'}`); if (d.data.seed) out.push(`Seed: ${d.data.seed.word}`); }
+    else if (st.type === 'dialogue') { if (d.data.dialogue?.length) out.push(`Dialogue with ${figureName(d)}:\n${dialogueText(d)}`); }
+    else if (st.type === 'fields') out.push(st.fields.map(f => `${f.label.replace(/\{F\}/g, figureName(d))}: ${getPath(d.data, f.field) || '—'}`).join('\n'));
+    else if (st.type === 'symbol') out.push(`${d.data.nothing ? 'Nothing came; the tension' : 'The third'}: ${d.data.third || '—'}`);
+    else if (st.type === 'each') out.push(`${st.leaf}:\n` + Object.entries(v || {}).map(([k, x]) => `- ${k}: ${x}`).join('\n'));
+    else if (st.type === 'list' || st.type === 'sync') { if (Array.isArray(v) && v.length) out.push(`${st.leaf}: ${v.join('; ')}`); }
+    else if (st.type === 'draw') { if (v?.strokes?.length) out.push(`${st.leaf}: a drawing was made (${v.strokes.length} strokes)`); }
+    else if (st.type === 'chips') { const o = (st.options || []).find(x => x[0] === v); if (o) out.push(`${st.leaf}: ${o[1]}`); }
+    else if (v && String(v).trim()) out.push(`${st.leaf}: ${v}`);
+  }
+  if (d.data.promise?.status) out.push(`Last promise: ${d.data.promise.status}${d.data.promise.note ? ` — ${d.data.promise.note}` : ''}`);
+  if (d.data.colour) out.push(`Colour: ${d.data.colour}`);
+  return out.join('\n');
+}
 function buildPrompt(kind, d) {
-  const F = figureName(d);
-  if (kind === 'constellation') return `${RULES}\n\nTASK: Here is the person's association protocol from this hour. Read it the way Jung read one: look where the disturbances gather and whether the disturbed words hang together. Do not diagnose a complex. Say what you notice in the pattern, name at most one thread, and end with one question that points the person toward the word with the most pull. Three sentences.\n\nMood at the threshold: ${moodText(d)}\n\nProtocol (word · answer · seconds to first keystroke · reproduction · indicators):\n${protocolText(d)}`;
-  if (kind === 'frame') return `${RULES}\n\nTASK: Here is the active-imagination dialogue so far. Say one thing, as the analyst sitting beside the person, that keeps the dialogue honest: point at an evasion, a too-quick agreement, an explanation standing in for a description, or ask the one question neither side has asked. One or two sentences. Address the person as "you"; refer to the figure by its name.\n\nSeed word: ${d.seed?.word}\nMood: ${moodText(d)}\nThe image: ${d.image}\nThe figure: ${F}\n\nDialogue:\n${dialogueText(d)}`;
-  if (kind === 'amplification') return `${RULES}\n\nTASK: The person has held two positions and a third image came. Give amplification in Jung's sense: two or three places where this same motif appears in myth, alchemy, fairy tale, scripture, or folk custom, each in one plain and accurate sentence that names its source. Then stop. Do not interpret the person and do not connect it back to their life; they will do that. For this reply, up to five sentences and no question.\n\nSeed word: ${d.seed?.word}\nThe image at the descent: ${d.image}\nThe figure: ${F}\n${F} wants: ${d.wants.F}\nI want: ${d.wants.I}\nThe third: ${d.third}`;
-  return `${RULES}\n\nTASK: The hour is ending. Here is all of it. Say a word on it: what stood out, and what remains unresolved. Nothing else: no advice and no plan beyond the act the person chose. Three sentences.\n\nMood: ${moodText(d)}\nDisturbed words: ${(d.wae.disturbed || []).map(ix => wordOf(d, d.wae.items[ix])).join(', ') || 'none'}\nSeed: ${d.seed?.word}\nImage: ${d.image}\nFigure: ${F}\nDialogue:\n${dialogueText(d)}\n${F} wants: ${d.wants.F}\nI want: ${d.wants.I}\n${d.nothing ? 'Nothing came; the tension' : 'The third'}: ${d.third}\nThe act: ${d.act}`;
+  const opus = `\n\nTHE OPUS SO FAR (the page's memory; earlier hours):\n${dossierText(facts()).slice(0, 6000)}`;
+  if (kind === 'constellation') return `${RULES}${opus}\n\nTASK: Here is the person's association protocol from this hour. Read it the way Jung read one: look where the disturbances gather and whether the disturbed words hang together, and whether any of them was disturbed in earlier hours. Do not diagnose a complex. Say what you notice in the pattern, name at most one thread, and end with one question that points the person toward the word with the most pull. Three sentences.\n\nMood at the threshold: ${moodText(d)}\n\nProtocol (word · answer · seconds · reproduction · indicators):\n${protocolText(d)}`;
+  if (kind === 'frame') return `${RULES}${opus}\n\nTASK: Here is the active-imagination dialogue so far. Say one thing, as the analyst sitting beside the person, that keeps the dialogue honest: point at an evasion, a too-quick agreement, an explanation standing in for a description, or ask the one question neither side has asked. If this figure came in earlier hours, you may hold it to what it said then. One or two sentences. Address the person as "you"; refer to the figure by its name.\n\n${hourText(d)}`;
+  if (kind === 'amplification') return `${RULES}${opus}\n\nTASK: The person has held two positions and a third image came. Give amplification in Jung's sense: two or three places where this same motif appears in myth, alchemy, fairy tale, scripture, or folk custom, each in one plain and accurate sentence that names its source. Then stop. Do not interpret the person and do not connect it back to their life; they will do that. For this reply, up to five sentences and no question.\n\n${hourText(d)}`;
+  if (kind === 'reading') return `${RULES}${opus}\n\nTASK: The person has recorded a dream, worked its structure and associations, and written their own one-sentence reading, which stands. Now add yours beside it, in this order and no other: (1) one amplification from myth, story, or custom for the element that carries the most weight, naming the source; (2) what the dramatic structure shows, especially whether there is a lysis and what it does; (3) one thing the dream may be compensating in the conscious attitude the person described, put as a question. If elements of this dream recur from earlier dreams in the opus, say so. Up to six sentences.\n\n${hourText(d)}`;
+  if (kind === 'distill') return `${RULES}${opus}\n\nTASK: The person is at the first conjunction and has read their whole file and written a caelum, a distillation of what they know. Compare their caelum with the file. Name, as questions only, up to three things the file shows that the caelum leaves out or softens: a word that keeps returning, a promise never kept, a figure whose want was never answered, a colour that never changed. No advice. Up to four sentences.\n\n${hourText(d)}`;
+  return `${RULES}${opus}\n\nTASK: The hour is ending. Here is all of it. Say a word on it: what stood out, what returns from earlier hours, and what remains unresolved. Nothing else: no advice and no plan beyond the act the person chose. Three sentences.\n\n${hourText(d)}`;
 }
 async function ask(kind) {
   const d = S.draft, box = document.getElementById('an-' + kind); if (!analyst || !box || !d) return;
@@ -721,16 +1036,14 @@ async function ask(kind) {
     const { text, modelTierApplied } = await analyst(buildPrompt(kind, d), { signal: ctl.signal, modelTier: asked, cache: kind === 'frame' ? false : true, onText: ({ text }) => { p.textContent = text; } });
     const applied = modelTierApplied || asked;
     const tierLine = applied === asked ? `answered at the ${tierName(applied)} tier` : `your plan served the ${tierName(applied)} tier instead of the ${tierName(asked)}`;
-    if (kind === 'frame') { d.dialogue.push({ who: 'A', text }); saveDraft(); render(); if (applied !== asked) toast(tierLine); return; }
+    if (kind === 'frame') { d.data.dialogue.push({ who: 'A', text }); saveDraft(); render(); if (applied !== asked) toast(tierLine); return; }
     d.analyst[kind] = text; d.analyst[kind + 'Tier'] = tierLine; saveDraft();
     if (tierEl) { tierEl.textContent = tierLine; tierEl.hidden = false; }
   } catch (e) {
     p.textContent = e?.text || '';
     if (e?.code !== 'cancelled') { err.textContent = COPY[e?.code] || COPY.default; err.hidden = false; }
     if (!p.textContent && e?.code === 'cancelled') box.hidden = true;
-  } finally {
-    stop.hidden = true; document.querySelectorAll(`[data-act="ask"][data-kind="${kind}"]`).forEach(b => b.disabled = false);
-  }
+  } finally { stop.hidden = true; document.querySelectorAll(`[data-act="ask"][data-kind="${kind}"]`).forEach(b => b.disabled = false); }
 }
 async function initAnalyst() {
   try { analyst = window.claude?.use ? await window.claude.use('sample') : null; } catch (e) { analyst = null; }
@@ -738,25 +1051,17 @@ async function initAnalyst() {
   document.documentElement.classList.toggle('no-analyst', !analyst);
 }
 
-/* ---------- the journal store ---------- */
+/* ================= the journal store ================= */
 let db = null, syncState = 'local', draftTimer = 0;
 const SYNC_COPY = { local: 'journal kept on this device only', syncing: 'saving to your Claude account…', synced: 'journal kept in your Claude account', error: 'journal store unreachable; kept on this device for now' };
 function setSync(st) { syncState = st; const el = document.getElementById('sync'); if (el) el.textContent = SYNC_COPY[st] || ''; }
 function queueDraftWrite(now) { if (!db) return; clearTimeout(draftTimer); if (now) { flushDraft(); return; } draftTimer = setTimeout(flushDraft, 800); }
-async function flushDraft() {
-  if (!db) return; clearTimeout(draftTimer); draftTimer = 0;
-  try { setSync('syncing'); await db.doc('state/draft').set({ rev: S.draftRev, draft: S.draft, at: Date.now() }); setSync('synced'); } catch (e) { setSync('error'); }
-}
-async function pushHour(h) {
-  if (!db) return;
-  try { setSync('syncing'); await db.doc('hours/' + h.id).set(h); S.synced.add(h.id); save('synced', [...S.synced]); setSync('synced'); } catch (e) { setSync('error'); }
-}
-async function removeHour(id) {
-  S.synced.delete(id); save('synced', [...S.synced]); if (!db) return;
-  try { await db.doc('hours/' + id).delete(); } catch (e) { setSync('error'); }
-}
+async function flushDraft() { if (!db) return; clearTimeout(draftTimer); draftTimer = 0; try { setSync('syncing'); await db.doc('state/draft').set({ rev: S.draftRev, draft: S.draft, at: Date.now() }); setSync('synced'); } catch (e) { setSync('error'); } }
+async function pushHour(h) { if (!db) return; try { setSync('syncing'); await db.doc('hours/' + h.id).set(h); S.synced.add(h.id); save('synced', [...S.synced]); setSync('synced'); } catch (e) { setSync('error'); } }
+async function removeHour(id) { S.synced.delete(id); save('synced', [...S.synced]); if (!db) return; try { await db.doc('hours/' + id).delete(); } catch (e) { setSync('error'); } }
+async function pushDoc(name, body) { if (!db) return; try { await db.doc('state/' + name).set(body); } catch (e) { setSync('error'); } }
 function mergeHours(snap) {
-  const remote = new Map(snap.docs.filter(x => x.exists).map(x => [x.id, x.data()]));
+  const remote = new Map(snap.docs.filter(x => x.exists).map(x => [x.id, migrate(x.data())]));
   const local = new Map(S.sessions.map(h => [h.id, h]));
   const definitive = !snap.metadata.fromCache; let changed = false;
   for (const [id, h] of remote) { if (!local.has(id)) { local.set(id, h); changed = true; } S.synced.add(id); }
@@ -768,11 +1073,15 @@ function mergeHours(snap) {
 function mergeDraft(snap) {
   if (!snap.exists) { if (S.draft || S.draftRev) queueDraftWrite(true); return; }
   const r = snap.data() || {}, rrev = +r.rev || 0;
-  if (rrev > (S.draftRev || 0)) {
-    S.draft = r.draft || null; S.draftRev = rrev; save('draft', S.draft); save('draftrev', rrev);
-    if (view.name === 'session' && !S.draft) view = { name: 'home' };
-    render();
-  } else if (rrev < (S.draftRev || 0)) queueDraftWrite(true);
+  if (rrev > (S.draftRev || 0)) { S.draft = migrateDraft(r.draft || null); S.draftRev = rrev; save('draft', S.draft); save('draftrev', rrev); if (view.name === 'session' && !S.draft) view = { name: 'home' }; render(); }
+  else if (rrev < (S.draftRev || 0)) queueDraftWrite(true);
+}
+function mergeDoc(name, snap) {
+  const key = name === 'synclog' ? 'sync' : name, local = S[key];
+  if (!snap.exists) { if (local.at) pushDoc(name, local); return; }
+  const r = snap.data() || {};
+  if ((+r.at || 0) > (+local.at || 0)) { S[key] = r; save(name, r); if (view.name !== 'session') render(); }
+  else if ((+local.at || 0) > (+r.at || 0)) pushDoc(name, local);
 }
 async function initDb() {
   try { db = window.claude?.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
@@ -782,19 +1091,18 @@ async function initDb() {
   try {
     db.collection('hours').onSnapshot(mergeHours, dead);
     db.doc('state/draft').onSnapshot(mergeDraft, dead);
+    db.doc('state/portrait').onSnapshot(s => mergeDoc('portrait', s), dead);
+    db.doc('state/synclog').onSnapshot(s => mergeDoc('synclog', s), dead);
   } catch (e) { dead(); }
   addEventListener('pagehide', () => { if (draftTimer) flushDraft(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden && draftTimer) flushDraft(); });
 }
 
-/* ---------- export ---------- */
+/* ================= export ================= */
 function journalMarkdown() {
-  return `# Tertium Datur — journal\n\n` + S.sessions.map(s => {
-    const F = figureName(s), dist = (s.wae?.disturbed || []).map(ix => wordOf(s, s.wae.items[ix]));
-    return `## ${fmtDate(s.startedAt)} · ${s.seed?.word || affectWord(s)}\n\n**Mood:** ${affectWord(s)}${s.affect.intensity ? `, ${INTENSITY[s.affect.intensity - 1]}` : ''}${s.affect.body ? `, in the ${s.affect.body}` : ''}\n\n**Disturbed words:** ${dist.join(', ') || '—'}\n\n**Protocol** (word · answer · s · reproduction · indicators)\n\n${s.wae?.done ? s.wae.items.map((it, i) => `${i + 1}. ${wordOf(s, it)} · ${it.resp || '—'} · ${secs(it.rt)} · ${it.reproOk ? 'ok' : (it.repro || '—')} · ${it.flags.join(', ') || '—'}`).join('\n') : '—'}\n\n${s.analyst?.constellation ? `*The analyst:* ${s.analyst.constellation}\n\n` : ''}**Image:** ${s.image}\n\n**Figure:** ${F}\n\n**Dialogue**\n\n${s.dialogue.map(l => `- **${l.who === 'I' ? 'I' : l.who === 'F' ? F : 'Analyst'}:** ${l.text}`).join('\n')}\n\n**${F} wants:** ${s.wants?.F}\n\n**I want:** ${s.wants?.I}\n\n**${s.nothing ? 'The tension' : 'The third'}:** ${s.third}\n\n${s.analyst?.amplification ? `*Amplification:* ${s.analyst.amplification}\n\n` : ''}**The act:** ${s.act}\n\n${s.analyst?.closing ? `*The analyst:* ${s.analyst.closing}\n\n` : ''}`;
-  }).join('\n---\n\n');
+  const f = facts();
+  return `# Tertium Datur — the opus\n\n${dossierText(f)}\n\n` + S.sessions.map(s => `## ${fmtDate(s.startedAt)} · ${PRACTICES[s.practice].name}\n\n${hourText(s).replace(/^Practice: .*\n/, '')}\n\n${['constellation', 'reading', 'amplification', 'distill', 'closing'].filter(k => s.analyst?.[k]).map(k => `*The analyst (${k}):* ${s.analyst[k]}`).join('\n\n')}\n`).join('\n---\n\n') + (S.sync.items.length ? `\n---\n\n## Synchronicities\n\n${S.sync.items.map(x => `- ${fmtDate(x.at)}: ${x.text}`).join('\n')}\n` : '');
 }
-function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); }
 async function exportJournal() {
   if (!S.sessions.length) { toast('No hours to export yet.'); return; }
   const md = journalMarkdown(), name = `tertium-datur-${new Date().toISOString().slice(0, 10)}.md`;
@@ -803,80 +1111,203 @@ async function exportJournal() {
   try { await navigator.clipboard.writeText(md); toast('Copied the journal as text.'); } catch (e) { toast('Could not export here.'); }
 }
 
-/* ---------- actions ---------- */
+/* ================= screens ================= */
+function suggest() {
+  const f = facts(), c = f.byP, t = f.total;
+  if (!t) return ['hour', 'Begin where Jung began: with the stopwatch. The complex shows itself by resistance before it shows itself by meaning.'];
+  if (!c.persona) return ['persona', 'Before the shadow, the mask. Jung put the persona first: what is seen must be told apart from what is.'];
+  if (!c.shadow) return ['shadow', 'The first test of courage. Someone got under your skin this week; that is the hook.'];
+  if (!c.dream) return ['dream', 'Dreams are the main road of an analysis. The first one you remember, however small: the series begins with it.'];
+  if (c.shadow && !c.soul && t >= 3) return ['soul', 'After the shadow, the soul-image: the figure that carries the projection now. Jung called this the master-piece.'];
+  if (t >= 4 && !c.mandala) return ['mandala', 'Draw one. The centre and the four tell you where the opus stands better than any summary.'];
+  if (t >= 6 && !c.unio) return ['unio', 'Enough material has gathered. The first conjunction reads the whole file and distils it.'];
+  if (c.unio && !c.corpus) return ['corpus', 'The caelum exists. Now it must be returned to the body, or it stays a thought.'];
+  if (c.corpus && !c.mundus) return ['mundus', 'The last conjunction: the whole of it, and the one world.'];
+  const last = S.sessions[S.sessions.length - 1];
+  if (last && last.practice !== 'hour') return ['hour', 'Circle again. The stopwatch will say whether the word that disturbed you before still does.'];
+  return ['dream', 'Another dream, when you have one. The series is what shows the direction; a single dream shows only a state.'];
+}
+function Home() {
+  const d = S.draft, n = S.sessions.length, f = facts(), [sg, why] = suggest(), P = PRACTICES[sg], op = openPromise(null);
+  const entries = n ? `<section class="entries"><h3 class="label">Hours</h3>${[...S.sessions].reverse().slice(0, 12).map(s => `<button class="entry" data-act="open" data-id="${s.id}"><span class="date">${fmtDate(s.startedAt)}</span><span class="seed">${esc(s.data?.seed?.word || s.data?.figure || affectWord(s) || PRACTICES[s.practice].name)}<span class="pr">${esc(PRACTICES[s.practice].latin)}</span></span><span class="third">${colourDot(s.data?.colour)}${esc((s.data?.third && !s.data.nothing ? s.data.third : s.data?.message || s.data?.caelum || s.data?.whole || s.data?.act || s.data?.centre || '—').slice(0, 90))}</span></button>`).join('')}${n > 12 ? `<div class="row"><button class="ghost" data-act="liber">All hours in the Liber</button></div>` : ''}</section>` : '';
+  const practiceList = ORDER.map((k, i) => { const p = PRACTICES[k]; return `<li><button data-act="begin" data-p="${k}"><span class="num">${ROMAN[i]}</span><div><span class="nm">${esc(p.name)}<i>${esc(p.latin)}</i>${f.byP[k] ? `<span class="done">×${f.byP[k]}</span>` : ''}</span><p>${esc(p.one)}</p></div></button></li>`; });
+  return `<div class="shell home">
+  <header class="mast"><canvas id="mandala" class="mandala" aria-label="Your mandala, grown from ${n} hour${n === 1 ? '' : 's'}"></canvas><h1>Tertium Datur</h1><p class="tag">an instrument for the opus</p>
+  <div class="opusline">${f.colours.slice(-14).map(c => `<i style="background:var(${COLOUR_VAR[c]})" title="${c}"></i>`).join('')}<span class="mono">${n} hour${n === 1 ? '' : 's'}${f.caelum ? ' · caelum' : ''}${f.byP.mundus ? ' · unus mundus' : ''}</span></div></header>
+  <main class="screen">
+    ${d ? `<button class="btn primary begin" data-act="resume">Continue · ${esc(PRACTICES[d.practice].name)} · ${esc(PRACTICES[d.practice].movements[d.mi].label)}</button><div class="row" style="justify-content:center;margin-top:0"><button class="ghost" data-act="discard">Discard it and begin afresh</button></div>`
+      : `<div class="card"><span class="nm">Suggested next</span><span class="latin">${esc(P.name)} · ${esc(P.latin)}</span><p>${esc(why)}</p><button class="btn primary begin" data-act="begin" data-p="${sg}">Begin ${esc(P.name)}</button>${sg !== 'dream' ? `<div class="row" style="justify-content:center;margin-top:4px"><button class="ghost" data-act="begin" data-p="dream">Dreamt? Record it first</button></div>` : ''}</div>`}
+    ${op ? `<p class="sub small" style="text-align:center;margin-top:6px">A promise is open: <i>“${esc(op.text.slice(0, 80).replace(/[.。]\s*$/, ''))}”</i>. The next threshold will ask about it.</p>` : ''}
+    ${entries}
+    <div class="row" style="justify-content:space-between"><button class="ghost" data-act="liber">Open the Liber</button><button class="ghost" data-act="export">Export</button></div>
+    <h3 class="label">The practices</h3>
+    <ol class="practices">${practiceList.slice(0, 6).join('')}</ol>
+    <h3 class="label group">Mysterium coniunctionis</h3>
+    <p class="sub small">Dorn’s three conjunctions, as Jung reads them in CW 14: the end of the opus, walked when the file is full enough to be distilled.</p>
+    <ol class="practices">${practiceList.slice(6).join('')}</ol>
+    <details class="method"><summary><span class="label" style="margin:0">Why it is built this way</span></summary>
+      <p><b>Self-analysis usually fails</b> because the ego does the analysing: it explains, chooses, interprets, and stays in charge. Jung’s method needs the ego to step back at some points and to stand its ground at others. Alone, nobody enforces the difference. This instrument does, by its sequence, and by remembering: every threshold asks about the last promise, figures return, and a word disturbed twice is named as such.</p>
+      <p><b>The association experiment</b> (CW 2) finds complexes by their effects, not by introspection. <b>Dreams</b> are worked as Jung worked them: exact text, dramatic structure, associations by circumambulation, the subjective level, compensation, your reading before any other. <b>Persona, shadow, soul-image</b> follow the order of CW 7 and CW 9ii. <b>Active imagination</b> asks for description before meaning and for a dialogue with equal rights. <b>The transcendent function</b> (CW 8 §§131–193) arises from bearing the tension; the minute of holding is the method. <b>Mandalas</b> are drawn, not admired.</p>
+      <p><b>The three conjunctions</b> are Gerhard Dorn’s, as Jung reads them at the end of Mysterium Coniunctionis (CW 14): unio mentalis, the reunion with the body, and the unus mundus. They are practised here as three hours that read the whole file, return its distillate to the flesh, and ask for the symbol of the whole. The opus does not end there; it circles.</p>
+      <p><b>The analyst</b> is a voice from Claude that holds the frame and carries the memory of the opus into every question. It never interprets before you do and never supplies material. It runs through the Claude app you open this page in, on your subscription’s usage, with no key of its own. Your hours are kept in the private store this page has in your Claude account, and cached on the device you use.</p>
+    </details>
+    ${quote(n ? (f.byP.mundus ? 'individuation' : 'soul') : 'alone')}
+    <h3 class="label analyst-only">The analyst thinks</h3>
+    <div class="chips analyst-only">${TIERS.map(([k, l]) => `<button class="chip gold ${(S.prefs.tier || 'complex') === k ? 'on' : ''}" data-act="tier" data-t="${k}">${l}</button>`).join('')}</div>
+    <p class="sub small analyst-only">Deepest asks for the most capable model your Claude plan offers and lets it think at length before it speaks; an answer can take a minute. Balanced is the everyday model. Quick answers in seconds without thinking first. Each answer says which tier actually replied.</p>
+    <div class="foot"><button class="ghost" data-act="lang">Stimulus words: ${S.prefs.lang === 'de' ? 'Deutsch' : 'English'}</button><span class="sync mono" id="sync">${SYNC_COPY[syncState]}</span></div>
+  </main></div>`;
+}
+function Liber() {
+  const f = facts(), p = S.portrait;
+  const figs = f.figures.map(g => `<div class="item"><span class="nm">${esc(g.name)}<span class="n">${g.hours.length} hour${g.hours.length === 1 ? '' : 's'} · ${[...g.practices].map(x => PRACTICES[x].latin).join(', ')}</span></span>${g.wants ? `<p><i>wants:</i> ${esc(g.wants)}</p>` : ''}${g.said ? `<p><i>last said:</i> ${esc(g.said)}</p>` : ''}</div>`).join('');
+  const words = f.topWords.map(([w, n]) => `<span class="motif ${n > 1 ? 'hot' : ''}">${esc(w)}<span class="n">×${n}</span></span>`).join('');
+  const motifs = f.topMotifs.map(([w, n]) => `<span class="motif ${n > 1 ? 'hot' : ''}">${esc(w)}<span class="n">×${n}</span></span>`).join('');
+  const dreams = f.dreams.map(x => `<div class="item"><span class="nm"><span class="mono">${fmtDate(x.at)}</span></span><p>${esc(x.elements.join(' · '))}</p><p><i>${esc(x.message)}</i></p><div class="row" style="margin-top:6px"><button class="ghost" data-act="open" data-id="${x.id}">Open</button></div></div>`).join('');
+  const promises = f.promises.map(x => `<div class="item"><span class="nm"><span class="mono">${fmtDate(x.at)}</span> ${esc(PRACTICES[x.practice].latin)}<span class="status ${x.status}">${x.status}</span></span><p>${esc(x.text)}</p>${x.note ? `<p><i>${esc(x.note)}</i></p>` : ''}</div>`).join('');
+  const syncs = S.sync.items.map(x => `<div class="item"><p><span class="mono">${fmtDate(x.at)}</span> ${esc(x.text)}</p></div>`).join('');
+  const hours = [...S.sessions].reverse().map(s => `<button class="entry" data-act="open" data-id="${s.id}"><span class="date">${fmtDate(s.startedAt)}</span><span class="seed">${esc(PRACTICES[s.practice].name)}</span><span class="third">${colourDot(s.data?.colour)}${esc((s.data?.seed?.word || s.data?.figure || s.data?.message || s.data?.caelum || '').slice(0, 80))}</span></button>`).join('');
+  const chip = (field, val, label) => `<button class="chip gold ${p[field] === val ? 'on' : ''}" data-act="portrait" data-f="${field}" data-v="${val}">${label}</button>`;
+  return `<div class="shell liber"><header class="top"><button class="ghost" data-act="home">‹ Opus</button><div class="stage" style="text-align:right">Liber</div></header><main class="screen">
+    <h2 class="prompt">The Liber.</h2><p class="sub small">Everything the opus has recorded, gathered. Jung kept his in a red book; this is the same idea with a stopwatch.</p>
+    <h3 class="label">The opus</h3>
+    <div class="opusline" style="justify-content:flex-start">${f.colours.map(c => `<i style="background:var(${COLOUR_VAR[c]})" title="${c}"></i>`).join('') || '<span class="sub small">no hours yet</span>'}</div>
+    <div class="kv">${Object.entries(f.byP).map(([k, v]) => `<span class="mono">×${v}</span><span>${esc(PRACTICES[k].name)}</span>`).join('')}</div>
+    ${f.caelum ? `<h3 class="label">Caelum</h3><div class="leaf"><p class="third">${esc(f.caelum)}</p></div>` : ''}
+    ${f.whole ? `<h3 class="label">The symbol of the whole</h3><div class="leaf"><p class="third">${esc(f.whole)}</p></div>` : ''}
+    <h3 class="label">Portrait</h3>
+    <p class="sub small">Typology after CW 6. The inferior function is the door through which the unconscious enters; the analyst reads the material with this in mind. The second half of life, in Jung’s sense, begins around forty, when the programme of the morning stops working.</p>
+    <div class="chips">${chip('attitude', 'introverted', 'Introverted')}${chip('attitude', 'extraverted', 'Extraverted')}</div>
+    <div class="chips">${FUNCTIONS.map(fn => chip('superior', fn, fn[0].toUpperCase() + fn.slice(1))).join('')}</div>
+    ${p.superior ? `<p class="sub small">Superior ${p.superior}, so the inferior function is <b>${OPPOSITE[p.superior]}</b>: where you are slow, touchy, and most easily gripped, and where the transcendent function has to reach.</p>` : ''}
+    <div class="chips">${chip('phase', 'first half', 'First half of life')}${chip('phase', 'second half', 'Second half of life')}</div>
+    ${quote('afternoon')}
+    <h3 class="label">Disturbed words across hours</h3>${words ? `<p>${words}</p><p class="sub small">Red: disturbed in more than one hour. That is a complex with a name.</p>` : '<p class="sub small">none yet</p>'}
+    <h3 class="label">Dramatis personae</h3>${figs || '<p class="sub small">no figures yet</p>'}
+    <h3 class="label">Dreams</h3>${motifs ? `<p>${motifs}</p>` : ''}${dreams || '<p class="sub small">no dreams recorded yet</p>'}
+    <h3 class="label">Promises</h3>${promises || '<p class="sub small">none yet</p>'}
+    <h3 class="label">Synchronicities</h3>${syncs || '<p class="sub small">none logged yet</p>'}
+    <textarea class="field short" id="sync-in" placeholder="An outer event and an inner state that matched, and what it meant…"></textarea><div class="row"><button class="btn small" data-act="sync-add">Add to the log</button></div>
+    <h3 class="label">All hours</h3>${hours || '<p class="sub small">none yet</p>'}
+    <div class="foot"><button class="ghost" data-act="export">Export the Liber</button></div>
+  </main></div>`;
+}
+function Entry(id) {
+  const s = S.sessions.find(x => x.id === id); if (!s) { view = { name: 'home' }; return Home(); }
+  const w = s.data?.wae, rows = w?.done ? w.items.map((it, i) => `<tr class="d${Math.min(2, it.flags.length)}"><td>${i + 1}</td><td>${esc(wordOf(s, it))}</td><td>${esc(it.resp || '—')}</td><td class="rt">${secs(it.rt)}</td><td>${it.reproOk ? (it.reproNear ? '≈' : '·') : esc(it.repro || '—')}</td><td class="fl">${esc(flagCell(it))}</td></tr>`).join('') : '';
+  return `<div class="shell"><header class="top"><button class="ghost" data-act="home">‹ Opus</button><div class="stage" style="text-align:right">${esc(PRACTICES[s.practice].name)} · <span class="mono">${fmtDate(s.startedAt)}</span></div></header><main class="screen">
+    ${leaf(s, true)}
+    ${rows ? `<details><summary><span class="label" style="margin:0">Association protocol</span></summary><div class="tablewrap"><table class="protocol"><tr><th>#</th><th>word</th><th>answer</th><th>s</th><th>again</th><th></th></tr>${rows}</table></div><p class="legend">median ${secs(w.median)} s · threshold ${secs(w.thr)} s · ${KEY_TEXT}</p></details>` : ''}
+    ${['constellation', 'reading', 'amplification', 'distill'].filter(k => s.analyst?.[k]).map(k => `<div class="analyst"><span class="who">The analyst · ${k}</span><p>${esc(s.analyst[k])}</p></div>`).join('')}
+    <div class="foot"><button class="ghost" data-act="delete" data-id="${s.id}">Delete this hour</button></div>
+  </main></div>`;
+}
+function prevStep(d) { const all = stepsOf(d.practice); const i = all.findIndex(s => s.mi === d.mi && s.si === d.si); for (let j = i - 1; j >= 0; j--) if (applies(all[j], d)) return all[j]; return null; }
+function Session() {
+  const d = S.draft, P = PRACTICES[d.practice], mv = P.movements[d.mi], st = mv.steps[d.si];
+  const b = STEP[st.type](st, d);
+  const canBack = d.si + d.mi > 0 && !['wae', 'repro', 'protocol', 'hold'].includes(st.type) && !['wae', 'repro'].includes(prevStep(d)?.type);
+  return `<div class="shell session"><header class="top">${ring(d.mi, P.movements.length)}<div class="stage">${ROMAN[d.mi]} · ${esc(mv.label)}<span style="color:var(--text-3)"> · ${esc(P.name)}</span></div>${canBack ? `<button class="ghost" data-act="back" aria-label="Back">‹</button>` : ''}<button class="ghost" data-act="pause">Pause</button></header><main class="screen">${b.main}</main><footer class="bar">${b.bar || ''}</footer></div>`;
+}
+
+/* ================= navigation ================= */
+function newDraft(practice) { return { id: Date.now().toString(36), practice, startedAt: Date.now(), mi: 0, si: 0, data: {}, analyst: {}, dlgWho: 'I', dlgDraft: '', ei: 0 }; }
+function advance() {
+  const d = S.draft, P = PRACTICES[d.practice], st = curStep(d);
+  if (st.type === 'each') { const items = D(d, st.from, []); if ((d.ei || 0) < items.length - 1) { d.ei = (d.ei || 0) + 1; saveDraft(); render(); return; } d.ei = 0; }
+  if (st.type === 'sync') { const items = D(d, 'sync', []); if (items.length) { S.sync = { at: Date.now(), items: [...S.sync.items, ...items.map(t => ({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now(), text: t }))] }; save('synclog', S.sync); pushDoc('synclog', S.sync); d.data.syncAdded = [...(d.data.syncAdded || []), ...items]; d.data.sync = []; } }
+  let mi = d.mi, si = d.si + 1;
+  for (;;) { if (si >= P.movements[mi].steps.length) { mi++; si = 0; if (mi >= P.movements.length) return; } const nx = P.movements[mi].steps[si]; if (applies(nx, d)) break; si++; }
+  d.mi = mi; d.si = si; saveDraft(true); render();
+}
+function goBack() { const d = S.draft, p = prevStep(d); if (!p) return; d.mi = p.mi; d.si = p.si; if (p.type === 'each') d.ei = Math.max(0, D(d, p.from, []).length - 1); saveDraft(); render(); }
 const act = {
-  begin() { S.draft = newDraft(); saveDraft(); view = { name: 'session' }; render(); },
+  begin(b) { S.draft = newDraft(b.dataset.p || 'hour'); saveDraft(true); view = { name: 'session' }; render(); },
   resume() { view = { name: 'session' }; render(); },
   discard(b) { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Really discard this hour?'; return; } S.draft = null; saveDraft(true); view = { name: 'home' }; render(); },
   pause() { view = { name: 'home' }; render(); },
   home() { view = { name: 'home' }; render(); },
+  liber() { view = { name: 'liber' }; render(); },
   open(b) { view = { name: 'entry', id: b.dataset.id }; render(); },
   delete(b) { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Really delete? It cannot be recovered.'; return; } S.sessions = S.sessions.filter(s => s.id !== b.dataset.id); save('sessions', S.sessions); removeHour(b.dataset.id); view = { name: 'home' }; render(); },
   export() { exportJournal(); },
   lang() { S.prefs.lang = S.prefs.lang === 'de' ? 'en' : 'de'; save('prefs', S.prefs); render(); },
   tier(b) { S.prefs.tier = b.dataset.t; save('prefs', S.prefs); render(); },
-  go(b) { const d = S.draft; if (b.dataset.stage) d.stage = +b.dataset.stage; d.step = b.dataset.step; if (d.step === 'symbol') d.nothing = false; saveDraft(); render(); },
-  affect(b) { S.draft.affect.word = b.dataset.w; S.draft.affect.custom = ''; saveDraft(); render(); },
-  intensity(b) { S.draft.affect.intensity = +b.dataset.n; saveDraft(); render(); },
-  body(b) { S.draft.affect.body = S.draft.affect.body === b.dataset.w ? '' : b.dataset.w; saveDraft(); render(); },
-  'wae-lang'(b) { S.draft.wae.lang = b.dataset.l; S.prefs.lang = b.dataset.l; save('prefs', S.prefs); saveDraft(); render(); },
-  'wae-mode'(b) { const d = S.draft; if (d.step === 'intro') { d.wae.mode = b.dataset.m; S.prefs.mode = b.dataset.m; save('prefs', S.prefs); saveDraft(); render(); } else switchMode(b.dataset.m); },
-  'wae-next'() { const inp = document.getElementById('wae-in'), typed = S.draft?.wae.mode === 'type'; waeCommit(inp.value); if (typed) inp.focus(); },
-  'wae-none'() { const inp = document.getElementById('wae-in'), typed = S.draft?.wae.mode === 'type'; waeCommit(''); if (typed) inp.focus(); },
-  seed(b) { const d = S.draft, ix = +b.dataset.ix; d.seed = ix < 0 ? { word: affectWord(d), source: 'affect' } : { word: wordOf(d, d.wae.items[ix]), source: 'wae', ix }; saveDraft(); render(); },
+  portrait(b) { S.portrait = { ...S.portrait, [b.dataset.f]: S.portrait[b.dataset.f] === b.dataset.v ? '' : b.dataset.v, at: Date.now() }; save('portrait', S.portrait); pushDoc('portrait', S.portrait); render(); },
+  'sync-add'() { const t = (document.getElementById('sync-in')?.value || '').trim(); if (!t) return; S.sync = { at: Date.now(), items: [...S.sync.items, { id: Date.now().toString(36), at: Date.now(), text: t }] }; save('synclog', S.sync); pushDoc('synclog', S.sync); render(); },
+  next() { const d = S.draft; if (!ready(curStep(d), d)) return; advance(); },
+  back() { goBack(); },
+  set(b) { const d = S.draft, cur = getPath(d.data, b.dataset.f); setPath(d.data, b.dataset.f, cur === b.dataset.v && b.dataset.f !== 'colour' ? '' : b.dataset.v); saveDraft(); render(); },
+  promise(b) { const d = S.draft; d.data.promise = { ...(d.data.promise || {}), of: openPromise(d).of, status: b.dataset.v }; saveDraft(); render(); },
+  affect(b) { S.draft.data.affect.word = b.dataset.w; S.draft.data.affect.custom = ''; saveDraft(); render(); },
+  intensity(b) { S.draft.data.affect.intensity = +b.dataset.n; saveDraft(); render(); },
+  body(b) { const a = S.draft.data.affect; a.body = a.body === b.dataset.w ? '' : b.dataset.w; saveDraft(); render(); },
+  'wae-lang'(b) { S.draft.data.wae.lang = b.dataset.l; S.prefs.lang = b.dataset.l; save('prefs', S.prefs); saveDraft(); render(); },
+  'wae-mode'(b) { const d = S.draft; if (curStep(d).type === 'waeIntro') { d.data.wae.mode = b.dataset.m; S.prefs.mode = b.dataset.m; save('prefs', S.prefs); saveDraft(); render(); } else switchMode(b.dataset.m); },
+  'wae-next'() { const inp = document.getElementById('wae-in'), typed = S.draft?.data.wae.mode === 'type'; waeCommit(inp.value); if (typed) inp.focus(); },
+  'wae-none'() { const inp = document.getElementById('wae-in'), typed = S.draft?.data.wae.mode === 'type'; waeCommit(''); if (typed) inp.focus(); },
+  seed(b) { const d = S.draft, ix = +b.dataset.ix; d.data.seed = ix < 0 ? { word: affectWord(d), source: 'affect' } : { word: wordOf(d, d.data.wae.items[ix]), source: 'wae', ix }; saveDraft(); render(); },
+  'figure-return'(b) { const d = S.draft; if (d.data.figure === b.dataset.n && d.data.figureReturn) { d.data.figureReturn = false; } else { d.data.figure = b.dataset.n; d.data.figureReturn = true; } saveDraft(); render(); },
   who(b) { S.draft.dlgWho = b.dataset.w; saveDraft(); render(); },
-  'dlg-add'() { const d = S.draft, t = document.getElementById('dlg-in').value.trim(); if (!t) return; d.dialogue.push({ who: d.dlgWho, text: t }); d.dlgWho = d.dlgWho === 'I' ? 'F' : 'I'; d.dlgDraft = ''; saveDraft(); render(); },
-  nothing() { const d = S.draft; d.nothing = true; d.step = 'symbol'; saveDraft(); render(); },
+  'dlg-add'() { const d = S.draft, t = (document.getElementById('dlg-in')?.value || '').trim(); if (!t) return; d.data.dialogue.push({ who: d.dlgWho, text: t }); d.dlgWho = d.dlgWho === 'I' ? 'F' : 'I'; d.dlgDraft = ''; saveDraft(); render(); },
+  nothing() { const d = S.draft; d.data.nothing = true; advance(); },
+  'list-add'(b) { const d = S.draft, inp = document.getElementById('list-in'), t = (inp?.value || '').trim(); if (!t) return; const f = b.dataset.f, arr = D(d, f, []); const st = curStep(d); if (st.max && arr.length >= st.max) return; setPath(d.data, f, [...arr, t]); saveDraft(); render(); },
+  'list-remove'(b) { const d = S.draft, f = b.dataset.f, arr = D(d, f, []); arr.splice(+b.dataset.i, 1); setPath(d.data, f, [...arr]); saveDraft(); render(); },
+  'pad-colour'(b) { S.draft.padColour = b.dataset.c; document.querySelectorAll('.palette .sw').forEach(x => x.classList.toggle('on', x.dataset.c === b.dataset.c)); },
+  'pad-undo'() { const d = S.draft, st = curStep(d), data = getPath(d.data, st.field); if (data?.strokes?.length) { data.strokes.pop(); saveDraft(); const cv = document.getElementById('pad'); if (cv) paintStrokes(cv, data); refreshReady(); } },
+  'pad-clear'() { const d = S.draft, st = curStep(d); setPath(d.data, st.field, { strokes: [] }); saveDraft(); const cv = document.getElementById('pad'); if (cv) { paintStrokes(cv, getPath(d.data, st.field)); } refreshReady(); render(); },
   ask(b) { ask(b.dataset.kind); },
   stop() { ctl?.abort(); },
   keep() {
-    const d = S.draft; d.finishedAt = Date.now();
-    S.sessions.push(d); save('sessions', S.sessions); pushHour(d); S.draft = null; saveDraft(true);
-    view = { name: 'home' }; render(); toast('The hour is kept. The mandala has grown.');
+    const d = S.draft; d.finishedAt = Date.now(); delete d.dlgDraft; delete d.ei; delete d.padColour;
+    S.sessions.push(d); S.sessions.sort((a, b) => a.startedAt - b.startedAt); save('sessions', S.sessions); pushHour(d); S.draft = null; saveDraft(true);
+    view = { name: 'home' }; render(); toast(d.practice === 'mundus' ? 'The hour is kept. The circle closed, and opens again.' : 'The hour is kept. The mandala has grown.');
   }
 };
-app.addEventListener('click', e => {
-  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
-  const fn = act[b.dataset.act]; if (fn) fn(b, e);
-});
+app.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (!b || b.disabled) return; const fn = act[b.dataset.act]; if (fn) fn(b, e); });
 app.addEventListener('input', e => {
-  const f = e.target.dataset?.field; if (!f || !S.draft) return;
-  setPath(S.draft, f, e.target.value); saveDraft();
-  const d = S.draft;
-  if (f === 'affect.custom') { const go = app.querySelector('.bar .primary'); if (go) go.disabled = !affectWord(d); }
-  if (f === 'image') { const go = document.getElementById('image-go'), nudge = document.getElementById('nudge'); if (go) go.disabled = d.image.trim().length < 40; if (nudge) nudge.hidden = !/\b(means?|meaning|represents?|symboli[sz]es?|stands for|because|bedeutet|steht für|weil|symbolisiert)\b/i.test(d.image); }
-  if (f === 'figure') { const go = app.querySelector('.bar .primary'); if (go) go.disabled = !d.figure.trim(); }
-  if (f.startsWith('wants.')) { const go = document.getElementById('wants-go'); if (go) go.disabled = !(d.wants.F.trim() && d.wants.I.trim()); }
-  if (f === 'third') { const go = document.getElementById('third-go'); if (go) go.disabled = d.third.trim().length < 10; }
-  if (f === 'act') { const go = document.getElementById('act-go'); if (go) go.disabled = d.act.trim().length < 5; }
+  const f = e.target.dataset?.field; if (!f || !S.draft) return; const d = S.draft;
+  if (f === 'dlgDraft') { d.dlgDraft = e.target.value; saveDraft(); return; }
+  setPath(d.data, f, e.target.value); saveDraft();
+  const st = curStep(d);
+  if (st.type === 'text') { const nudge = document.getElementById('nudge'); const re = st.nudge ? NUDGE_RE : st.nudgeRe; if (nudge && re) nudge.hidden = !re.test(e.target.value); }
+  refreshReady();
 });
 app.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && e.target.id === 'wae-in') { e.preventDefault(); waeCommit(e.target.value); }
-  if (e.key === 'Enter' && e.target.dataset?.field === 'figure' && S.draft?.figure.trim()) { e.preventDefault(); act.go({ dataset: { step: 'dialogue' } }); }
+  if (e.key !== 'Enter') return;
+  if (e.target.id === 'wae-in') { e.preventDefault(); waeCommit(e.target.value); }
+  else if (e.target.id === 'list-in' && e.target.tagName === 'INPUT') { e.preventDefault(); const b = app.querySelector('[data-act="list-add"]'); if (b) act['list-add'](b); }
+  else if (e.target.id === 'f-figure') { e.preventDefault(); act.next(); }
 });
 app.addEventListener('keydown', e => { if (e.target.id === 'wae-in' && e.key.length === 1) markFirst('type'); }, true);
 app.addEventListener('input', e => { if (e.target.id === 'wae-in' && e.target.value && e.isTrusted) { markFirst('type'); timers.forEach(clearTimeout); timers = []; } }, true);
 
-/* ---------- render ---------- */
+/* ================= render ================= */
 function afterRender() {
   const d = S.draft;
+  paintAll();
   if (view.name === 'home') { animateMandala(); return; }
   if (view.name !== 'session' || !d) return;
-  if (d.stage === 1 && d.step === 'breathe') later(() => document.getElementById('reveal')?.classList.add('show'), reduced ? 10000 : 20000);
-  if (d.stage === 2 && (d.step === 'run' || d.step === 'repro')) { if (d.wae.mode !== 'voice') document.getElementById('wae-in')?.focus(); waeShow(); }
-  if (d.stage === 3 && d.step === 'dialogue') { const c = document.getElementById('composer'); if (d.dialogue.length) c?.scrollIntoView({ block: 'start', behavior: reduced ? 'auto' : 'smooth' }); }
-  if (d.stage === 4 && d.step === 'hold') later(() => { document.getElementById('reveal')?.classList.add('show'); document.getElementById('reveal2')?.classList.add('show'); }, reduced ? 30000 : 61000);
+  const st = curStep(d);
+  if (st.type === 'breathe') later(() => document.getElementById('go')?.classList.add('show'), reduced ? Math.min(10000, st.seconds * 500) : st.seconds * 1000);
+  if (st.type === 'wae' || st.type === 'repro') { if (d.data.wae.mode !== 'voice') document.getElementById('wae-in')?.focus(); waeShow(); }
+  if (st.type === 'dialogue') { const c = document.getElementById('composer'); if (d.data.dialogue?.length) c?.scrollIntoView({ block: 'start', behavior: reduced ? 'auto' : 'smooth' }); }
+  if (st.type === 'hold') later(() => { document.getElementById('go')?.classList.add('show'); document.getElementById('reveal2')?.classList.add('show'); }, reduced ? 30000 : 61000);
+  if (st.type === 'draw') { const cv = document.getElementById('pad'); if (cv) initPad(cv, d, st.field); }
+  if (st.type === 'list') document.getElementById('list-in')?.focus();
 }
 function render() {
   cancelAnimationFrame(raf); timers.forEach(clearTimeout); timers = []; stopListening();
-  app.innerHTML = view.name === 'home' ? Home() : view.name === 'entry' ? Entry(view.id) : Session();
+  if (view.name === 'session' && !S.draft) view = { name: 'home' };
+  app.innerHTML = view.name === 'home' ? Home() : view.name === 'entry' ? Entry(view.id) : view.name === 'liber' ? Liber() : Session();
   window.scrollTo(0, 0);
   afterRender();
 }
 render();
 initAnalyst();
 initDb();
-matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (view.name === 'home') animateMandala(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (view.name === 'home') animateMandala(); else paintAll(); });
+window.__tertium = { S, act, render, PRACTICES, curStep, ready, facts, advance, stepsOf, analyze, view: () => view, setView: v => { view = v; } };
 })();
 </script>
 <!-- ARTIFACT-END -->
