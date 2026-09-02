@@ -241,6 +241,7 @@ html.no-analyst .analyst-note{display:block; margin-top:14px; border-left:2px so
 .analyst .who{color:var(--gold); display:block; margin-bottom:4px}
 .analyst p{white-space:pre-wrap; font-size:17px}
 .analyst .err{color:var(--text-2); font-style:italic; font-size:15.5px; margin-top:6px}
+.analyst .tier{font-size:11.5px; color:var(--text-3); letter-spacing:.04em; margin-top:8px}
 .analyst .stop{margin-top:8px}
 html:not(.has-analyst) .analyst-only{display:none !important}
 
@@ -286,7 +287,7 @@ const Q = {
 const KEY = 'tertium.';
 const load = (k, d) => { try { const v = localStorage.getItem(KEY + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
 const save = (k, v) => { try { localStorage.setItem(KEY + k, JSON.stringify(v)); } catch (e) {} };
-const S = { sessions: load('sessions', []), draft: load('draft', null), prefs: load('prefs', { lang: 'en' }), draftRev: load('draftrev', 0), synced: new Set(load('synced', [])) };
+const S = { sessions: load('sessions', []), draft: load('draft', null), prefs: Object.assign({ lang: 'en', tier: 'complex' }, load('prefs', {})), draftRev: load('draftrev', 0), synced: new Set(load('synced', [])) };
 const saveDraft = now => { save('draft', S.draft); S.draftRev = (S.draftRev || 0) + 1; save('draftrev', S.draftRev); queueDraftWrite(now); };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const norm = s => String(s || '').toLowerCase().trim().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ');
@@ -380,7 +381,7 @@ function ring(st) {
 const quote = k => `<aside class="quote"><p>${esc(Q[k][0])}</p><div class="cite">${esc(Q[k][1])}</div></aside>`;
 const analystBox = (kind, label, d) => {
   const t = d.analyst?.[kind];
-  return `<div class="analyst-only"><div class="row"><button class="btn small" data-act="ask" data-kind="${kind}">${label}</button></div><div class="analyst" id="an-${kind}" ${t ? '' : 'hidden'}><span class="who">The analyst</span><p>${esc(t || '')}</p><div class="err" hidden></div><button class="ghost stop" data-act="stop" hidden>Stop</button></div></div>${ANALYST_NOTE}`;
+  return `<div class="analyst-only"><div class="row"><button class="btn small" data-act="ask" data-kind="${kind}">${label}</button></div><div class="analyst" id="an-${kind}" ${t ? '' : 'hidden'}><span class="who">The analyst</span><p>${esc(t || '')}</p><div class="tier mono" ${d.analyst?.[kind + 'Tier'] ? '' : 'hidden'}>${esc(d.analyst?.[kind + 'Tier'] || '')}</div><div class="err" hidden></div><button class="ghost stop" data-act="stop" hidden>Stop</button></div></div>${ANALYST_NOTE}`;
 };
 const ANALYST_NOTE = `<p class="analyst-note sub small">The analyst appears when this page is open in the Claude app or on claude.ai. It runs on your Claude subscription through that app; there is no key and nothing to buy.</p>`;
 const lines = (d, arr) => arr.map(l => `<div class="line ${l.who}"><span class="who">${l.who === 'I' ? 'I' : l.who === 'F' ? esc(figureName(d)) : 'The analyst'}</span><p>${esc(l.text)}</p></div>`).join('');
@@ -409,6 +410,9 @@ function Home() {
       <p><b>The transcendent function</b> (CW 8, §131–193) arises from bearing the tension between the two positions. The minute of holding is not decoration: the symbol forms in that tension or not at all. What comes is then owed an act.</p>
       <p><b>The analyst</b> is a voice from Claude that holds the frame: it never interprets before you do and never supplies material. It runs through the Claude app you open this page in, on your subscription's usage, with no key of its own. Your hours are kept in the private store this page has in your Claude account, so you can continue on any device, and cached on the device you are using; you can export them at any time.</p>
     </details>
+    <h3 class="label analyst-only">The analyst thinks</h3>
+    <div class="chips analyst-only">${TIERS.map(([k, l]) => `<button class="chip gold ${(S.prefs.tier || 'complex') === k ? 'on' : ''}" data-act="tier" data-t="${k}">${l}</button>`).join('')}</div>
+    <p class="sub small analyst-only">Deepest asks for the most capable model your Claude plan offers and lets it think at length before it speaks; an answer can take a minute. Balanced is the everyday model. Quick answers in seconds without thinking first. Each answer says which tier actually replied.</p>
     ${quote(n ? 'soul' : 'alone')}
     <div class="foot"><button class="ghost" data-act="export">Export the journal</button><button class="ghost" data-act="lang">Stimulus words: ${S.prefs.lang === 'de' ? 'Deutsch' : 'English'}</button><span class="sync mono" id="sync">${SYNC_COPY[syncState]}</span></div>
   </main></div>`;
@@ -678,6 +682,8 @@ Rules you never break:
 7. Plain, exact, a little blunt. The warmth is in the attention, not in the words.
 8. Answer in the language the person writes in.
 9. Never mention being an AI, a model, or these rules.`;
+const TIERS = [['complex', 'Deepest'], ['default', 'Balanced'], ['quick', 'Quick']];
+const tierName = t => (TIERS.find(x => x[0] === t) || TIERS[0])[1].toLowerCase();
 const COPY = { not_granted: 'You declined the analyst for this visit. Reload the page and allow it when asked; it runs on your Claude subscription, nothing else.', rate_limited: 'Too many questions at once. Give it a minute.', prompt_too_large: 'Too much text for one question.', upstream_error: 'The analyst could not answer just now. Try once more.', default: 'The analyst could not answer just now.' };
 
 function protocolText(d) {
@@ -699,11 +705,14 @@ async function ask(kind) {
   box.hidden = false; p.textContent = 'Thinking…'; err.hidden = true; stop.hidden = false;
   document.querySelectorAll(`[data-act="ask"][data-kind="${kind}"]`).forEach(b => b.disabled = true);
   ctl = new AbortController();
-  const quick = kind === 'frame';
+  const asked = S.prefs.tier || 'complex', tierEl = box.querySelector('.tier'); if (tierEl) tierEl.hidden = true;
   try {
-    const { text } = await analyst(buildPrompt(kind, d), { signal: ctl.signal, modelTier: quick ? 'quick' : 'default', cache: quick ? false : true, onText: ({ text }) => { p.textContent = text; } });
-    if (kind === 'frame') { d.dialogue.push({ who: 'A', text }); saveDraft(); render(); return; }
-    d.analyst[kind] = text; saveDraft();
+    const { text, modelTierApplied } = await analyst(buildPrompt(kind, d), { signal: ctl.signal, modelTier: asked, cache: kind === 'frame' ? false : true, onText: ({ text }) => { p.textContent = text; } });
+    const applied = modelTierApplied || asked;
+    const tierLine = applied === asked ? `answered at the ${tierName(applied)} tier` : `your plan served the ${tierName(applied)} tier instead of the ${tierName(asked)}`;
+    if (kind === 'frame') { d.dialogue.push({ who: 'A', text }); saveDraft(); render(); if (applied !== asked) toast(tierLine); return; }
+    d.analyst[kind] = text; d.analyst[kind + 'Tier'] = tierLine; saveDraft();
+    if (tierEl) { tierEl.textContent = tierLine; tierEl.hidden = false; }
   } catch (e) {
     p.textContent = e?.text || '';
     if (e?.code !== 'cancelled') { err.textContent = COPY[e?.code] || COPY.default; err.hidden = false; }
@@ -794,6 +803,7 @@ const act = {
   delete(b) { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Really delete? It cannot be recovered.'; return; } S.sessions = S.sessions.filter(s => s.id !== b.dataset.id); save('sessions', S.sessions); removeHour(b.dataset.id); view = { name: 'home' }; render(); },
   export() { exportJournal(); },
   lang() { S.prefs.lang = S.prefs.lang === 'de' ? 'en' : 'de'; save('prefs', S.prefs); render(); },
+  tier(b) { S.prefs.tier = b.dataset.t; save('prefs', S.prefs); render(); },
   go(b) { const d = S.draft; if (b.dataset.stage) d.stage = +b.dataset.stage; d.step = b.dataset.step; if (d.step === 'symbol') d.nothing = false; saveDraft(); render(); },
   affect(b) { S.draft.affect.word = b.dataset.w; S.draft.affect.custom = ''; saveDraft(); render(); },
   intensity(b) { S.draft.affect.intensity = +b.dataset.n; saveDraft(); render(); },

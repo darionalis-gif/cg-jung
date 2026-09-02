@@ -12,7 +12,7 @@ One "hour" runs through five movements:
 | IV | The Third | Both positions at full strength, a minute of holding the tension, then whatever forms in it; one act to carry it into life (CW 8 §131–193). |
 | V | Return | The hour is set down; a mandala on the home screen grows by one ring per hour. |
 
-Where the page is opened inside the Claude app or on claude.ai, an optional "analyst" voice (Claude, via the artifact `sample` capability) can read the protocol, hold the frame in the dialogue, offer amplification, and close the hour. It runs on the viewer's own Claude subscription; the app holds no API key. It is instructed never to interpret before the user does and never to supply material.
+Where the page is opened inside the Claude app or on claude.ai, an optional "analyst" voice (Claude, via the artifact `sample` capability) can read the protocol, hold the frame in the dialogue, offer amplification, and close the hour. It runs on the viewer's own Claude subscription; the app holds no API key. Every call asks for the `complex` model tier (the most capable model the viewer's plan offers, thinking at length) by default; the tier is settable on the home screen and each answer reports which tier actually replied. It is instructed never to interpret before the user does and never to supply material.
 
 Hours and the in-progress hour are kept in the artifact's document store (`db` capability, owner-only rules): one document per hour under `hours/<id>`, the draft under `state/draft` with a revision counter. The browser's `localStorage` is a cache so the page opens instantly and keeps working when the store is unreachable; local and remote are reconciled on every definitive snapshot. The journal can be exported as Markdown.
 
