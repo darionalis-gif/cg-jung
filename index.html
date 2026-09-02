@@ -331,7 +331,8 @@ const OPERATIONS = [
   ['separatio', 'Separatio', 'two things that were one came apart'],
   ['coniunctio', 'Coniunctio', 'two things that were apart came together']
 ];
-const OP_COLOUR = { mortificatio: 'nigredo', solutio: 'nigredo', calcinatio: 'albedo', separatio: 'albedo', sublimatio: 'albedo', coagulatio: 'citrinitas', coniunctio: 'citrinitas' };
+const OP_COLOURS = { mortificatio: ['nigredo'], solutio: ['nigredo', 'albedo'], calcinatio: ['nigredo', 'albedo'], separatio: ['albedo', 'citrinitas'], sublimatio: ['albedo', 'citrinitas'], coagulatio: ['citrinitas', 'albedo'], coniunctio: ['citrinitas'] };
+const COLOUR_Q = { nigredo: 'it went black: dissolved, burned, heavy', albedo: 'it washed something white: clearer, colder, seen', citrinitas: 'a first warmth, a form that is not yet lived' };
 const PRACTICE_HUE2 = { confess: 200, ignis: 12, religio: 280, series: 230 };
 const COLOURS = [
   ['nigredo', 'Nigredo', 'black: dark, heavy, dissolving; the confrontation'],
@@ -432,10 +433,11 @@ const dayKey = ts => new Date(ts).toDateString();
 
 /* ================= the practices ================= */
 const CLOSE = { id: 'close', type: 'text', field: 'farewell', min: 3, leaf: 'Leaving', rows: 'short', prompt: 'Before you leave.', sub: 'Say what you say to {F} before you go. Then look at the room you are in and name three things in it aloud. The imagination is entered and left on purpose; what is not closed follows you out as a mood.', placeholder: 'I say to {F}: …', quote: 'meditatio' };
+const GROUND = { id: 'grounded', type: 'text', field: 'grounded', min: 3, leaf: 'Back in the room', rows: 'short', prompt: 'Back into the room.', sub: 'The imagination is entered and left on purpose. Stand up. Name three things in the room aloud, by their plain names. Drink water. Then write one word for how the body is now.', placeholder: 'The body is …' };
 const OPS = { id: 'ops', type: 'ops' };
 const SEPARATIO = { id: 'separated', type: 'text', field: 'separated', min: 0, optional: true, leaf: 'Not me', rows: 'short', prompt: 'A mood that is not you.', sub: 'The alchemists separated before they joined. Was there a mood or a reaction in this hour that has you rather than being you? Name it, and the sign that announces it, so that you know it next time. Or go on without.', placeholder: 'The … that comes when … is not me. Its sign is …' };
 const INFLATION = { id: 'inflation', type: 'text', field: 'inflation', min: 10, leaf: 'The other danger', rows: 'short', prompt: 'The other danger.', sub: 'When the work goes well, the ego takes the credit and quietly grows. Has anything here begun to feel like a destiny, a mission, a knowledge others do not have, a reason you are ahead of the people around you? Write it, or write that you looked and found none.', placeholder: 'I looked, and …', quote: 'defeat' };
-const TRANSFERENCE = { id: 'transference', type: 'text', field: 'transference', min: 10, leaf: 'About the voice', rows: 'short', when: d => facts().total % 5 === 4, prompt: 'About this voice.', sub: 'Every fifth hour, this. What have you started to expect from the analyst in this page? Before you read its last answer, what did you want it to say? What you feel toward a voice that reads what you wrote is itself material; Jung called the transference the alpha and omega of the method, and it is the half of it this page cannot supply.', placeholder: 'I wanted it to say …', quote: 'meeting' };
+const TRANSFERENCE = { id: 'transference', type: 'text', field: 'transference', min: 10, leaf: 'About the voice', rows: 'short', when: d => transferenceDue(d), prompt: 'About this voice.', sub: 'Every fifth hour, this. What have you started to expect from the analyst in this page? Before you read its last answer, what did you want it to say? What you feel toward a voice that reads what you wrote is itself material; Jung called the transference the alpha and omega of the method, and it is the half of it this page cannot supply.', placeholder: 'I wanted it to say …', quote: 'meeting' };
 const SUMMARY = { id: 'summary', type: 'summary' };
 const THRESHOLD = { id: 'since', type: 'since' };
 const ACT = (prompt, sub, placeholder) => ({ id: 'act', type: 'text', field: 'act', min: 5, leaf: 'The act', rows: 'short', prompt, sub, placeholder: placeholder || 'This week I will …' });
@@ -444,43 +446,47 @@ const PRACTICES = {
   confess: {
     name: 'Confession', latin: 'confessio', one: 'Where Jung put the beginning: the life told, the house, the losses, the secret, and what brings you here now. Nothing is analysed; it is said once, and the whole opus reads it.',
     movements: [
-      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 10, prompt: 'Nothing is analysed here.', sub: 'It is told. Jung put confession first among the four stages of an analysis (CW 16 §§122–140) and held that a secret kept alone works in a person like a poison. Breathe with the circle.' } ]},
+      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 10, prompt: 'Nothing is analysed here.', sub: 'It is told. Jung put confession first among the four stages of an analysis (CW 16 §§123–130) and held that a secret kept alone works in a person like a poison. Breathe with the circle.' }, THRESHOLD ]},
       { label: 'The Life', steps: [ { id: 'life', type: 'text', field: 'life', min: 80, leaf: 'The life', prompt: 'From birth to now, in ten lines.', sub: 'The turns, not the curriculum. Where it broke, where it opened, who was there. Ten lines is enough; twenty is allowed.', placeholder: 'I was born … Then …' } ]},
       { label: 'The House', steps: [ { id: 'house', type: 'fields', leaf: 'The house', prompt: 'The house you come from.', sub: 'As they actually were, not as they are described at funerals.', fields: [{ label: 'Mother', field: 'mother', placeholder: 'as she actually was', min: 3 }, { label: 'Father', field: 'father', placeholder: 'as he actually was', min: 3 }, { label: 'What each wanted from you', field: 'wanted', placeholder: '…', min: 3 }, { label: 'What was never said in that house', field: 'unsaid', placeholder: '…', min: 3 }] } ]},
       { label: 'The Losses', steps: [ { id: 'losses', type: 'text', field: 'losses', min: 20, leaf: 'The losses', prompt: 'What has been lost.', sub: 'People, places, a body you had, a future you had counted on. The ones that still have weight.', placeholder: 'I lost …' } ]},
       { label: 'The Secret', steps: [ { id: 'secret', type: 'text', field: 'secret', min: 20, leaf: 'The secret', prompt: 'What you have never told anyone.', sub: 'You need not write the thing itself. Write that it exists, roughly what kind of thing it is, and what it costs to carry it.', placeholder: 'There is something I have never told anyone. It is the kind of thing that … Carrying it costs …' } ]},
-      { label: 'Now', steps: [ { id: 'now', type: 'text', field: 'now', min: 20, leaf: 'What brings me here', prompt: 'What brings you here now.', sub: 'Not the interest in Jung. The thing in your life that made you open this.', placeholder: 'What brings me here is …' } ]},
+      { label: 'Now', steps: [ { id: 'now', type: 'text', field: 'now', min: 20, leaf: 'What brings me here', prompt: 'What brings you here now.', sub: 'Not the interest in Jung. The thing in your life that made you open this.', placeholder: 'What brings me here is …' },
+        { id: 'hearer', type: 'text', field: 'hearer', min: 10, leaf: 'A hearer', rows: 'short', prompt: 'This has been told to a page.', sub: 'Jung’s confession is made to a person; that is what makes it work. Name one human being who could hear the part of this that can be told, and when. Or write, honestly, why there is none.', placeholder: 'I could tell … the part about …, when … / There is no one, because …' } ]},
       { label: 'Return', steps: [ OPS, SUMMARY ]}
     ]
   },
   hour: {
     name: 'The Hour', latin: 'circumambulatio', one: 'Mood, the association experiment, the interrogation of the disturbed words, then, once it is earned, active imagination, the third, what must die for it, and one act. The core practice.',
     movements: [
-      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 20 }, THRESHOLD, { id: 'affect', type: 'affect', leaf: 'Mood' } ]},
+      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 20 }, THRESHOLD,
+        { id: 'dew', type: 'text', field: 'dew', min: 10, leaf: 'What was left', rows: 'short', when: d => ['dead', 'turned'].includes(d.data.thirdCheck?.status), prompt: 'What was left when it went flat?', sub: 'In the Rosarium the soul leaves the corpse and the dew falls on it before the soul returns. The third went dead, or turned. What is left on the ground where it was: an ash, a residue, a change in the room?', placeholder: 'What is left is …' },
+        { id: 'again', type: 'chips', field: 'again', leaf: 'The pair', when: d => ['dead', 'turned'].includes(d.data.thirdCheck?.status) && earnedDescent(), prompt: 'Hold the same pair again?', sub: 'The soul returns to the body it left. Instead of a new descent, the two wants from that hour can be held again, with what has died in between. Or go the usual way.', options: [['yes', 'Hold them again', 'the same two wants, this hour'], ['no', 'The usual way', 'the stopwatch, and whatever comes']] },
+        { id: 'affect', type: 'affect', leaf: 'Mood' } ]},
       { label: 'Association', steps: [
         { id: 'waeIntro', type: 'waeIntro' }, { id: 'wae', type: 'wae' }, { id: 'expressive', type: 'expressive' }, { id: 'reproIntro', type: 'reproIntro' }, { id: 'repro', type: 'repro' }, { id: 'protocol', type: 'protocol', leaf: 'Disturbed words' },
         { id: 'interrogation', type: 'each', from: 'disturbedWords', field: 'interrogation', min: 5, leaf: 'Interrogation', prompt: 'What came up at this word?', sub: 'Jung did not stop at the table. He went back through each disturbed reaction and asked what had appeared. Not what it means: what appeared. A face, a room, a sentence, a smell, a name, nothing.', placeholder: 'At this word there was …' },
         { id: 'seed', type: 'seed' }
       ]},
-      { label: 'Carry', steps: [ { id: 'carry', type: 'text', field: 'act', min: 10, leaf: 'The act', rows: 'short', when: d => !descentNow(d), prompt: 'Carry the word.', sub: d => descentToday(d) ? 'You went down once today already; Jung allowed one descent a day and no more. Carry the word instead.' : 'The descent is not walked yet: it is earned after four hours, one of them the persona. For now, carry the word into the week. Notice where it appears: in whose mouth, in which room, on which bill. Write what you will watch for.', placeholder: 'This week I will watch for …' } ]},
+      { label: 'Carry', steps: [ { id: 'carry', type: 'text', field: 'act', min: 10, leaf: 'The act', rows: 'short', when: d => !descentNow(d) && d.data.again !== 'yes', prompt: 'Carry the word.', sub: d => descentToday(d) ? 'You went down once today already; Jung allowed one descent a day and no more. Carry the word instead.' : 'The descent is not walked yet: it is earned after four hours, one of them the persona. For now, carry the word into the week. Notice where it appears: in whose mouth, in which room, on which bill. Write what you will watch for.', placeholder: 'This week I will watch for …' } ]},
       { label: 'Descent', deep: true, steps: [
-        { id: 'wait', type: 'wait', seed: true, when: d => descentNow(d), prompt: 'Close your eyes with the word.', sub: 'Don’t look for a picture, and don’t choose one. Wait until one comes by itself. It may be small, dim, or ordinary. When it is there, open your eyes. If the image will not stop when you want it to, or you cannot tell it from the room, close this and telephone a person.', button: 'An image came', quote: 'imaginatio' },
-        { id: 'image', type: 'text', field: 'image', min: 20, leaf: 'Image', when: d => descentNow(d), prompt: 'Describe it.', sub: 'Not what it means. What it looks like: light, distance, size, colour, sound, temperature, what moves and what stands still.', placeholder: 'There is a …', nudge: true },
-        { id: 'figure', type: 'figure', leaf: 'Figure', when: d => descentNow(d), prompt: 'Something in it is alive.', sub: 'A figure, an animal, a thing that watches or waits. If nothing is alive, the place itself can speak. Give it the name it has, or ask it for one.' },
-        { id: 'dialogue', type: 'dialogue', leaf: 'Dialogue', when: d => descentNow(d) },
-        { ...CLOSE, when: d => descentNow(d) }
+        { id: 'wait', type: 'wait', seed: true, when: d => descentNow(d) && d.data.again !== 'yes', prompt: 'Close your eyes with the word.', sub: 'Don’t look for a picture, and don’t choose one. Wait until one comes by itself. It may be small, dim, or ordinary. When it is there, open your eyes. If the image will not stop when you want it to, or you cannot tell it from the room, close this and telephone a person.', button: 'An image came', quote: 'imaginatio' },
+        { id: 'image', type: 'text', field: 'image', min: 20, leaf: 'Image', when: d => descentNow(d) && d.data.again !== 'yes', prompt: 'Describe it.', sub: 'Not what it means. What it looks like: light, distance, size, colour, sound, temperature, what moves and what stands still.', placeholder: 'There is a …', nudge: true },
+        { id: 'figure', type: 'figure', leaf: 'Figure', when: d => descentNow(d) && d.data.again !== 'yes', prompt: 'Something in it is alive.', sub: 'A figure, an animal, a thing that watches or waits. If nothing is alive, the place itself can speak. Give it the name it has, or ask it for one.' },
+        { id: 'dialogue', type: 'dialogue', leaf: 'Dialogue', when: d => descentNow(d) && d.data.again !== 'yes' }
       ]},
       { label: 'The Third', deep: true, steps: [
-        { id: 'wants', type: 'fields', leaf: 'Two positions', transcript: true, when: d => descentNow(d), prompt: 'Two positions.', sub: 'Nothing new is written here. Take both from the dialogue: what {F} wants, in its words, and what you want, in yours. One sentence each, at full strength. No compromise yet: a want that is softened cannot generate tension.', fields: [{ label: '{F} wants', field: 'wants.F', cls: 'F', placeholder: 'what it wants, as it would say it', min: 3 }, { label: 'I want', field: 'wants.I', cls: 'I', placeholder: 'what you want, as you would say it', min: 3 }], quote: 'third' },
-        { id: 'hold', type: 'hold', when: d => descentNow(d) },
-        { id: 'symbol', type: 'symbol', leaf: 'The third', when: d => descentNow(d) },
-        { id: 'two', type: 'chips', field: 'two', leaf: 'Still two', when: d => descentNow(d) && !d.data.nothing, prompt: d => `In this third, are you and ${figureName(d)} still two?`, sub: 'Edinger called a union in which the two have simply run together the lesser coniunctio: it feels like fusion, loses the difference, and inflates. The greater coniunctio holds both and keeps them distinct.', options: [['both', 'Still two', 'held together, and distinct'], ['merged', 'Merged', 'one of us has gone; I cannot find the seam'], ['unsure', 'I cannot tell', 'which is an answer too']] },
-        { id: 'mortificatio', type: 'text', field: 'mortificatio', min: 15, leaf: 'What has to die', rows: 'short', when: d => descentNow(d) && !d.data.nothing, prompt: 'What has to die for this to be true?', sub: 'In the Rosarium the union is followed at once by the corpse in the sealed vessel and the soul leaving it. What will you lose, or have to stop being, if the third is real? A few days from now it may go flat and dead; that is the normal course, and the next threshold will ask about it.', placeholder: 'For this to be true, … has to die.' },
-        { id: 'form', type: 'draw', field: 'drawing', optional: true, leaf: 'Given form', when: d => descentNow(d), prompt: 'Give it form.', sub: 'Jung had his patients paint what came, badly if need be. A line with the finger fixes the image better than any sentence. Draw the third, or the image it changed. Or go on without.' },
-        { id: 'act', type: 'text', field: 'act', min: 5, leaf: 'The act', rows: 'short', when: d => descentNow(d) && d.data.two !== 'merged', prompt: 'One act.', sub: 'You again, as the one who has to live it. What would honour both sides this week, small enough that you will actually do it? Two ways of losing the third: making it beautiful, and making it make sense. Jung named both. The third way is the act. You will be asked about it at the next threshold.', placeholder: 'This week I will …' },
-        { id: 'noact', type: 'info', when: d => descentNow(d) && d.data.two === 'merged', prompt: 'No act from a fusion.', sub: 'Where the two have run together, an act taken now is acting-out. Let what has to die, die; the next threshold will ask whether the third is still alive, and the pair can be held again then.' }
+        { id: 'wants', type: 'fields', leaf: 'Two positions', transcript: true, when: d => holdNow(d), prompt: 'Two positions.', sub: 'Nothing new is written here. Take both from the dialogue: what {F} wants, in its words, and what you want, in yours. One sentence each, at full strength. No compromise yet: a want that is softened cannot generate tension.', fields: [{ label: '{F} wants', field: 'wants.F', cls: 'F', placeholder: 'what it wants, as it would say it', min: 3 }, { label: 'I want', field: 'wants.I', cls: 'I', placeholder: 'what you want, as you would say it', min: 3 }], quote: 'third' },
+        { id: 'hold', type: 'hold', when: d => holdNow(d) },
+        { id: 'symbol', type: 'symbol', leaf: 'The third', when: d => holdNow(d) },
+        { id: 'two', type: 'chips', field: 'two', leaf: 'Still two', when: d => holdNow(d) && !d.data.nothing, prompt: d => `In this third, are you and ${figureName(d)} still two?`, sub: 'Edinger called a union in which the two have simply run together the lesser coniunctio: it feels like fusion, loses the difference, and inflates. The greater coniunctio holds both and keeps them distinct.', options: [['both', 'Still two', 'held together, and distinct'], ['merged', 'Merged', 'one of us has gone; I cannot find the seam'], ['unsure', 'I cannot tell', 'which is an answer too']] },
+        { id: 'mortificatio', type: 'text', field: 'mortificatio', min: 15, leaf: 'What has to die', rows: 'short', when: d => holdNow(d) && !d.data.nothing, prompt: 'What has to die for this to be true?', sub: 'In the Rosarium the union is followed at once by the corpse in the sealed vessel and the soul leaving it. What will you lose, or have to stop being, if the third is real? A few days from now it may go flat and dead; that is the normal course, and the next threshold will ask about it.', placeholder: 'For this to be true, … has to die.' },
+        { ...CLOSE, when: d => holdNow(d) },
+        { id: 'form', type: 'draw', field: 'drawing', optional: true, leaf: 'Given form', when: d => holdNow(d), prompt: 'Give it form.', sub: 'Jung had his patients paint what came, badly if need be. A line with the finger fixes the image better than any sentence. Draw the third, or the image it changed. Or go on without.' },
+        { id: 'act', type: 'text', field: 'act', min: 5, leaf: 'The act', rows: 'short', when: d => holdNow(d) && d.data.two !== 'merged', prompt: 'One act.', sub: 'You again, as the one who has to live it. What would honour both sides this week, small enough that you will actually do it? Two ways of losing the third: making it beautiful, and making it make sense. Jung named both. The third way is the act. You will be asked about it at the next threshold.', placeholder: 'This week I will …' },
+        { id: 'noact', type: 'info', when: d => holdNow(d) && d.data.two === 'merged', prompt: 'No act from a fusion.', sub: 'Where the two have run together, an act taken now is acting-out. Let what has to die, die; the next threshold will ask whether the third is still alive, and the pair can be held again then.' }
       ]},
-      { label: 'Return', steps: [ TRANSFERENCE, SEPARATIO, OPS, SUMMARY ]}
+      { label: 'Return', steps: [ { ...INFLATION, when: d => !!d.data.third && !d.data.nothing }, TRANSFERENCE, SEPARATIO, OPS, SUMMARY ]}
     ]
   },
   ignis: {
@@ -488,15 +494,16 @@ const PRACTICES = {
     movements: [
       { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 10, prompt: 'Not the mood as weather.', sub: 'The mood as fire. Edinger called the two operations that go into an affect calcinatio and solutio: burning through, and dissolving. Breathe with the circle.' }, THRESHOLD ]},
       { label: 'The Affect', deep: true, steps: [
-        { id: 'full', type: 'text', field: 'full', min: 30, leaf: 'At full strength', prompt: 'At full strength.', sub: 'The affect in its own words, not softened, not explained. If it is rage, rage. If it is shame, shame. Write until the sentence is as strong as the feeling.', placeholder: 'I am …', quote: 'affect' },
-        { id: 'body', type: 'fields', leaf: 'In the body', prompt: 'Where it is, and what it wants to do.', sub: 'Not what you would do. What it wants to do.', fields: [{ label: 'Where in the body', field: 'where', placeholder: 'throat, chest, hands …', min: 3 }, { label: 'What it wants to do', field: 'wantsdo', placeholder: 'to hit, to run, to lie down, to say …', min: 3 }] },
-        { id: 'sentence', type: 'text', field: 'sentence', min: 10, leaf: 'The sentence', rows: 'short', prompt: 'The sentence it would say.', sub: 'If it were allowed to say anything, to anyone, with no consequence. One sentence, in the second person.', placeholder: 'You …' }
+        { id: 'full', type: 'text', field: 'full', min: 30, leaf: 'At full strength', when: d => !d.deepClosed, prompt: 'At full strength.', sub: 'The affect in its own words, not softened, not explained. If it is rage, rage. If it is shame, shame. Write until the sentence is as strong as the feeling.', placeholder: 'I am …', quote: 'affect' },
+        { id: 'body', type: 'fields', leaf: 'In the body', when: d => !d.deepClosed, prompt: 'Where it is, and what it wants to do.', sub: 'Not what you would do. What it wants to do.', fields: [{ label: 'Where in the body', field: 'where', placeholder: 'throat, chest, hands …', min: 3 }, { label: 'What it wants to do', field: 'wantsdo', placeholder: 'to hit, to run, to lie down, to say …', min: 3 }] },
+        { id: 'sentence', type: 'text', field: 'sentence', min: 10, leaf: 'The sentence', rows: 'short', when: d => !d.deepClosed, prompt: 'The sentence it would say.', sub: 'If it were allowed to say anything, to anyone, with no consequence. One sentence, in the second person.', placeholder: 'You …' }
       ]},
       { label: 'The Ash', steps: [
-        { id: 'burn', type: 'breathe', seconds: 60, prompt: 'Let it burn.', sub: 'Do not add to it and do not put it out. Stay in it for a minute with the breath. Calcinatio is finished when the fire has nothing left to eat.' },
-        { id: 'ash', type: 'text', field: 'ash', min: 15, leaf: 'What is left in the ash', rows: 'short', prompt: 'What is left in the ash?', sub: 'When the fire has burned down: what remains. Often something small, white, and true.', placeholder: 'What is left is …' }
+        { id: 'burn', type: 'breathe', seconds: 60, when: d => !d.deepClosed, prompt: 'Let it burn.', sub: 'Do not add to it and do not put it out. Stay in it for a minute with the breath. Calcinatio is finished when the fire has nothing left to eat.' },
+        { id: 'ash', type: 'text', field: 'ash', min: 15, leaf: 'What is left in the ash', rows: 'short', prompt: 'What is left in the ash?', sub: 'When the fire has burned down: what remains. Often something small, white, and true.', placeholder: 'What is left is …' },
+        GROUND
       ]},
-      { label: 'Return', steps: [ SEPARATIO, OPS, SUMMARY ]}
+      { label: 'Return', steps: [ TRANSFERENCE, SEPARATIO, OPS, SUMMARY ]}
     ]
   },
   dream: {
@@ -507,6 +514,7 @@ const PRACTICES = {
       { label: 'The Dream', steps: [
         { id: 'record', type: 'text', field: 'record', min: 60, leaf: 'The dream', prompt: 'Write it down as it happened.', sub: 'Present tense, first person, nothing left out because it seems silly, nothing explained. Where you cannot remember, say so. Speak it with the keyboard’s microphone if that is faster.', placeholder: 'I am in …', quote: 'theatre' },
         { id: 'kind', type: 'chips', field: 'kind', leaf: 'Its kind', prompt: 'What kind of dream is this?', sub: 'Jung did not read every dream the same way (CW 8 §§488–505). A dream that repeats something that actually happened is not compensating anything; a dream larger than your life he called a big dream and treated apart.', options: [['attitude', 'A comment on my attitude', 'the ordinary kind, compensating what I hold by day'], ['repetition', 'A repetition of something that happened', 'it replays; it does not compensate'], ['body', 'A picture of the body', 'illness, pain, the flesh speaking'], ['big', 'Larger than my life', 'awe, dread, a sense it did not come from me: a big dream']] },
+        { id: 'keepbig', type: 'text', field: 'keepbig', min: 5, leaf: 'Where the big dream is kept', rows: 'short', when: d => d.data.kind === 'big', prompt: 'A big dream is not read once.', sub: 'Jung kept his for life and returned to them at every turn. Where will you keep this one, outside this page, and whom will you tell it to? The series practice will bring it back.', placeholder: 'I will keep it …; I will tell …' },
         { id: 'structure', type: 'fields', leaf: 'Dramatic structure', prompt: 'Its dramatic structure.', sub: 'Jung read a dream like a play (CW 8 §§561–564): exposition, development, culmination or peripeteia, lysis. Fill what is there; a dream may have no solution, and that too is a finding.', fields: [{ label: 'Exposition', field: 'structure.exposition', placeholder: 'place, time, who is there', min: 3 }, { label: 'Development', field: 'structure.development', placeholder: 'the plot thickens: what happens', min: 3 }, { label: 'Peripeteia', field: 'structure.crisis', placeholder: 'the turn, the crisis, the decisive moment', min: 0 }, { label: 'Lysis', field: 'structure.lysis', placeholder: 'how it ends: the solution, or none', min: 0 }] },
         { id: 'elements', type: 'list', field: 'elements', max: 6, leaf: 'Elements', prompt: 'The things and figures in it.', sub: 'Up to six. The place, the people, the animal, the object that stood out. Each will be circled in turn.', placeholder: 'a name, a thing, a place' }
       ]},
@@ -542,7 +550,7 @@ const PRACTICES = {
       { label: 'Behind', steps: [ { id: 'nobody', type: 'text', field: 'nobody', min: 20, leaf: 'When nobody needs me', prompt: 'Who are you when nobody needs you to be anything?', sub: 'Describe an hour when that was true, or say honestly that there has not been one.', placeholder: 'When nobody needs me, I …' } ]},
       { label: 'Return', steps: [
         ACT('One act with the mask off.', 'Small. Once this week, in the role that has grown to the face, say or do the thing the mask forbids. Choose a place where the cost of being seen is one you could actually pay; Jung warned that a mask torn off too fast is either put back on harder or replaced by nothing at all (CW 7 §§254–275). You will be asked about it.'),
-        SEPARATIO, OPS, SUMMARY ]}
+        TRANSFERENCE, SEPARATIO, OPS, SUMMARY ]}
     ]
   },
   shadow: {
@@ -555,13 +563,14 @@ const PRACTICES = {
       ]},
       { label: 'The Turn', steps: [ { id: 'inme', type: 'text', field: 'inme', min: 30, leaf: 'Where it is in me', prompt: 'Where is that in you?', sub: '“Nowhere” is not an answer; the strength of the reaction says otherwise. One instance, however small, however long ago, however well disguised as its opposite.', placeholder: 'I did the same when …', nudgeRe: /\b(nowhere|never|not in me|not me|nirgends|niemals|nie|nicht bei mir)\b/i, nudgeText: 'That is the shadow declining to be seen. One instance.', quote: 'mirror' } ]},
       { label: 'The Face', deep: true, steps: [
-        { id: 'wait', type: 'wait', prompt: 'Let the quality take a face.', sub: 'Not the person’s face. Close your eyes and let the quality itself come as a figure: a person you do not know, an animal, a thing. Wait for it. If it will not stop when you want it to, close this and telephone a person.', button: 'A figure came', quote: 'imaginatio' },
-        { id: 'image', type: 'text', field: 'image', min: 20, leaf: 'The figure', prompt: 'Describe the figure.', sub: 'How it stands, what it wears, where it looks, how close it is. Not what it means.', placeholder: 'It is …', nudge: true },
-        { id: 'figure', type: 'figure', leaf: 'Its name', prompt: 'Its name.', sub: 'The name it has, or the one it gives itself.' }
+        { id: 'noface', type: 'info', when: d => !descentNow(d), prompt: 'The face waits.', sub: d => descentToday(d) || d.deepClosed ? 'The imagination was entered once today already, or this hour has been closed to it. The quality stays as a quality; the figure can come another day.' : 'Giving the shadow a face is active imagination, and it is earned after four hours, one of them the persona. For now the quality stays as a quality, and the turn is the work.' },
+        { id: 'wait', type: 'wait', when: d => descentNow(d), prompt: 'Let the quality take a face.', sub: 'Not the person’s face. Close your eyes and let the quality itself come as a figure: a person you do not know, an animal, a thing. Wait for it. If it will not stop when you want it to, close this and telephone a person.', button: 'A figure came', quote: 'imaginatio' },
+        { id: 'image', type: 'text', field: 'image', min: 20, leaf: 'The figure', when: d => descentNow(d), prompt: 'Describe the figure.', sub: 'How it stands, what it wears, where it looks, how close it is. Not what it means.', placeholder: 'It is …', nudge: true },
+        { id: 'figure', type: 'figure', leaf: 'Its name', when: d => descentNow(d), prompt: 'Its name.', sub: 'The name it has, or the one it gives itself.' }
       ]},
-      { label: 'Dialogue', deep: true, steps: [ { id: 'dialogue', type: 'dialogue', leaf: 'Dialogue', first: 'Ask what it wants from you, or why you refused it.' }, CLOSE ]},
+      { label: 'Dialogue', deep: true, steps: [ { id: 'dialogue', type: 'dialogue', leaf: 'Dialogue', when: d => descentNow(d), first: 'Ask what it wants from you, or why you refused it.' }, { ...CLOSE, when: d => descentNow(d) } ]},
       { label: 'Integration', steps: [
-        { id: 'refused', type: 'text', field: 'refused', min: 15, leaf: 'What it wants that I refused', rows: 'short', prompt: 'What does it want that you refused?', sub: 'Say it as a want, not a fault. The shadow is what was not allowed to live.', placeholder: 'It wants …', quote: 'shadow2' },
+        { id: 'refused', type: 'text', field: 'refused', min: 15, leaf: 'What it wants that I refused', rows: 'short', prompt: d => d.data.figure ? 'What does it want that you refused?' : 'What does the quality want that you refused?', sub: 'Say it as a want, not a fault. The shadow is what was not allowed to live.', placeholder: 'It wants …', quote: 'shadow2' },
         { id: 'kind', type: 'chips', field: 'kind', leaf: 'Lived or carried', prompt: 'Two kinds of shadow.', sub: 'Some of it asks to be lived: the anger you never show, the wanting, the refusal. Some of it can only be known and carried: what would harm someone if you did it. Jung called the shadow a moral problem, not a permission. Which is this?', options: [['lived', 'To be lived', 'it can be taken back into my life without harm to anyone'], ['carried', 'To be carried', 'it must be known and borne, not acted']] },
         { id: 'act', type: 'text', field: 'act', min: 5, leaf: d => d.data.kind === 'carried' ? 'How I will carry it' : 'The act', rows: 'short', prompt: d => d.data.kind === 'carried' ? 'How will you carry it this week?' : 'What of it can you take back this week?', sub: d => d.data.kind === 'carried' ? 'Not acted, and not forgotten. Where will you feel it, and what will you do with the pressure when it comes: a walk, a page, a sentence said to one trusted person? You will be asked about it.' : 'A conscious, small, deliberate act of the quality itself, in your own name, harming no one. Not a confession to the person; an integration. You will be asked about it at the next threshold.', placeholder: d => d.data.kind === 'carried' ? 'When it comes, I will …' : 'This week I will …' }
       ]},
@@ -569,7 +578,7 @@ const PRACTICES = {
     ]
   },
   soul: {
-    name: 'The Soul-Image', latin: 'anima · animus', one: 'Who carries the projection now, where it possesses you as mood or opinion, the figure taken back, dialogue, the figure as guide, its stage and its other face. Jung called it the master-piece, and said it becomes real only in a relation to another person (CW 9i §61).',
+    name: 'The Soul-Image', latin: 'anima · animus', one: 'Who carries the projection now, where it possesses you as mood or opinion, the figure taken back, dialogue, the figure as guide, its stage and its other face. Jung called it the master-piece after the shadow’s apprentice-piece (CW 9i §61), and said it becomes real only in a relation to a partner (CW 9ii §42).',
     movements: [
       { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 15 }, THRESHOLD ]},
       { label: 'The Projection', steps: [
@@ -581,16 +590,17 @@ const PRACTICES = {
         { id: 'mood', type: 'text', field: 'mood', min: 20, leaf: 'The mood that rewrites', prompt: 'Where does a mood take you over and rewrite the past?', sub: 'So that the person you loved this morning has always been a disappointment, or the work that was fine is suddenly worthless. Describe the last time, from the outside.', placeholder: 'The last time was …' }
       ]},
       { label: 'The Figure', deep: true, steps: [
-        { id: 'wait', type: 'wait', prompt: 'Take it back.', sub: 'Close your eyes. Let what you saw in them come as a figure of its own: not the person. Someone you do not know, from a dream, a story, a country you have not been to. Wait for it.', button: 'A figure came', quote: 'imaginatio' },
-        { id: 'image', type: 'text', field: 'image', min: 20, leaf: 'The figure', prompt: 'Describe the figure.', sub: 'Age, dress, bearing, where it stands, whether it looks at you. Not what it means.', placeholder: 'She is … / He is …', nudge: true },
-        { id: 'figure', type: 'figure', leaf: 'Its name', prompt: 'Its name.', sub: 'The name it has, or gives itself.' },
-        { id: 'sex', type: 'chips', field: 'sex', leaf: 'Its kind', prompt: 'Is the figure feminine or masculine?', sub: 'Jung’s four stages are given separately for the anima and for the animus; the app will offer the right set.', options: [['anima', 'Feminine', 'an anima figure'], ['animus', 'Masculine', 'an animus figure'], ['other', 'Neither, or both', '']] }
+        { id: 'nofigure', type: 'info', when: d => !descentNow(d), prompt: 'The figure waits.', sub: d => descentToday(d) || d.deepClosed ? 'The imagination was entered once today already, or this hour has been closed to it. What you saw in the carrier stays as seen; the figure can come another day.' : 'Taking the projection back as a figure is active imagination, and it is earned after four hours, one of them the persona. For now the possession is the work: where it speaks in you and where it rewrites.' },
+        { id: 'wait', type: 'wait', when: d => descentNow(d), prompt: 'Take it back.', sub: 'Close your eyes. Let what you saw in them come as a figure of its own: not the person. Someone you do not know, from a dream, a story, a country you have not been to. Wait for it.', button: 'A figure came', quote: 'imaginatio' },
+        { id: 'image', type: 'text', field: 'image', min: 20, leaf: 'The figure', when: d => descentNow(d), prompt: 'Describe the figure.', sub: 'Age, dress, bearing, where it stands, whether it looks at you. Not what it means.', placeholder: 'She is … / He is …', nudge: true },
+        { id: 'figure', type: 'figure', leaf: 'Its name', when: d => descentNow(d), prompt: 'Its name.', sub: 'The name it has, or gives itself.' },
+        { id: 'sex', type: 'chips', field: 'sex', leaf: 'Its kind', when: d => descentNow(d), prompt: 'Is the figure feminine or masculine?', sub: 'Jung’s four stages are given separately for the anima and for the animus; the app will offer the right set, or both.', options: [['anima', 'Feminine', 'an anima figure'], ['animus', 'Masculine', 'an animus figure'], ['other', 'Neither, or both', 'both sets will be offered']] }
       ]},
-      { label: 'Dialogue', deep: true, steps: [ { id: 'dialogue', type: 'dialogue', leaf: 'Dialogue', first: 'Ask: what do you want me to see?' }, CLOSE ]},
-      { label: 'Led', deep: true, steps: [ { id: 'lead', type: 'text', field: 'lead', min: 30, leaf: 'Where it led', prompt: 'Ask it to lead you.', sub: 'The soul-image is a guide to the images behind it. In the imagination, ask it to take you somewhere and follow. Describe where you arrive and what is there. Then come back the way you went.', placeholder: 'It takes me to …' } ]},
+      { label: 'Dialogue', deep: true, steps: [ { id: 'dialogue', type: 'dialogue', leaf: 'Dialogue', when: d => descentNow(d), first: 'Ask: what do you want me to see?' } ]},
+      { label: 'Led', deep: true, steps: [ { id: 'lead', type: 'text', field: 'lead', min: 30, leaf: 'Where it led', when: d => descentNow(d), prompt: 'Ask it to lead you.', sub: 'The soul-image is a guide to the images behind it. In the imagination, ask it to take you somewhere and follow. Describe where you arrive and what is there. Then come back the way you went.', placeholder: 'It takes me to …' }, { ...CLOSE, when: d => descentNow(d) } ]},
       { label: 'Reflection', steps: [
-        { id: 'stage', type: 'chips', field: 'stage', leaf: 'Its stage', prompt: 'Which does it most resemble now?', sub: d => d.data.sex === 'animus' ? 'Four stages of the animus, after Emma Jung, Animus and Anima (1931), as von Franz later put them. Not a grade: a reading of where the figure stands today.' : 'Four stages of the anima, Jung, CW 16 §361. Not a grade: a reading of where the figure stands today.', options: d => d.data.sex === 'animus' ? [['power', 'The man of physical power', 'the athlete, the body, force'], ['deed', 'The man of action', 'initiative, planning, the deed'], ['word', 'The bearer of the word', 'the professor, the preacher, meaning received'], ['meaning', 'The guide to meaning', 'wisdom, mediation, meaning found']] : [['eve', 'Eve', 'body, instinct, the biological'], ['helen', 'Helen', 'beauty, romance, the aesthetic'], ['mary', 'Mary', 'devotion, spirit, meaning received'], ['sophia', 'Sophia', 'wisdom, mediation, meaning found']] },
-        { id: 'negative', type: 'text', field: 'negative', min: 15, leaf: 'Its other face', rows: 'short', prompt: 'The figure has another face.', sub: 'What does it look like when it is against you: the seductress who leads into the swamp, the judge whose sentences cannot be argued with? Describe that face, from the outside.', placeholder: 'Against me, it …' }
+        { id: 'stage', type: 'chips', field: 'stage', leaf: 'Its stage', when: d => !!(d.data.figure || '').trim(), prompt: 'Which does it most resemble now?', sub: d => d.data.sex === 'animus' ? 'Four stages of the animus, after Emma Jung, Animus and Anima (1931), as von Franz later put them. Not a grade: a reading of where the figure stands today.' : d.data.sex === 'anima' ? 'Four stages of the anima, Jung, CW 16 §361. Not a grade: a reading of where the figure stands today.' : 'The anima stages (Jung, CW 16 §361) and the animus stages (Emma Jung, 1931). Not a grade: a reading of where the figure stands today.', options: d => { const A = [['eve', 'Eve', 'body, instinct, the biological'], ['helen', 'Helen', 'beauty, romance, the aesthetic'], ['mary', 'Mary', 'devotion, spirit, meaning received'], ['sophia', 'Sophia', 'wisdom, mediation, meaning found']], M = [['power', 'The man of physical power', 'the athlete, the body, force'], ['deed', 'The man of action', 'initiative, planning, the deed'], ['word', 'The bearer of the word', 'the professor, the preacher, meaning received'], ['meaning', 'The guide to meaning', 'wisdom, mediation, meaning found']]; return d.data.sex === 'animus' ? M : d.data.sex === 'anima' ? A : [...A, ...M]; } },
+        { id: 'negative', type: 'text', field: 'negative', min: 15, leaf: 'Its other face', rows: 'short', when: d => !!(d.data.figure || '').trim(), prompt: 'The figure has another face.', sub: 'What does it look like when it is against you: the seductress who leads into the swamp, the judge whose sentences cannot be argued with? Describe that face, from the outside.', placeholder: 'Against me, it …' }
       ]},
       { label: 'Return', steps: [
         INFLATION,
@@ -601,15 +611,15 @@ const PRACTICES = {
   mandala: {
     name: 'The Mandala', latin: 'mandala', one: 'Draw one with the finger, no plan, then read it: the centre, the four, the disturbance, and whether what is at the centre is you. Jung drew them daily in the years of his own descent.',
     movements: [
-      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 15, prompt: 'Arrive.', sub: 'A mandala is drawn when things are in pieces, to see whether they still have a centre. Breathe with the circle.' } ]},
+      { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 15, prompt: 'Arrive.', sub: 'A mandala is drawn when things are in pieces, to see whether they still have a centre. Breathe with the circle.' }, THRESHOLD ]},
       { label: 'Drawing', steps: [ { id: 'draw', type: 'draw', field: 'drawing', leaf: 'The mandala', prompt: 'Draw.', sub: 'Start from the centre or from the rim, without a plan. Let the hand decide. Symmetry is not required; what is required is that you stop when it is finished, not when it is good.', quote: 'mandala' } ]},
       { label: 'Reading', steps: [
-        { id: 'centre', type: 'text', field: 'centre', min: 10, leaf: 'The centre', rows: 'short', prompt: 'What is at the centre?', sub: 'Or is the centre empty, or missing? Say what is there.', placeholder: 'At the centre …' },
+        { id: 'centre', type: 'text', field: 'centre', min: 10, leaf: 'The centre', rows: 'short', prompt: 'What is at the centre?', sub: 'Or is the centre empty, or missing? Say what is there.', placeholder: 'At the centre …', quote: 'individuation' },
         { id: 'four', type: 'text', field: 'four', min: 10, leaf: 'The four', rows: 'short', prompt: 'Where are the four?', sub: 'Jung found a fourfold structure in most mandalas: a cross, four gates, four colours, the circle squared. Where is the four in yours, and what is it made of? If there are three, note that; the missing fourth was always his question.', placeholder: 'The four are …' },
         { id: 'disturbance', type: 'text', field: 'disturbance', min: 10, leaf: 'The disturbance', rows: 'short', prompt: 'Where is the disturbance?', sub: 'The part that does not fit, the line that went wrong, the colour you avoided. Jung read the disturbed mandala as the diagnostic one (CW 9i §§627ff). That is where the work is.', placeholder: 'The disturbance is …' },
-        { id: 'egoself', type: 'fields', leaf: 'The I and the centre', prompt: 'Is what is at the centre you?', sub: 'Jung read the mandala as a picture of a centre that includes the “I” and is not identical with it. Look at your circle again.', fields: [{ label: 'Where in it is the I that drew it', field: 'egowhere', placeholder: '…', min: 3 }, { label: 'Where is the centre', field: 'centrewhere', placeholder: '…', min: 3 }], quote: 'defeat' }
+        { id: 'egoself', type: 'fields', leaf: 'The I and the centre', prompt: 'Is what is at the centre you?', sub: 'Jung called the centre the Self: the whole that includes the I and is not it, the thing the mandala is a picture of. Individuation is becoming what one is, not becoming special; where the I sits down in the centre, the work has turned into inflation. Look at your circle again.', fields: [{ label: 'Where in it is the I that drew it', field: 'egowhere', placeholder: '…', min: 3 }, { label: 'Where is the centre', field: 'centrewhere', placeholder: '…', min: 3 }], quote: 'defeat' }
       ]},
-      { label: 'Return', steps: [ OPS, SUMMARY ]}
+      { label: 'Return', steps: [ INFLATION, TRANSFERENCE, SEPARATIO, OPS, SUMMARY ]}
     ]
   },
   religio: {
@@ -624,7 +634,7 @@ const PRACTICES = {
         { id: 'numinous', type: 'text', field: 'numinous', min: 30, leaf: 'Where dread or awe appeared', prompt: 'Where has dread or awe appeared?', sub: 'Not pleasant feeling. The moments that were larger than you and did not ask your consent: in a dream, at a death, in a landscape, in the middle of an ordinary day. Describe one from the outside.', placeholder: 'Once, …' },
         { id: 'refuse', type: 'text', field: 'refuse', min: 15, leaf: 'What I would not give up', rows: 'short', prompt: 'What would you not give up?', sub: 'If everything else were taken. The answer to this is closer to your religion than any creed.', placeholder: 'I would not give up …' }
       ]},
-      { label: 'Return', steps: [ SEPARATIO, OPS, SUMMARY ]}
+      { label: 'Return', steps: [ { id: 'act', type: 'text', field: 'act', min: 0, optional: true, leaf: 'The act', rows: 'short', prompt: 'Something owed to what you are related to?', sub: 'A visit, a candle, a letter to the dead, a day kept. If there is one, name it; you will be asked. Or go on without.', placeholder: 'This week I will …' }, TRANSFERENCE, SEPARATIO, OPS, SUMMARY ]}
     ]
   },
   series: {
@@ -637,13 +647,14 @@ const PRACTICES = {
         { id: 'doing', type: 'text', field: 'doing', min: 20, leaf: 'What the series is doing', prompt: 'What is the series doing that no single dream showed?', sub: 'A direction, a repair, a warning repeated because it was not heard, a figure growing older or younger.', placeholder: 'The series is …' },
         { id: 'reading', type: 'analystStep', show: 'doing', kind: 'series', label: 'Ask the analyst to read the series', prompt: 'The series, read twice.', sub: 'Your reading stands. The analyst has the full texts and may say what it sees running through them.' }
       ]},
-      { label: 'Return', steps: [ INFLATION, SEPARATIO, OPS, SUMMARY ]}
+      { label: 'Return', steps: [ INFLATION, TRANSFERENCE, SEPARATIO, OPS, SUMMARY ]}
     ]
   },
   unio: {
     name: 'Unio mentalis', latin: 'coniunctio · I', one: 'The first conjunction, after Dorn as Jung reads him in Mysterium Coniunctionis: the whole file laid out and read as someone else’s, the affects separated from the self, and the caelum drawn from it as image, sentence, and blood.',
     movements: [
       { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 20, prompt: 'The first conjunction.', sub: 'Dorn called it unio mentalis: mind and soul drawn out of the body’s affects and united in self-knowledge. Jung read it as a first stage only, a detachment that becomes philosophy if it is not carried further (CW 14 §§671–683). What is distilled from it, the caelum, is not the union; it is the substance the second conjunction works with. Breathe with the circle.' }, THRESHOLD ]},
+      { label: 'The World', steps: [ { id: 'circ', type: 'circ', when: d => !circumstancesText(), prompt: 'The world the file is read in.', sub: 'The file the first conjunction reads must have a world in it, or it describes a person who exists only inside this page. Asked once; editable in the Liber.' } ]},
       { label: 'The File', steps: [ { id: 'insight', type: 'material', field: 'insight', min: 40, leaf: 'What the file knows', prompt: 'Read it as someone else’s file.', sub: 'What the opus has recorded is below, including your confession and your circumstances. Read it coldly. What does the file know about this person that the person keeps not knowing?', placeholder: 'This person does not know that …' } ]},
       { label: 'Separatio', steps: [ { id: 'separation', type: 'text', field: 'separation', min: 40, leaf: 'Separatio', prompt: 'Which of your moods are not you?', sub: 'The alchemists separated before they united. Name the moods and reactions in the file that belong to a complex and not to you: the ones that have you. Give each its sign, the word or figure that announces it. The list you have been keeping at the thresholds is part of the material.', placeholder: 'The heaviness that comes when … is not me; it is …' } ]},
       { label: 'Caelum', deep: true, steps: [
@@ -652,9 +663,10 @@ const PRACTICES = {
         { id: 'caelum', type: 'text', field: 'caelum', min: 40, leaf: 'Caelum', prompt: 'Now the sentence.', sub: 'Three sentences at most, in your own words, that you would still recognise as true on a bad day. Not a creed: a description of the image and what it holds.', placeholder: 'I know that …' },
         { id: 'blood', type: 'text', field: 'blood', min: 15, leaf: 'The blood', rows: 'short', prompt: 'The blood.', sub: 'Dorn’s recipe required the operator’s own blood. One thing from your actual life, a person, a loss, a fact about your body, without which this would be a philosophy.', placeholder: 'Without …, this would be a philosophy.' },
         { id: 'distill', type: 'analystStep', show: 'caelum', kind: 'distill', label: 'Ask the analyst what the file left out', prompt: 'The caelum against the file.', sub: 'The analyst compares your sentence with everything the file holds and names, as questions, what it leaves out or softens.' },
-        { id: 'corrected', type: 'text', field: 'corrected', min: 15, leaf: 'Corrected, or standing', rows: 'short', prompt: 'Revise it, or let it stand.', sub: 'If the questions found something, write the caelum again with it in. If they did not, write that it stands, and why.', placeholder: 'It stands, because … / Corrected: …' }
+        { id: 'corrected', type: 'text', field: 'corrected', min: 15, leaf: 'Corrected, or standing', rows: 'short', prompt: 'Revise it, or let it stand.', sub: 'If the questions found something, write the caelum again with it in. If they did not, write that it stands, and why.', placeholder: 'It stands, because … / Corrected: …' },
+        GROUND
       ]},
-      { label: 'Return', steps: [ INFLATION, SEPARATIO, OPS, SUMMARY ]}
+      { label: 'Return', steps: [ INFLATION, TRANSFERENCE, SEPARATIO, OPS, SUMMARY ]}
     ]
   },
   corpus: {
@@ -663,14 +675,14 @@ const PRACTICES = {
       { label: 'Threshold', steps: [ { id: 'breathe', type: 'breathe', seconds: 20, prompt: 'The second conjunction.', sub: 'Insight that stays in the head is, for Dorn, half the work. The unio mentalis must be reunited with the body: lived, in the flesh, in ordinary days, among other people. Edinger warned that a second blackness comes here, when the caelum meets the resisting flesh.' }, THRESHOLD ]},
       { label: 'The Caelum', steps: [
         { id: 'disagree', type: 'caelum', field: 'disagree', leaf: 'Where the body disagrees', prompt: 'Where does the body disagree?', sub: 'Read your caelum. Then listen for the place in the body that tightens, sinks, or goes numb when you read it. That is where it is not yet true.', placeholder: 'When I read it, my … ' },
-        { id: 'withwhom', type: 'text', field: 'withwhom', min: 10, leaf: 'With whom it is hardest', rows: 'short', prompt: 'In whose presence is it hardest?', sub: 'Jung held that the shadow and the soul-image become real only in a relation to another person (CW 9i §61). The second conjunction is done with other people or not at all. Name the one in whose presence the caelum is least true.', placeholder: 'With …, because …' }
+        { id: 'withwhom', type: 'text', field: 'withwhom', min: 10, leaf: 'With whom it is hardest', rows: 'short', prompt: 'In whose presence is it hardest?', sub: 'Jung held that the shadow and the soul-image become real only in a relation to a partner (CW 9ii §42). The second conjunction is done with other people or not at all. Name the one in whose presence the caelum is least true.', placeholder: 'With …, because …' }
       ]},
       { label: 'Practice', steps: [
-        { id: 'act', type: 'text', field: 'act', min: 15, leaf: 'The bodily practice', rows: 'short', when: d => !corpusOpen(d), prompt: 'One bodily practice.', sub: 'Daily, small, of the body: a walk to a place, a posture held, a gesture, a meal, a way of breathing before a certain person. Something the caelum would do if it had hands. You will be asked about it, and this conjunction stays open until it has been lived.', placeholder: 'Every day this week I will …' },
+        { id: 'act', type: 'text', field: 'act', min: 15, leaf: 'The bodily practice', rows: 'short', prompt: d => corpusOpen(d) ? 'Keep it, or choose another.' : 'One bodily practice.', sub: 'Daily, small, of the body: a walk to a place, a posture held, a gesture, a meal, a way of breathing before a certain person. Something the caelum would do if it had hands. You will be asked about it, and this conjunction stays open until it has been lived.', placeholder: 'Every day this week I will …' },
         { id: 'revolt', type: 'text', field: 'revolt', min: 20, leaf: 'The body’s revolt', when: d => !!corpusOpen(d), prompt: 'Where did the body refuse?', sub: 'The second nigredo. What did you not do, and what did you do instead? Where did the flesh say no to the caelum, and what did the no feel like?', placeholder: 'It refused when …; instead I …' }
       ]},
-      { label: 'Flesh', steps: [ { id: 'moment', type: 'text', field: 'moment', min: 0, optional: true, leaf: 'True in the flesh', prompt: 'The moment it was true in the flesh.', sub: 'If there has been one, describe it: where you were, who was there, what the body did. If not yet, leave this empty; the conjunction stays open and the home screen will bring you back here.', placeholder: 'It was true when …' } ]},
-      { label: 'Return', steps: [ INFLATION, SEPARATIO, OPS, SUMMARY ]}
+      { label: 'Flesh', steps: [ { id: 'moment', type: 'text', field: 'moment', min: 0, optional: true, leaf: 'True in the flesh', when: d => { const o = corpusOpen(d); return !!o && daysSince(o.startedAt) >= 7 && S.sessions.some(h => h.data?.promise?.of === o.id); }, prompt: 'The moment it was true in the flesh.', sub: 'If there has been one, describe it: where you were, who was there, what the body did. If not yet, leave this empty; the conjunction stays open and the home screen will bring you back here.', placeholder: 'It was true when …' } ]},
+      { label: 'Return', steps: [ INFLATION, TRANSFERENCE, SEPARATIO, OPS, SUMMARY ]}
     ]
   },
   mundus: {
@@ -681,19 +693,21 @@ const PRACTICES = {
       { label: 'The Whole', deep: true, steps: [
         { id: 'wait', type: 'wait', prompt: 'Let an image come for the whole of it.', sub: 'Not for one hour, not for one complex. For the whole opus, from the first stopwatch to now. Close your eyes and wait. It may be small.', button: 'An image came', quote: 'imaginatio' },
         { id: 'whole', type: 'text', field: 'whole', min: 40, leaf: 'The symbol of the whole', prompt: 'Describe it.', sub: 'The alchemists said the lapis was known to everyone and yet unknown, worthless and beyond price, found on the dungheap. Describe yours from the outside, as you have learned to.', placeholder: 'There is …', nudge: true },
-        { id: 'form', type: 'draw', field: 'drawing', optional: true, leaf: 'Given form', prompt: 'Give it form.', sub: 'Draw it, or go on without.' }
+        { id: 'form', type: 'draw', field: 'drawing', optional: true, leaf: 'Given form', prompt: 'Give it form.', sub: 'Draw it, or go on without.' },
+        GROUND
       ]},
       { label: 'Beyond', steps: [
         { id: 'beyond', type: 'text', field: 'beyond', min: 30, leaf: 'Beyond psychology', prompt: 'What would be lost if this were only psychology?', sub: 'Jung insisted the psyche has a religious function whether or not one has a religion (CW 12 §14). If the opus were only a technique for feeling better, what in it would be lost? Answer for yourself, not for him.', placeholder: 'If it were only psychology, …' },
         { id: 'owed', type: 'text', field: 'owed', min: 15, leaf: 'Who is owed', rows: 'short', prompt: 'Who is owed something by what you now know?', sub: 'The opus ends in an obligation, not a badge. A person, the dead, the young, a place, the work. Name them, and what is owed.', placeholder: '… is owed …', quote: 'gather' }
       ]},
-      { label: 'Return', steps: [ INFLATION, { id: 'summary', type: 'summary', last: true } ]}
+      { label: 'Return', steps: [ INFLATION, OPS, { id: 'summary', type: 'summary', last: true } ]}
     ]
   }
 };
-const ORDER = ['confess', 'hour', 'ignis', 'dream', 'persona', 'shadow', 'soul', 'mandala', 'religio', 'series', 'unio', 'corpus'];
+const ORDER = ['confess', 'persona', 'dream', 'shadow', 'hour', 'ignis', 'soul', 'mandala', 'religio', 'series', 'unio', 'corpus'];
 const stepsOf = p => PRACTICES[p].movements.flatMap((m, mi) => m.steps.map((s, si) => ({ ...s, mi, si })));
 const curStep = d => PRACTICES[d.practice].movements[d.mi].steps[d.si];
+const holdNow = d => d.data.again === 'yes' ? earnedDescent() && !d.deepClosed : descentNow(d);
 const applies = (st, d) => (st.when ? !!st.when(d) : true) && (st.type === 'since' ? sinceApplies(d) : st.type === 'each' ? (D(d, st.from, []).length > 0) : true);
 
 /* ================= derived: the opus ================= */
@@ -717,17 +731,26 @@ function openTension(d) {
   return { of: last.id, F: last.data.wants.F, I: last.data.wants.I, figure: figureName(last), at: last.startedAt };
 }
 const separatedList = () => S.sessions.flatMap(h => (h.data?.separated || '').trim() ? [{ text: h.data.separated.trim(), at: h.startedAt }] : []).concat(S.sessions.flatMap(h => (h.data?.separation || '').trim() ? [{ text: h.data.separation.trim(), at: h.startedAt }] : []));
-const sinceApplies = d => !!(openPromise(d) || openThird(d) || openTension(d));
+const sinceApplies = d => !!(openPromise(d) || openThird(d) || openTension(d) || gapDays(d) > 21 || vesselDue(d));
 const lastDream = d => { const hs = S.sessions.filter(h => h.practice === 'dream' && h.data?.message && (!d || h.id !== d.id)); return hs[hs.length - 1] || null; };
-const descentToday = d => S.sessions.some(h => h.id !== d.id && dayKey(h.finishedAt || h.startedAt) === dayKey(Date.now()) && (h.data?.dialogue || []).length > 0);
+const descentToday = d => S.sessions.some(h => (!d || h.id !== d.id) && dayKey(h.finishedAt || h.startedAt) === dayKey(Date.now()) && ((h.data?.dialogue || []).length > 0 || h.practice === 'ignis'));
 const earnedDescent = () => { const f = facts(); return f.total >= 4 && (f.byP.persona || 0) >= 1; };
-const descentNow = d => earnedDescent() && !descentToday(d);
+const descentNow = d => earnedDescent() && !descentToday(d) && !d.deepClosed;
 const corpusOpen = d => { const hs = S.sessions.filter(h => h.practice === 'corpus' && (!d || h.id !== d.id)); const last = hs[hs.length - 1]; return last && !(last.data?.moment || '').trim() ? last : null; };
+function corpusStretch() { const hs = S.sessions.filter(h => h.practice === 'corpus'); let i = hs.length; while (i > 0 && !(hs[i - 1].data?.moment || '').trim()) i--; return hs.slice(i); }
+const corpusReentries = () => Math.max(0, corpusStretch().length - 1);
+const lastMundusAt = () => { const hs = S.sessions.filter(h => h.practice === 'mundus'); return hs.length ? (hs[hs.length - 1].finishedAt || hs[hs.length - 1].startedAt) : 0; };
+const newSyncSince = ts => S.sync.items.filter(x => (+x.at || 0) > ts).length;
+const gapDays = d => { const hs = S.sessions.filter(h => !d || h.id !== d.id); const last = hs[hs.length - 1]; return last ? daysSince(last.finishedAt || last.startedAt) : 0; };
+const vesselDue = d => S.sessions.filter(h => !d || h.id !== d.id).length % 10 === 9;
+const transferenceDue = d => { const hs = S.sessions.filter(h => !d || h.id !== d.id).slice(-5); return hs.length >= 5 && !hs.some(h => (h.data?.transference || '').trim()); };
 function corpusClosedAt() { const hs = S.sessions.filter(h => h.practice === 'corpus' && (h.data?.moment || '').trim()); const last = hs[hs.length - 1]; return last ? (last.finishedAt || last.startedAt) : 0; }
 function mundusReady() {
   const at = corpusClosedAt(); if (!at || daysSince(at) < 21) return false;
+  if (!S.sessions.some(h => h.practice === 'corpus' && (h.data?.revolt || '').trim())) return false;
   const items = S.sync.items; if (items.length < 3) return false;
-  const ts = items.map(x => +x.at || 0); return (Math.max(...ts) - Math.min(...ts)) >= 180 * 86400000;
+  const ts = items.map(x => +x.at || 0); if ((Math.max(...ts) - Math.min(...ts)) < 180 * 86400000) return false;
+  const lm = lastMundusAt(); return !lm || newSyncSince(lm) >= 2;
 }
 function lockOf(p) {
   const f = facts(), c = f.byP, t = f.total, first = S.sessions[0]?.startedAt, lastOf = k => { const hs = S.sessions.filter(h => h.practice === k); return hs.length ? (hs[hs.length - 1].finishedAt || hs[hs.length - 1].startedAt) : 0; };
@@ -736,7 +759,9 @@ function lockOf(p) {
     case 'soul': return need(t >= 3 && (c.shadow || 0) >= 1, `After three hours, one of them the shadow (${t} hour${t === 1 ? '' : 's'}, ${c.shadow || 0} shadow).`);
     case 'series': return need((c.dream || 0) >= 5, `After five dreams (${c.dream || 0} so far).`);
     case 'religio': return need(t >= 8, `After eight hours (${t} so far).`);
-    case 'unio': { const ok = t >= 20 && (c.dream || 0) >= 4 && (c.shadow || 0) >= 2 && (c.soul || 0) >= 1 && daysSince(first) >= 60; return need(ok, `The file is not yet full enough to distil: ${t} of 20 hours, ${c.dream || 0} of 4 dreams, ${c.shadow || 0} of 2 shadow hours, ${c.soul || 0} of 1 soul-image hour, ${Math.floor(daysSince(first))} of 60 days.`); }
+    case 'shadow': return need(t >= 2 && (c.persona || 0) >= 1, `After two hours, one of them the persona (${t} hour${t === 1 ? '' : 's'}, ${c.persona || 0} persona).`);
+    case 'ignis': return need(earnedDescent(), `After four hours, one of them the persona: the fire is entered, like the descent (${t} hour${t === 1 ? '' : 's'}, ${c.persona || 0} persona).`) || need(!descentToday(null), 'One entry into the imagination a day; today’s has been walked.');
+    case 'unio': { const black = f.colours.includes('nigredo'), checked = f.thirds.some(x => x.check !== 'unchecked'), kept = f.promises.some(p => p.status === 'kept' || p.status === 'partly'); const ok = t >= 20 && (c.dream || 0) >= 4 && (c.shadow || 0) >= 2 && (c.soul || 0) >= 1 && daysSince(first) >= 60 && black && checked && kept; return need(ok, `Not yet: ${t} of 20 hours, ${c.dream || 0} of 4 dreams, ${c.shadow || 0} of 2 shadow hours, ${c.soul || 0} of 1 soul-image hour, ${Math.floor(daysSince(first))} of 60 days${black ? '' : ', no black hour yet'}${checked ? '' : ', no third yet asked about again'}${kept ? '' : ', no promise yet kept even in part'}.`); }
     case 'corpus': { const u = lastOf('unio'); if (corpusOpen(null)) return ''; return need(u && daysSince(u) >= 7, u ? `Seven days after the first conjunction (${Math.floor(daysSince(u))} so far).` : 'After the first conjunction.'); }
     case 'mundus': return need(mundusReady(), 'It is not begun; it arrives.');
     default: return '';
@@ -770,7 +795,7 @@ function portraitText() {
   return parts.join('; ');
 }
 function circumstancesText() {
-  const c = S.portrait.circ || {}; const parts = [['age', 'age'], ['days', 'days'], ['household', 'lives with'], ['body', 'body'], ['losses3', 'lost in the last three years']].filter(([k]) => (c[k] || '').trim()).map(([k, l]) => `${l}: ${c[k].trim()}`);
+  const c = S.portrait.circ || {}; const parts = [['age', 'age'], ['days', 'days'], ['household', 'lives with'], ['body', 'body'], ['losses3', 'lost in the last three years'], ['knows', 'knows about this work']].filter(([k]) => (c[k] || '').trim()).map(([k, l]) => `${l}: ${c[k].trim()}`);
   return parts.join('; ');
 }
 const cut = (s, n) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
@@ -778,6 +803,7 @@ function dossierText(f) {
   const L = [];
   const ct = circumstancesText(); if (ct) L.push(`Circumstances: ${ct}.`);
   const pt = portraitText(); if (pt) L.push(`Portrait: ${pt}.`);
+  if (f.vita?.hearer) L.push(`A hearer for the confession: ${cut(f.vita.hearer, 200)}`);
   if (f.vita) L.push(`Confession: life: ${cut(f.vita.life, 600)} · mother: ${cut(f.vita.mother, 200)} · father: ${cut(f.vita.father, 200)} · what each wanted: ${cut(f.vita.wanted, 200)} · never said: ${cut(f.vita.unsaid, 200)} · losses: ${cut(f.vita.losses, 300)} · the secret (as much as was said): ${cut(f.vita.secret, 300)} · what brings them here: ${cut(f.vita.now, 300)}`);
   L.push(`Hours: ${f.total} (${Object.entries(f.byP).map(([k, v]) => `${PRACTICES[k].name} ×${v}`).join(', ') || 'none'}); first hour ${S.sessions[0] ? fmtDate(S.sessions[0].startedAt) : '—'}.`);
   if (f.colours.length) L.push(`Colours of the hours, in order: ${f.colours.join(', ')}. Operations chosen: ${Object.entries(f.opsCount).map(([k, v]) => `${k} ×${v}`).join(', ') || 'none'}.`);
@@ -792,6 +818,9 @@ function dossierText(f) {
   if (f.caelum) L.push(`Caelum (first conjunction): “${cut(f.caelum.corrected || f.caelum.caelum, 400)}”; its blood: ${cut(f.caelum.blood, 160)}`);
   if (f.whole) L.push(`Symbol of the whole: “${cut(f.whole, 300)}”`);
   if (S.sync.items.length) L.push(`Synchronicities logged: ${S.sync.items.length}.`);
+  const gaps = S.sessions.filter(h => h.data?.gap?.note).slice(-3); if (gaps.length) L.push(`Gaps in the work: ` + gaps.map(h => `${h.data.gap.days} days before ${fmtDate(h.startedAt)}: “${cut(h.data.gap.note, 140)}”`).join(' · '));
+  const vessel = S.sessions.filter(h => h.data?.vessel).slice(-2); if (vessel.length) L.push(`The vessel (who was told): ` + vessel.map(h => `“${cut(h.data.vessel, 160)}”`).join(' · '));
+  const tripped = S.sessions.filter(h => h.tripped).length; if (tripped) L.push(`The crisis tripwire has fired in ${tripped} earlier hour${tripped === 1 ? '' : 's'}.`);
   return L.join('\n');
 }
 function tailFor(kind, d) {
@@ -975,11 +1004,12 @@ function ready(st, d) {
     case 'sync': case 'expressive': case 'info': case 'analystStep': return true;
     case 'each': { const items = D(d, st.from, []), i = d.ei || 0; return String((v || {})[items[i]] || '').trim().length >= (st.min ?? 10); }
     case 'chips': case 'chipsFrom': return !!v;
-    case 'ops': return (d.data.ops || []).length >= 1;
+    case 'ops': return (d.data.ops || []).length >= 1 && !!colourFrom(d.data.ops, d.data.colourPick);
     case 'figure': return !!(d.data.figure || '').trim();
     case 'dialogue': return (d.data.dialogue || []).filter(l => l.who !== 'A').length >= 2;
     case 'draw': return st.optional || ((v?.strokes || []).length >= 1);
-    case 'since': return (!openPromise(d) || !!d.data.promise?.status) && (!openThird(d) || !!d.data.thirdCheck?.status) && (!openTension(d) || !!d.data.tensionCheck?.status);
+    case 'since': { const th = openThird(d), tc = d.data.thirdCheck || {}; const thOk = !th || (tc.status && (tc.status !== 'alive' || tc.died)); return (!openPromise(d) || !!d.data.promise?.status) && thOk && (!openTension(d) || !!d.data.tensionCheck?.status) && (gapDays(d) <= 21 || String(d.data.gap?.note || '').trim().length >= 3) && (!vesselDue(d) || String(d.data.vessel || '').trim().length >= 3); }
+    case 'circ': return !!circumstancesText();
     case 'affect': return !!affectWord(d);
     case 'symbol': return String(d.data.third || '').trim().length >= 10;
     case 'seed': return !!d.data.seed;
@@ -992,17 +1022,21 @@ const NUDGE_RE = /\b(means?|meaning|represents?|symboli[sz]es?|stands for|becaus
 const head = (st, d) => `<h2 class="prompt">${fill(txt(st.prompt, d), d)}</h2><p class="sub">${fill(txt(st.sub, d), d)}</p>`;
 const noteField = (st, d) => st.note ? `<textarea class="field short" data-field="${st.note}" placeholder="say why, or what happened">${esc(D(d, st.note))}</textarea>` : '';
 function lastTwoNigredo() { const H = S.sessions.slice(-2); return H.length === 2 && H.every(h => h.data?.colour === 'nigredo'); }
-function colourFrom(ops) { const o = ops || []; if (o.some(x => OP_COLOUR[x] === 'nigredo')) return 'nigredo'; if (o.includes('coniunctio')) return 'citrinitas'; if (o.some(x => OP_COLOUR[x] === 'albedo')) return 'albedo'; if (o.some(x => OP_COLOUR[x] === 'citrinitas')) return 'citrinitas'; return 'nigredo'; }
+function admitted(ops) { const o = ops || []; if (o.includes('mortificatio')) return ['nigredo']; if (o.includes('coniunctio')) return ['citrinitas']; const set = []; o.forEach(x => (OP_COLOURS[x] || []).forEach(c => { if (!set.includes(c)) set.push(c); })); return set.length ? set : ['nigredo']; }
+function colourFrom(ops, pick) { const a = admitted(ops); return a.length === 1 ? a[0] : (a.includes(pick) ? pick : ''); }
 
 const STEP = {
   breathe(st, d) { return { main: `<h2 class="prompt">${esc(st.prompt || 'Arrive.')}</h2><p class="sub">${esc(st.sub || 'Put the phone on Do Not Disturb. Sit so that you could stay a while. Breathe with the circle: in as it grows, out as it shrinks.')}</p><div class="breath" aria-hidden="true"></div><p class="sub small" style="text-align:center">${st.seconds >= 45 ? 'Stay with it.' : 'Nothing is asked of you yet. The door opens in a moment.'}</p>${st.quote ? quote(st.quote) : ''}`, bar: `<button class="btn primary reveal" id="go" data-act="next">${st.seconds >= 45 ? 'It has burned down' : 'I am here'}</button>` }; },
   since(st, d) {
-    const p = openPromise(d), th = openThird(d), tn = openTension(d), sep = separatedList(), pr = d.data.promise || {}, tc = d.data.thirdCheck || {}, tk = d.data.tensionCheck || {};
+    const p = openPromise(d), th = openThird(d), tn = openTension(d), sep = separatedList(), pr = d.data.promise || {}, tc = d.data.thirdCheck || {}, tk = d.data.tensionCheck || {}, gap = gapDays(d), thHour = th ? S.sessions.find(h => h.id === th.of) : null, merged = thHour?.data?.two === 'merged', e = d.syncEntry || {};
     const chips = (list, cur, act) => `<div class="chips">${list.map(([v, l]) => `<button class="chip ${cur === v ? 'on' : ''}" data-act="${act}" data-v="${v}">${l}</button>`).join('')}</div>`;
     return { main: `<h2 class="prompt">Since last time.</h2><p class="sub small">The opus keeps what was left open. Answer what is asked; nothing here is a test.</p>
+      ${gap > 21 ? `<div class="since"><span class="eyebrow">${Math.round(gap / 7)} weeks since the last hour</span><p class="sub">What stopped it? A gap is the most legible thing a complex does in work done alone; it is kept as material, not as a mark.</p><textarea class="field short" data-field="gap.note" placeholder="What stopped it…">${esc(d.data.gap?.note || '')}</textarea></div>` : ''}
       ${p ? `<div class="since"><span class="eyebrow">You undertook · ${esc(PRACTICES[p.practice].name)} · ${fmtDate(p.at)}</span><p class="third">${esc(p.text)}</p><p class="sub small">Did it happen?</p>${chips([['kept', 'It happened'], ['partly', 'Partly'], ['not', 'It did not']], pr.status, 'promise')}<p class="sub small">What got in the way is material, not failure: the complex defends itself by making the act seem unnecessary, or by arranging the week so there was no time.</p><textarea class="field short" data-field="promise.note" placeholder="${pr.status === 'kept' ? 'What happened when you did it…' : 'What got in the way…'}">${esc(pr.note || '')}</textarea></div>` : ''}
-      ${th ? `<div class="since"><span class="eyebrow">The third from ${fmtDate(th.at)}</span><p class="third">${esc(th.text)}</p>${th.mortificatio ? `<p class="sub small">What was to die: <i>${esc(th.mortificatio)}</i></p>` : ''}<p class="sub small">Is it still alive, has it gone dead, or has it turned into something else? In the Rosarium the union is followed by the corpse; a third that has gone flat is the normal course, not a failure.</p>${chips([['alive', 'Still alive'], ['dead', 'Gone dead'], ['turned', 'It turned']], tc.status, 'thirdcheck')}<textarea class="field short" data-field="thirdCheck.note" placeholder="what it is now…">${esc(tc.note || '')}</textarea></div>` : ''}
+      ${th ? `<div class="since"><span class="eyebrow">The third from ${fmtDate(th.at)}</span><p class="third">${esc(th.text)}</p>${th.mortificatio ? `<p class="sub small">What was to die: <i>${esc(th.mortificatio)}</i></p>` : ''}<p class="sub small">Is it still alive, has it gone dead, or has it turned into something else? In the Rosarium the union is followed by the corpse; a third that has gone flat is the normal course, not a failure.</p>${chips([['alive', 'Still alive'], ['dead', 'Gone dead'], ['turned', 'It turned']], tc.status, 'thirdcheck')}<textarea class="field short" data-field="thirdCheck.note" placeholder="what it is now…">${esc(tc.note || '')}</textarea>${tc.status === 'alive' ? `<p class="sub small" style="margin-top:12px">${merged ? 'It was a fusion then. Has the seam come back: are you and the figure two again?' : 'And the thing that had to die: has it?'}</p>${chips(merged ? [['yes', 'Two again'], ['no', 'Still one'], ['notried', 'I did not look']] : [['yes', 'It died'], ['no', 'Not yet'], ['notried', 'I did not try']], tc.died, 'thirddied')}` : ''}</div>` : ''}
       ${tn ? `<div class="since"><span class="eyebrow">Still held, since ${fmtDate(tn.at)}</span><p><i>${esc(tn.figure)} wants:</i> ${esc(tn.F)}<br><i>I want:</i> ${esc(tn.I)}</p><p class="sub small">Nothing came then. The tension is carried between hours until something comes or one side gives way.</p>${chips([['held', 'Still held'], ['released', 'It released'], ['third', 'A third came']], tk.status, 'tensioncheck')}<textarea class="field short" data-field="tensionCheck.note" placeholder="${tk.status === 'third' ? 'what came…' : 'how it stands…'}">${esc(tk.note || '')}</textarea></div>` : ''}
+      ${vesselDue(d) ? `<div class="since"><span class="eyebrow">The vessel</span><p class="sub">Every tenth hour, this. Who have you told about this work, and what happened to the material when you told them? The alchemists sealed the vessel; a solo opus has to seal its own.</p><textarea class="field short" data-field="vessel" placeholder="I have told …; when I did, …">${esc(d.data.vessel || '')}</textarea></div>` : ''}
+      ${corpusClosedAt() ? `<div class="since"><span class="eyebrow">Has anything coincided since?</span><p class="sub small">An inner state and an outer event that matched, with no cause between them, and it carried a charge. Leave it empty if nothing did.</p><input class="field line" data-field="_syncEntry.inner" placeholder="the inner state" value="${esc(e.inner || '')}"><input class="field line" data-field="_syncEntry.outer" placeholder="the outer event" value="${esc(e.outer || '')}"><input class="field line" data-field="_syncEntry.why" placeholder="what made it more than chance" value="${esc(e.why || '')}"></div>` : ''}
       ${sep.length ? `<div class="since"><span class="eyebrow">Not you, so far</span><ul>${sep.slice(-5).map(x => `<li>${esc(x.text)}</li>`).join('')}</ul></div>` : ''}`, bar: goBtn(st, d) };
   },
   affect(st, d) {
@@ -1040,7 +1074,7 @@ const STEP = {
     <div class="tablewrap"><table class="protocol"><tr><th>#</th><th>word</th><th>answer</th><th>s</th><th>again</th><th></th></tr>${rows}</table></div>
     <p class="legend">${KEY_TEXT} · the threshold used here is one and a half times your median (${secs(w.thr)} s): the app’s rule of thumb, not Jung’s number · body = you marked a bodily reaction · same = the same answer given to another word · klang = sounds like the stimulus</p>
     <h3 class="label">Disturbed words</h3>
-    ${dist.length ? `<p class="sub">${dist.map(ix => `<b>${esc(wordOf(d, items[ix]))}</b>`).join(', ')}. Say nothing about them yet; each will be asked about in turn.</p>${recurring.length ? `<p class="sub small">Disturbed before, in earlier hours: <b>${recurring.map(esc).join(', ')}</b>. A word that returns is a complex announcing itself.</p>` : ''}` : `<p class="sub">No indicator rose above the threshold this time. The mood itself will be the way down.</p>`}
+    ${dist.length ? `<p class="sub">${dist.map(ix => `<b>${esc(wordOf(d, items[ix]))}</b>`).join(', ')}. Say nothing about them yet; each will be asked about in turn.</p>${recurring.length ? `<p class="sub small">Disturbed before, in earlier hours: <b>${recurring.map(esc).join(', ')}</b>. A word that returns is a complex announcing itself.</p>` : ''}` : `<p class="sub">No indicator appeared this time. The mood itself will be the way down.</p>`}
     ${analystBox('constellation', 'Ask the analyst to read the protocol', d)}`, bar: goBtn(st, d, dist.length ? 'Go through them' : 'Go on') };
   },
   seed(st, d) {
@@ -1079,12 +1113,13 @@ const STEP = {
     return { main: `${head(st, d)}<div class="chips" style="flex-direction:column; align-items:stretch">${opts.map(([val, l, desc]) => `<button class="chip lapis ${v === val ? 'on' : ''}" data-act="set" data-f="${st.field}" data-v="${val}">${esc(l)}${desc ? `<small>${esc(desc)}</small>` : ''}</button>`).join('')}</div>${noteField(st, d)}${st.quote ? quote(st.quote) : ''}`, bar: goBtn(st, d) };
   },
   ops(st, d) {
-    const ops = d.data.ops || [], col = ops.length ? colourFrom(ops) : '';
+    const ops = d.data.ops || [], adm = ops.length ? admitted(ops) : [], col = ops.length ? colourFrom(ops, d.data.colourPick) : '';
     const warn = col === 'nigredo' && lastTwoNigredo();
     return { main: `<h2 class="prompt">What was done in this hour?</h2><p class="sub">The alchemists judged the work by what happened to the material in the vessel, not by how the operator felt. Edinger names seven operations. Choose one, or two. The colour of the hour follows from them; rubedo is not chosen, it is reached when a third has survived.</p>
     <div class="chips" style="flex-direction:column; align-items:stretch">${OPERATIONS.map(([val, l, desc]) => `<button class="chip gold ${ops.includes(val) ? 'on' : ''}" data-act="op" data-v="${val}">${esc(l)}<small>${esc(desc)}</small></button>`).join('')}</div>
+    ${adm.length > 1 ? `<p class="sub">The same operation runs black or white, as the texts have it. Which did the material take?</p><div class="chips">${adm.map(c => `<button class="chip gold ${d.data.colourPick === c ? 'on' : ''}" data-act="set" data-f="colourPick" data-v="${c}"><i class="swatch" style="background:var(${COLOUR_VAR[c]})"></i>${esc(COLOURS.find(x => x[0] === c)[1])}<small>${esc(COLOUR_Q[c])}</small></button>`).join('')}</div>` : ''}
     ${col ? `<p class="sub">Colour of this hour: <span class="colour">${colourDot(col)}${esc(COLOURS.find(c => c[0] === col)[1])}</span>, ${esc(COLOURS.find(c => c[0] === col)[2])}.</p>` : ''}
-    <p class="sub small">Nigredo, albedo, rubedo were the alchemists’ three; the yellowing, citrinitas, fell out of the scheme after the sixteenth century (CW 12 §333) and is kept here for the stage between form and life.</p>
+    <p class="sub small">Nigredo, albedo, rubedo were the alchemists’ three; the yellowing, citrinitas, fell out of the scheme about the fifteenth or sixteenth century (CW 12 §333) and is kept here for the stage between form and life.</p>
     ${warn ? `<div class="trip"><p><b>Three black hours in a row.</b> Jung called the necessary descent the night sea journey and thought it could not be shortened. He also said that a depression which does not move is a matter for a doctor. Which is this? If you cannot tell, that is itself the answer: ask someone.</p><div class="row"><button class="btn small" data-act="ground">I need to stop</button></div></div>` : ''}`, bar: goBtn(st, d) };
   },
   each(st, d) {
@@ -1109,7 +1144,7 @@ const STEP = {
     };
     const hint = hints[who][Math.min(3, Math.floor(n / 2))];
     const heading = n === 0 ? 'Address it.' : isI ? 'Your turn.' : `${F} answers.`;
-    const intro = n === 0 ? `You write both voices, one line at a time. First say something to ${F}. Then switch to its voice and write what it answers: its words come from you too, but not from the part of you that plans. You may end it whenever you need to.` : 'Two voices with equal rights. Neither is corrected; neither is silenced.';
+    const intro = n === 0 ? `You write both voices, one line at a time. First say something to ${F}. Then switch to its voice and write what it answers: its words come from you too, but not from the part of you that plans. Once it has answered, you may end it whenever you need to.` : 'Two voices with equal rights. Neither is corrected; neither is silenced.';
     return { main: `<h2 class="prompt">${heading}</h2><p class="sub small">${intro}</p>
     ${g && n === 0 && g.said ? `<div class="leaf"><span class="eyebrow">${F}, last time</span><p style="font-style:italic">${esc(g.said)}</p>${g.wants ? `<span class="eyebrow">It wanted</span><p>${esc(g.wants)}</p>` : ''}</div>` : ''}
     <div class="dlg">${lines(d, dl, true)}</div>
@@ -1165,6 +1200,10 @@ const STEP = {
     ${S.sync.items.length ? `<h3 class="label">In the log</h3>${S.sync.items.slice(-8).map(x => `<div class="item"><p><span class="mono">${fmtDate(x.at)}</span> ${esc(syncText(x))}</p></div>`).join('')}` : ''}
     <h3 class="label">Add one</h3><div class="chips">${items.map((x, i) => `<button class="chip on" data-act="list-remove" data-f="${st.field}" data-i="${i}">${esc(cut(syncText(x), 60))}<span class="x">×</span></button>`).join('')}</div>
     <input class="field line" data-field="_syncEntry.inner" placeholder="the inner state: what was in you" value="${esc(e.inner || '')}"><input class="field line" data-field="_syncEntry.outer" placeholder="the outer event: what happened" value="${esc(e.outer || '')}"><input class="field line" data-field="_syncEntry.why" placeholder="what made it more than chance" value="${esc(e.why || '')}"><div class="row"><button class="btn small" data-act="sync-entry">Add to the log</button></div>`, bar: goBtn(st, d, items.length || S.sync.items.length ? 'Go on' : 'None that I remember') };
+  },
+  circ(st, d) {
+    const c = S.portrait.circ || {}, f = (k, ph) => `<input class="field line" data-circ="${k}" placeholder="${ph}" value="${esc(c[k] || '')}">`;
+    return { main: `${head(st, d)}${f('age', 'age')}${f('days', 'what you do all day')}${f('household', 'who you live with')}${f('body', 'the state of the body')}${f('losses3', 'what has been lost in the last three years')}${f('knows', 'who knows you are doing this')}`, bar: goBtn(st, d) };
   },
   analystStep(st, d) {
     return { main: `${head(st, d)}<div class="leaf"><span class="eyebrow">Your reading</span><p class="third">${esc(D(d, st.show))}</p></div>${analystBox(st.kind, st.label, d)}`, bar: goBtn(st, d) };
@@ -1317,6 +1356,9 @@ function hourText(d) {
   if (d.data.thirdCheck?.status) out.push(`The last third: ${d.data.thirdCheck.status}${d.data.thirdCheck.note ? ` — ${d.data.thirdCheck.note}` : ''}`);
   if (d.data.tensionCheck?.status) out.push(`The held tension: ${d.data.tensionCheck.status}${d.data.tensionCheck.note ? ` — ${d.data.tensionCheck.note}` : ''}`);
   if (d.data.ops?.length) out.push(`Operations: ${d.data.ops.join(', ')}${d.data.colour ? `; colour ${d.data.colour}` : ''}`);
+  if (d.data.gap?.note) out.push(`Gap before this hour: ${d.data.gap.days} days — ${d.data.gap.note}`);
+  if (d.data.vessel) out.push(`The vessel: ${d.data.vessel}`);
+  if (d.tripped) out.push(`THE CRISIS TRIPWIRE FIRED IN THIS HOUR: something written matched words of self-harm or not wanting to live. Rule 0 applies before anything else.`);
   return out.join('\n');
 }
 function buildPrompt(kind, d) {
@@ -1420,15 +1462,15 @@ async function exportJournal() {
 const TRIP_RE = /\b(suicid\w*|kill (myself|me)|end (my life|it all)|take my (own )?life|don'?t want to (live|be here|exist|wake up)|want to die|self[- ]?harm|hurt myself|cut myself|umbringen|suizid\w*|nicht mehr leben|sterben (will|möchte|wollen)|mich (verletzen|schneiden|umbringen)|mir das leben nehmen)\b/i;
 function suggest() {
   const f = facts(), c = f.byP, t = f.total, open = k => !lockOf(k);
-  if (corpusOpen(null)) return ['corpus', 'The second conjunction is open: the caelum has not yet been true in the flesh. Return to it, with what the body did this week.'];
+  if (corpusOpen(null) && corpusReentries() < 2) return ['corpus', 'The second conjunction is open: the caelum has not yet been true in the flesh. Return to it, with what the body did this week.'];
   if (!t) return ['confess', 'Where Jung began: with what is told, not what is analysed. The whole opus reads this once.'];
   if (!c.persona) return ['persona', 'Before the shadow, the mask. What is seen must be told apart from what is.'];
   if (!c.dream) return ['dream', 'Dreams are the main road of an analysis. The first one you remember, however small: the series begins with it.'];
-  if (!c.shadow) return ['shadow', 'The first test of courage. Someone got under your skin this week; that is the hook.'];
+  if (!c.shadow && !lockOf('shadow')) return ['shadow', 'The first test of courage. Someone got under your skin this week; that is the hook.'];
   if (!c.hour) return ['hour', 'Now the stopwatch. The complex shows itself by resistance before it shows itself by meaning.'];
   const sinceHour = (() => { const hs = S.sessions.filter(h => h.practice === 'hour'); return hs.length ? S.sessions.length - 1 - S.sessions.lastIndexOf(hs[hs.length - 1]) : 99; })();
   if (sinceHour >= 3) return ['hour', 'Circle again. The stopwatch will say whether the word that disturbed you before still does.'];
-  if (!c.ignis && t >= 3) return ['ignis', 'The affect itself, entered rather than reported. Calcinatio and solutio.'];
+  if (!c.ignis && !lockOf('ignis')) return ['ignis', 'The affect itself, entered rather than reported. Calcinatio and solutio.'];
   if (!c.soul && open('soul')) return ['soul', 'After the shadow, the soul-image: the figure that carries the projection now, and where it possesses you.'];
   if (t >= 4 && !c.mandala) return ['mandala', 'Draw one. The centre and the four tell you where the opus stands better than any summary.'];
   if (!c.religio && open('religio')) return ['religio', 'What you are related to that is larger than you. Jung held this to be the question under every question in the second half of life.'];
@@ -1450,7 +1492,8 @@ function Home() {
   <main class="screen">
     ${d ? `<button class="btn primary begin" data-act="resume">Continue · ${esc(PRACTICES[d.practice].name)} · ${esc(PRACTICES[d.practice].movements[d.mi].label)}</button><div class="row" style="justify-content:center;margin-top:0"><button class="ghost" data-act="discard">Set it aside and begin afresh</button></div>`
       : `<div class="card"><span class="nm">Suggested next</span><span class="latin">${esc(P.name)} · ${esc(P.latin)}</span><p>${esc(why)}</p><button class="btn primary begin" data-act="begin" data-p="${sg}">${gate ? 'Read first, then begin' : `Begin ${esc(P.name)}`}</button>${sg !== 'dream' && !gate ? `<div class="row" style="justify-content:center;margin-top:4px"><button class="ghost" data-act="begin" data-p="dream">Dreamt? Record it first</button></div>` : ''}</div>`}
-    ${!d && mundusReady() && !f.byP.mundus ? `<div class="card unbidden"><span class="nm">Something has been happening</span><span class="latin">Unus mundus · coniunctio III</span><p>The second conjunction has been lived, and coincidence has been gathering for half a year. The third conjunction is not begun; it arrives. It has.</p><button class="btn primary begin" data-act="begin" data-p="mundus">Go to it</button></div>` : ''}
+    ${!d && corpusOpen(null) && corpusReentries() >= 2 ? `<div class="card"><span class="nm">The second conjunction is open</span><span class="latin">Union with the body · coniunctio II</span><p>Returned to twice; not yet true in the flesh. It stays open as long as it takes. Go back when the body has something to say, or keep the practice and change it.</p><button class="btn begin" data-act="begin" data-p="corpus">Return to it</button></div>` : ''}
+    ${!d && mundusReady() ? `<div class="card unbidden"><span class="nm">Something has been happening</span><span class="latin">Unus mundus · coniunctio III</span><p>The second conjunction has been lived, and coincidence has been gathering for half a year. The third conjunction is not begun; it arrives. It has.</p><button class="btn primary begin" data-act="begin" data-p="mundus">Go to it</button></div>` : ''}
     ${op || th || tn ? `<p class="sub small" style="text-align:center;margin-top:6px">${[op ? `a promise is open: <i>“${esc(cut(op.text.replace(/[.。]\s*$/, ''), 70))}”</i>` : '', th ? 'the last third will be asked about' : '', tn ? 'a tension is still held' : ''].filter(Boolean).join('; ')}. The next threshold will ask.</p>` : ''}
     ${entries}
     <div class="row" style="justify-content:space-between"><button class="ghost" data-act="liber">Open the Liber</button><button class="ghost" data-act="export">Export</button></div>
@@ -1460,14 +1503,14 @@ function Home() {
     <p class="sub small">Dorn’s three conjunctions, as Jung reads them at the end of CW 14. The first two are walked when the file is full enough and the days have passed; the third is not on any list. It arrives when the second has been lived and coincidence has been gathering, and then it appears here by itself.</p>
     <ol class="practices">${ORDER.slice(10).map((k, i) => item(k, i + 10)).join('')}</ol>
     <details class="method"><summary><span class="label" style="margin:0">Why it is built this way, and what it is not</span></summary>
-      <p><b>This is not treatment.</b> It is an instrument for the part of Jung’s work that can be done alone, which is a great deal and is not the whole. Jung held that the shadow and the soul-image become real only in a relation to another person (CW 9i §61); the whole of his book on the coniunctio is about the transference, the vessel that another person makes. Nothing here replaces that. If the images will not stop, if you cannot tell them from the room, if you are in crisis: close this and telephone a person. The “I need to stop” button is on every deep screen.</p>
+      <p><b>This is not treatment.</b> It is an instrument for the part of Jung’s work that can be done alone, which is a great deal and is not the whole. Jung held that the shadow and the soul-image become real only in a relation to a partner (CW 9ii §42); his commentary on the coniunctio, The Psychology of the Transference (CW 16), is about the vessel that another person makes. Nothing here replaces that. If the images will not stop, if you cannot tell them from the room, if you are in crisis: close this and telephone a person. The “I need to stop” button is on every deep screen.</p>
       <p><b>Self-analysis usually fails</b> because the ego does the analysing: it explains, chooses, interprets, and stays in charge. Jung’s method needs the ego to step back at some points and to stand its ground at others. Alone, nobody enforces the difference. This instrument does, by its sequence, and by remembering: every threshold asks about the last promise, whether the last third is still alive, whether a held tension released; figures return; a word disturbed twice is named as such; what was begun and abandoned is kept.</p>
-      <p><b>The order</b> is Jung’s: confession first (CW 16 §§122–140), then the mask, the dream, the shadow, the stopwatch. Active imagination is earned, not offered: the descent opens after four hours, one of them the persona, and at most once a day. <b>Dreams</b> are worked as Jung worked them: exact text, kind, dramatic structure, associations by circumambulation, the objective level before the subjective, compensation and the prospective reading, your sentence before any other, and the series read together. <b>The transcendent function</b> (CW 8 §§131–193) arises from bearing the tension; what comes is followed by what must die for it, and asked about again. <b>Mandalas</b> are drawn, not admired, and the centre is never filled in.</p>
+      <p><b>The order</b> follows Jung where he gave one: confession first (CW 16 §§123–130; the four stages, §§122–174), the shadow before the soul-image; elsewhere it is this instrument’s arrangement. Active imagination is earned, not offered: every entry into it, the descent, the shadow’s face, the soul-image, the fire, opens after four hours, one of them the persona, and at most once a day, and a tripwire on what you write closes it for the hour. <b>Dreams</b> are worked as Jung worked them: exact text, kind, dramatic structure, associations by circumambulation, the objective level before the subjective, compensation and the prospective reading, your sentence before any other, and the series read together. <b>The transcendent function</b> (CW 8 §§131–193) arises from bearing the tension; what comes is followed by what must die for it, and asked about again. <b>Mandalas</b> are drawn, not admired, and the centre is never filled in.</p>
       <p><b>The three conjunctions</b> are Gerhard Dorn’s, as Jung reads them (CW 14 §§654–789): unio mentalis, the reunion with the body, and the unus mundus. Here they are a distillation of the whole file into an image with blood in it, a stage lived in the body among other people that stays open until it has been true in the flesh, and an arrival that is not on the menu. Jung’s last word on the passage this page is named for: the experience of the self is always a defeat for the ego (CW 14 §778). The opus circles; it does not end.</p>
       <p><b>The analyst</b> is a voice from Claude that holds the frame and is handed, with every question, a dossier of the opus and the earlier material that bears on the task. It never interprets before you do, never supplies material, never speaks inside the imagination, and is told to stop the method the moment the material calls for a person in the room. It runs through the Claude app you open this page in, on your subscription’s usage, with no key of its own. Your hours are kept in the private store this page has in your Claude account, and cached on the device you use.</p>
       <p><b>Jung kept his own in a red book.</b> He also did it with a profession, a family, and people around him who knew what he was doing, and he said afterwards that it was the most dangerous period of his life.</p>
     </details>
-    ${quote(n ? (f.byP.mundus ? 'gather' : 'soul') : 'alone')}
+    ${quote(n ? (f.byP.mundus ? 'gather' : 'soul') : 'mirror')}
     <h3 class="label analyst-only">The analyst thinks</h3>
     <div class="chips analyst-only">${TIERS.map(([k, l]) => `<button class="chip gold ${(S.prefs.tier || 'complex') === k ? 'on' : ''}" data-act="tier" data-t="${k}">${l}</button>`).join('')}</div>
     <p class="sub small analyst-only">Deepest asks for the most capable model your Claude plan offers and lets it think at length before it speaks; an answer can take a minute. Balanced is the everyday model. Quick answers in seconds without thinking first. Each answer says which tier actually replied.</p>
@@ -1481,7 +1524,8 @@ function Gate(p) {
     <p>The descent practices lower the mental level on purpose. Jung did not use them with everyone. Do not attempt the descent, the dialogue, the fire, or the conjunctions if any of these is true now:</p>
     <ul><li>a psychiatric history involving psychosis or mania</li><li>thoughts of ending your life, now or recently</li><li>episodes of losing the sense of who or where you are</li><li>active dependence on alcohol or drugs</li><li>a death, a violence, or a break inside the last few weeks</li></ul>
     <p>If any of them is true, the confession, the persona, and the dream may still be walked, slowly, and a person should know you are doing it. If the images will not stop when you want them to, if you cannot tell them from the room, or if you are frightened: close this and telephone a person. In Switzerland, 143 (Die Dargebotene Hand) at any hour, 144 in an emergency; elsewhere, your local emergency number.</p>
-    <p>You will be asked about what you undertake, and the record keeps what you abandon. Both are material, not marks.</p>
+    <p>The vessel must be closed. Choose one person who knows you are doing this, and no more; material told everywhere evaporates, and the alchemists sealed the flask for that reason. Every tenth hour you will be asked who you have told.</p>
+    <p>You will be asked about what you undertake, and the record keeps what you abandon. Both are material, not marks. This page is shown again before a deep practice every ninety days.</p>
     <div class="row"><button class="btn primary" data-act="gate-ok" data-p="${esc(p || '')}">I have read this</button></div>
   </main></div>`;
 }
@@ -1562,8 +1606,8 @@ function Session() {
   const d = S.draft, P = PRACTICES[d.practice], mv = P.movements[d.mi], st = mv.steps[d.si];
   const b = STEP[st.type](st, d);
   const canBack = d.si + d.mi > 0 && !['wae', 'repro', 'expressive', 'hold'].includes(st.type) && !['wae', 'repro'].includes(prevStep(d)?.type);
-  const trip = d.tripShow ? `<div class="trip"><p><b>Something in what you wrote asks for a person, not a page.</b> If you are thinking of harming yourself, or of not being here, stop the method now and telephone someone: in Switzerland 143 at any hour, 144 in an emergency; elsewhere your local emergency number. This page will keep what you wrote and will not press you.</p><div class="row"><button class="btn primary small" data-act="ground">I need to stop</button><button class="ghost" data-act="trip-ok">I am safe for now; go on</button></div></div>` : '';
-  return `<div class="shell session"><header class="top">${ring(d.mi, P.movements.length)}<div class="stage">${ROMAN[d.mi]} · ${esc(mv.label)}<span style="color:var(--text-3)"> · ${esc(P.name)}</span></div>${canBack ? `<button class="ghost" data-act="back" aria-label="Back">‹</button>` : ''}${mv.deep ? `<button class="ghost" data-act="ground" style="color:var(--verm)">Stop</button>` : ''}<button class="ghost" data-act="pause">Pause</button></header><main class="screen">${trip}${b.main}</main><footer class="bar">${b.bar || ''}</footer></div>`;
+  const trip = d.tripShow ? `<div class="trip"><p><b>Something in what you wrote asks for a person, not a page.</b> If you are thinking of harming yourself, or of not being here, stop the method now and telephone someone: in Switzerland 143 at any hour, 144 in an emergency; elsewhere your local emergency number. This page keeps what you wrote, will not press you, and has closed the imagination for the rest of this hour.</p><div class="row"><button class="btn primary small" data-act="ground">I need to stop</button><button class="ghost" data-act="trip-ok">I am safe for now; go on without the descent</button></div></div>` : '';
+  return `<div class="shell session"><header class="top">${ring(d.mi, P.movements.length)}<div class="stage">${ROMAN[d.mi]} · ${esc(mv.label)}<span style="color:var(--text-3)"> · ${esc(P.name)}</span></div>${canBack ? `<button class="ghost" data-act="back" aria-label="Back">‹</button>` : ''}<button class="ghost" data-act="ground" style="color:${mv.deep ? 'var(--verm)' : 'var(--text-3)'}">Stop</button><button class="ghost" data-act="pause">Pause</button></header><main class="screen">${trip}${b.main}</main><footer class="bar">${b.bar || ''}</footer></div>`;
 }
 
 /* ================= navigation ================= */
@@ -1571,16 +1615,19 @@ function newDraft(practice) { return { id: Date.now().toString(36), practice, st
 function advance() {
   const d = S.draft, P = PRACTICES[d.practice], st = curStep(d);
   if (st.type === 'each') { const items = D(d, st.from, []); if ((d.ei || 0) < items.length - 1) { d.ei = (d.ei || 0) + 1; saveDraft(); render(); return; } d.ei = 0; }
+  if (st.type === 'since' && (d.syncEntry?.inner || '').trim() && (d.syncEntry?.outer || '').trim()) { const e = { inner: d.syncEntry.inner.trim(), outer: (d.syncEntry.outer || '').trim(), why: (d.syncEntry.why || '').trim(), id: Date.now().toString(36), at: Date.now() }; S.sync = { at: Date.now(), items: [...S.sync.items, e] }; save('synclog', S.sync); pushDoc('synclog', S.sync); d.data.syncAdded = [...(d.data.syncAdded || []), e]; d.syncEntry = {}; }
   if (st.type === 'sync') { const items = D(d, 'sync', []); if (items.length) { const stamped = items.map(x => ({ ...x, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: Date.now() })); S.sync = { at: Date.now(), items: [...S.sync.items, ...stamped] }; save('synclog', S.sync); pushDoc('synclog', S.sync); d.data.syncAdded = [...(d.data.syncAdded || []), ...items]; d.data.sync = []; } }
   let mi = d.mi, si = d.si + 1;
   for (;;) { if (si >= P.movements[mi].steps.length) { mi++; si = 0; if (mi >= P.movements.length) return; } const nx = P.movements[mi].steps[si]; if (applies(nx, d)) break; si++; }
+  const nx = P.movements[mi].steps[si];
+  if (nx.id === 'wants' && d.data.again === 'yes' && !(d.data.wants?.F || '').trim()) { const e = S.sessions.find(h => h.id === d.data.thirdCheck?.of); if (e?.data?.wants) { d.data.wants = { F: e.data.wants.F, I: e.data.wants.I }; if (!d.data.figure) d.data.figure = e.data.figure || ''; if (!d.data.image) d.data.image = e.data.image || ''; } }
   d.mi = mi; d.si = si; saveDraft(true); render();
 }
 function goBack() { const d = S.draft, p = prevStep(d); if (!p) return; d.mi = p.mi; d.si = p.si; if (p.type === 'each') d.ei = Math.max(0, D(d, p.from, []).length - 1); saveDraft(); render(); }
 function recordAbandoned(d) { const st = curStep(d); S.abandoned = { at: Date.now(), items: [...S.abandoned.items, { id: d.id, practice: d.practice, step: txt(st.leaf, d) || st.prompt && String(txt(st.prompt, d)).slice(0, 40) || st.id, mi: d.mi, si: d.si, startedAt: d.startedAt, at: Date.now() }].slice(-200) }; save('abandoned', S.abandoned); pushDoc('abandoned', S.abandoned); }
 const act = {
-  begin(b) { const p = b.dataset.p || 'hour'; if (lockOf(p)) { toast(lockOf(p)); return; } if (!S.prefs.gate) { view = { name: 'gate', p }; render(); return; } S.draft = newDraft(p); saveDraft(true); view = { name: 'session' }; render(); },
-  'gate-ok'(b) { S.prefs.gate = true; save('prefs', S.prefs); if (b.dataset.p) act.begin({ dataset: { p: b.dataset.p } }); else { view = { name: 'home' }; render(); } },
+  begin(b) { const p = b.dataset.p || 'hour'; if (lockOf(p)) { toast(lockOf(p)); return; } const deep = PRACTICES[p].movements.some(m => m.deep); if (!S.prefs.gate || (deep && daysSince(S.prefs.gateAt || 0) > 90)) { view = { name: 'gate', p }; render(); return; } S.draft = newDraft(p); saveDraft(true); view = { name: 'session' }; render(); },
+  'gate-ok'(b) { S.prefs.gate = true; S.prefs.gateAt = Date.now(); save('prefs', S.prefs); if (b.dataset.p) act.begin({ dataset: { p: b.dataset.p } }); else { view = { name: 'home' }; render(); } },
   gate() { view = { name: 'gate', p: '' }; render(); },
   ground() { view = { name: 'ground' }; render(); },
   'trip-ok'() { const d = S.draft; if (d) { d.tripShow = false; saveDraft(); } render(); },
@@ -1603,6 +1650,7 @@ const act = {
   op(b) { const d = S.draft, ops = d.data.ops || []; const v = b.dataset.v; d.data.ops = ops.includes(v) ? ops.filter(x => x !== v) : [...ops, v].slice(-2); saveDraft(); render(); },
   promise(b) { const d = S.draft; d.data.promise = { ...(d.data.promise || {}), of: openPromise(d).of, status: b.dataset.v }; saveDraft(); render(); },
   thirdcheck(b) { const d = S.draft; d.data.thirdCheck = { ...(d.data.thirdCheck || {}), of: openThird(d).of, status: b.dataset.v }; saveDraft(); render(); },
+  thirddied(b) { const d = S.draft; d.data.thirdCheck = { ...(d.data.thirdCheck || {}), died: b.dataset.v }; saveDraft(); render(); },
   tensioncheck(b) { const d = S.draft; d.data.tensionCheck = { ...(d.data.tensionCheck || {}), of: openTension(d).of, status: b.dataset.v }; saveDraft(); render(); },
   expressive(b) { const d = S.draft, w = d.data.wae, i = +b.dataset.i; w.expressive = (w.expressive || []).includes(i) ? w.expressive.filter(x => x !== i) : [...(w.expressive || []), i]; saveDraft(); render(); },
   affect(b) { S.draft.data.affect.word = b.dataset.w; S.draft.data.affect.custom = ''; saveDraft(); render(); },
@@ -1625,10 +1673,11 @@ const act = {
   ask(b) { ask(b.dataset.kind); },
   stop() { ctl?.abort(); },
   keep() {
-    const d = S.draft; d.finishedAt = Date.now(); d.updatedAt = Date.now(); delete d.dlgDraft; delete d.ei; delete d.padColour; delete d.syncEntry; delete d.tripShow;
-    if (d.data.ops?.length && d.practice !== 'mundus') d.data.colour = colourFrom(d.data.ops);
+    const d = S.draft; d.finishedAt = Date.now(); d.updatedAt = Date.now(); delete d.dlgDraft; delete d.ei; delete d.padColour; delete d.syncEntry; delete d.tripShow; delete d.deepClosed;
+    if (d.data.ops?.length) d.data.colour = colourFrom(d.data.ops, d.data.colourPick) || admitted(d.data.ops)[0];
+    if (gapDays(d) > 21) d.data.gap = { ...(d.data.gap || {}), days: Math.round(gapDays(d)) };
     S.sessions.push(d); S.sessions.sort((a, b) => a.startedAt - b.startedAt); save('sessions', S.sessions); pushHour(d);
-    if (d.data.thirdCheck?.status === 'alive') { const e = S.sessions.find(h => h.id === d.data.thirdCheck.of); if (e && e.data) { e.data.colour = 'rubedo'; e.updatedAt = Date.now(); save('sessions', S.sessions); pushHour(e); } }
+    if (d.data.thirdCheck?.status === 'alive' && d.data.thirdCheck.died === 'yes') { const e = S.sessions.find(h => h.id === d.data.thirdCheck.of); if (e && e.data && e.data.two !== 'merged' && statusOf(e) !== 'not') { e.data.colour = 'rubedo'; e.updatedAt = Date.now(); save('sessions', S.sessions); pushHour(e); } }
     S.draft = null; saveDraft(true);
     view = { name: 'home' }; render(); toast(d.practice === 'mundus' ? 'The hour is kept. The circle closed, and opens again.' : 'The hour is kept.');
   }
@@ -1636,12 +1685,13 @@ const act = {
 app.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (!b || b.disabled) return; const fn = act[b.dataset.act]; if (fn) fn(b, e); });
 app.addEventListener('input', e => {
   const t = e.target;
-  if (t.dataset?.circ) { S.portrait = { ...S.portrait, circ: { ...(S.portrait.circ || {}), [t.dataset.circ]: t.value }, at: Date.now() }; save('portrait', S.portrait); clearTimeout(app._pt); app._pt = setTimeout(() => pushDoc('portrait', S.portrait), 1200); return; }
+  if (t.dataset?.circ) { S.portrait = { ...S.portrait, circ: { ...(S.portrait.circ || {}), [t.dataset.circ]: t.value }, at: Date.now() }; save('portrait', S.portrait); clearTimeout(app._pt); app._pt = setTimeout(() => pushDoc('portrait', S.portrait), 1200); refreshReady(); return; }
   const f = t.dataset?.field; if (!f || !S.draft) return; const d = S.draft;
   if (f === 'dlgDraft') { d.dlgDraft = t.value; saveDraft(); }
-  else if (f.startsWith('_syncEntry.')) { d.syncEntry = { ...(d.syncEntry || {}), [f.slice(11)]: t.value }; saveDraft(); return; }
+  else if (f.startsWith('_syncEntry.')) { d.syncEntry = { ...(d.syncEntry || {}), [f.slice(11)]: t.value }; saveDraft(); }
   else { setPath(d.data, f, t.value); saveDraft(); }
-  if (!d.tripped && TRIP_RE.test(t.value)) { d.tripped = true; d.tripShow = true; saveDraft(); render(); return; }
+  if (!d.tripShow && TRIP_RE.test(t.value)) { d.tripped = true; d.tripShow = true; d.deepClosed = true; saveDraft(); render(); return; }
+  if (f.startsWith('_syncEntry.')) return;
   const st = curStep(d);
   if (st.type === 'text') { const nudge = document.getElementById('nudge'); const re = st.nudge ? NUDGE_RE : st.nudgeRe; if (nudge && re) nudge.hidden = !re.test(t.value); }
   refreshReady();
