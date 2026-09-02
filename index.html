@@ -77,6 +77,7 @@ a{color:var(--gold)}
 .btn:disabled{opacity:.38; cursor:default}
 .btn.small{padding:10px 14px; font-size:12px}
 .ghost{font-family:var(--caps); letter-spacing:.14em; text-transform:uppercase; font-size:12px; color:var(--text-3); padding:6px 0}
+.top .ghost.back{color:var(--text-2); padding:6px 8px; border:1px solid var(--line); border-radius:2px}
 .btn.reveal{opacity:0; pointer-events:none; transition:opacity 1.6s ease}
 .btn.reveal.show{opacity:1; pointer-events:auto}
 .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px}
@@ -1120,7 +1121,7 @@ const STEP = {
   },
   chipsFrom(st, d) {
     const items = D(d, st.from, []), v = D(d, st.field);
-    return { main: `${head(st, d)}<div class="chips">${items.map(x => `<button class="chip ${v === x ? 'on' : ''}" data-act="set" data-f="${st.field}" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div>`, bar: goBtn(st, d) };
+    return { main: `${head(st, d)}<div class="chips">${items.map(x => `<button class="chip ${v === x ? 'on' : ''}" data-act="set" data-f="${st.field}" data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div><div class="row"><button class="ghost" data-act="back">‹ Add or change the list</button></div>`, bar: goBtn(st, d) };
   },
   chips(st, d) {
     const v = D(d, st.field), opts = txt(st.options, d);
@@ -1621,7 +1622,7 @@ function Session() {
   const b = STEP[st.type](st, d);
   const canBack = d.si + d.mi > 0 && !['wae', 'repro', 'expressive', 'hold'].includes(st.type) && !['wae', 'repro'].includes(prevStep(d)?.type);
   const trip = d.tripShow ? `<div class="trip"><p><b>Something in what you wrote asks for a person, not a page.</b> If you are thinking of harming yourself, or of not being here, stop the method now and telephone someone: in Switzerland 143 at any hour, 144 in an emergency; elsewhere your local emergency number. This page keeps what you wrote, will not press you, and has closed the imagination for the rest of today.</p><div class="row"><button class="btn primary small" data-act="ground">I need to stop</button><button class="ghost" data-act="trip-ok">I am safe for now; close the image and go on</button></div></div>` : '';
-  return `<div class="shell session"><header class="top">${ring(d.mi, P.movements.length)}<div class="stage">${ROMAN[d.mi]} · ${esc(mv.label)}<span style="color:var(--text-3)"> · ${esc(P.name)}</span></div>${canBack ? `<button class="ghost" data-act="back" aria-label="Back">‹</button>` : ''}<button class="ghost" data-act="ground" style="color:${mv.deep ? 'var(--verm)' : 'var(--text-3)'}">Stop</button><button class="ghost" data-act="pause">Pause</button></header><main class="screen">${trip}${b.main}</main><footer class="bar">${b.bar || ''}</footer></div>`;
+  return `<div class="shell session"><header class="top">${ring(d.mi, P.movements.length)}<div class="stage">${ROMAN[d.mi]} · ${esc(mv.label)}<span style="color:var(--text-3)"> · ${esc(P.name)}</span></div>${canBack ? `<button class="ghost back" data-act="back" aria-label="Back">‹ Back</button>` : ''}<button class="ghost" data-act="ground" style="color:${mv.deep ? 'var(--verm)' : 'var(--text-3)'}">Stop</button><button class="ghost" data-act="pause">Pause</button></header><main class="screen">${trip}${b.main}</main><footer class="bar">${b.bar || ''}</footer></div>`;
 }
 
 /* ================= navigation ================= */
