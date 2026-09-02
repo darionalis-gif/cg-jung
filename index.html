@@ -212,6 +212,11 @@ html.no-analyst .analyst-note{display:block; margin-top:14px; border-left:2px so
 .composer{border-top:1px solid var(--line); padding-top:16px}
 .composer .chips{margin:0 0 10px}
 .composer .hint{font-style:italic; color:var(--text-2); font-size:16px; margin:0 0 10px}
+.composer .line.next{margin-top:6px}
+.composer .line.next .who{margin-bottom:6px}
+.line.I.next .field{border-color:var(--verm)}
+.line.F.next .field{border-color:var(--lapis); font-style:italic}
+.chip.lapis.on{border-color:var(--lapis); background:var(--lapis-soft)}
 
 /* the third */
 .two{display:grid; gap:14px}
@@ -500,24 +505,26 @@ function Descent(d) {
     bar: `<button class="btn primary" data-act="go" data-step="dialogue" ${d.figure.trim() ? '' : 'disabled'}>Address it</button>`
   };
   // dialogue
-  const n = d.dialogue.filter(l => l.who !== 'A').length, who = d.dlgWho;
+  const n = d.dialogue.filter(l => l.who !== 'A').length, who = d.dlgWho, isI = who === 'I';
   const hints = {
-    I: [ 'Begin by addressing it. Ask what it wants, or why it is here.', 'Answer it honestly. You have equal rights here: you may refuse, argue, ask again.', 'Do not agree to be polite. Say what you actually think of what it said.', 'Stay with it. If it changes shape, say so.' ],
-    F: [ 'Now let it answer. Don’t compose. Write what comes, even if it is nonsense or rude.', 'Its turn. Let it push back.', 'Let it say the thing you would rather it did not.', 'Give it the last word for now, then take yours.' ]
+    I: [ `Ask ${F} what it wants, or why it is here.`, 'Answer it honestly. You have equal rights here: you may refuse, argue, ask again.', 'Do not agree to be polite. Say what you actually think of what it said.', 'Stay with it. If it changes shape, say so.' ],
+    F: [ 'Let it answer. Don’t compose. Write what comes, even if it is nonsense or rude.', 'Let it push back.', 'Let it say the thing you would rather it did not.', 'Give it the last word for now, then take yours.' ]
   };
   const hint = hints[who][Math.min(3, Math.floor(n / 2))];
+  const heading = n === 0 ? 'Address it.' : isI ? 'Your turn.' : `${F} answers.`;
+  const intro = n === 0 ? `You write both voices, one line at a time. First say something to ${F}. Then switch to its voice and write what it answers: its words come from you too, but not from the part of you that plans.` : 'Two voices with equal rights. Neither is corrected; neither is silenced.';
   return {
-    main: `<h2 class="prompt">${n ? 'The dialogue.' : 'Address it.'}</h2><p class="sub small">Two voices with equal rights. Neither is corrected; neither is silenced.</p>
+    main: `<h2 class="prompt">${heading}</h2><p class="sub small">${intro}</p>
     <div class="dlg">${lines(d, d.dialogue)}</div>
-    <div class="composer" id="composer"><div class="chips"><button class="chip ${who === 'I' ? 'on' : ''}" data-act="who" data-w="I">I</button><button class="chip ${who === 'F' ? 'on' : ''}" data-act="who" data-w="F">${F}</button></div>
-    <p class="hint">${hint}</p>
-    <textarea class="field" id="dlg-in" data-field="dlgDraft" placeholder="${who === 'I' ? 'I say…' : F + ' says…'}">${esc(d.dlgDraft || '')}</textarea>
-    <div class="row"><button class="btn" data-act="dlg-add">Set it down</button>${n >= 2 ? `<button class="btn small analyst-only" data-act="ask" data-kind="frame">Hold the frame</button>` : ''}</div>
+    <div class="composer" id="composer"><span class="label" style="margin:0 0 8px">Who speaks now</span>
+    <div class="chips"><button class="chip ${isI ? 'on' : ''}" data-act="who" data-w="I">I speak</button><button class="chip lapis ${isI ? '' : 'on'}" data-act="who" data-w="F">${F} speaks</button></div>
+    <div class="line next ${who}"><span class="who">${isI ? 'I' : F}</span><p class="hint">${hint}</p>
+    <textarea class="field" id="dlg-in" data-field="dlgDraft" placeholder="${isI ? `What I say to ${F}…` : `What ${F} says back…`}">${esc(d.dlgDraft || '')}</textarea></div>
+    <div class="row"><button class="btn" data-act="dlg-add">${isI ? 'Set down my words' : `Set down ${F}’s words`}</button>${n >= 2 ? `<button class="btn small analyst-only" data-act="ask" data-kind="frame">Hold the frame</button>` : ''}</div>
     <div class="analyst analyst-only" id="an-frame" hidden><span class="who">The analyst</span><p></p><div class="err" hidden></div><button class="ghost stop" data-act="stop" hidden>Stop</button></div>${n >= 2 ? ANALYST_NOTE : ''}</div>`,
     bar: `<button class="btn primary" data-act="go" data-stage="4" data-step="wants" ${n >= 4 ? '' : 'disabled'}>${n >= 4 ? 'This is enough for now' : `${4 - n} more line${4 - n === 1 ? '' : 's'} first`}</button>`
   };
 }
-
 function Third(d) {
   const F = esc(figureName(d));
   if (d.step === 'wants') return {
