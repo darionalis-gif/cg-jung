@@ -1,10 +1,10 @@
 # Tertium Datur
 
-A single-file web app for practising C. G. Jung's method on oneself, built for a phone, as an opus that runs over months and can be carried to the three conjunctions of Dorn as Jung reads them in *Mysterium Coniunctionis*. It was built in a loop of building and independent Jungian critique (classical and alchemical), three rounds, until the critics found only refinements.
+A single-file web app for practising C. G. Jung's method on oneself, built for a phone, as an opus that runs over months and can be carried to the three conjunctions of Dorn as Jung reads them in *Mysterium Coniunctionis*. It was built in a loop of building and independent Jungian critique, classical and alchemical, over several rounds.
 
 ## What it is not
 
-Not treatment, not diagnosis, not for a crisis. A gate before first use names the states in which the descent practices should not be attempted; a Stop button on every session screen leads to a grounding screen with crisis lines; a tripwire on everything written closes the imagination for the hour, brings the closing step forward, and tells the analyst; the gate is shown again before a deep practice every ninety days. The method text states what a solo opus cannot supply: the confession's hearer, the transference, the partner in whose presence shadow and soul-image become real (CW 9ii §42).
+Not treatment, not diagnosis, not for a crisis. A gate before first use names the states in which the descent practices should not be attempted; a Stop button on every session screen leads to a grounding screen with crisis lines; a tripwire on everything written inside an hour closes the imagination for the day, brings the closing step forward, and tells the analyst; the same words written in the Liber lead to the stopping place; the gate is shown again before a deep practice every ninety days. The method text states what a solo opus cannot supply: the confession's hearer, the transference, the partner in whose presence shadow and soul-image become real (CW 9ii §42).
 
 ## The practices
 

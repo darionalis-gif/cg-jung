@@ -697,7 +697,7 @@ const PRACTICES = {
         { id: 'wait', type: 'wait', when: d => !d.deepClosed, prompt: 'Let an image come for the whole of it.', sub: 'Not for one hour, not for one complex. For the whole opus, from the first stopwatch to now. Close your eyes and wait. It may be small.', button: 'An image came', quote: 'imaginatio' },
         { id: 'whole', type: 'text', field: 'whole', min: 40, leaf: 'The symbol of the whole', when: d => !d.deepClosed, prompt: 'Describe it.', sub: 'The alchemists said the lapis was known to everyone and yet unknown, worthless and beyond price, found on the dungheap. Describe yours from the outside, as you have learned to.', placeholder: 'There is …', nudge: true },
         { id: 'form', type: 'draw', field: 'drawing', optional: true, leaf: 'Given form', when: d => !d.deepClosed, prompt: 'Give it form.', sub: 'Draw it, or go on without.' },
-        { ...GROUND, when: d => !d.deepClosed }
+        GROUND
       ]},
       { label: 'Beyond', steps: [
         { id: 'beyond', type: 'text', field: 'beyond', min: 30, leaf: 'Beyond psychology', prompt: 'What would be lost if this were only psychology?', sub: 'Jung insisted the psyche has a religious function whether or not one has a religion (CW 12 §14). If the opus were only a technique for feeling better, what in it would be lost? Answer for yourself, not for him.', placeholder: 'If it were only psychology, …' },
@@ -742,9 +742,9 @@ function openTension(d) {
   return { of: last.id, F: last.data.wants.F, I: last.data.wants.I, figure: figureName(last), at: last.startedAt };
 }
 const separatedList = () => S.sessions.flatMap(h => (h.data?.separated || '').trim() ? [{ text: h.data.separated.trim(), at: h.startedAt }] : []).concat(S.sessions.flatMap(h => (h.data?.separation || '').trim() ? [{ text: h.data.separation.trim(), at: h.startedAt }] : []));
-const sinceApplies = d => !!(openPromise(d) || openThird(d) || openTension(d) || gapDays(d) > 21 || vesselDue(d));
+const sinceApplies = d => !!(openPromise(d) || openThird(d) || openTension(d) || gapDays(d) > 21 || vesselDue(d) || corpusClosedAt());
 const lastDream = d => { const hs = S.sessions.filter(h => h.practice === 'dream' && h.data?.message && (!d || h.id !== d.id)); return hs[hs.length - 1] || null; };
-const descentToday = d => S.sessions.some(h => (!d || h.id !== d.id) && dayKey(h.finishedAt || h.startedAt) === dayKey(Date.now()) && ((h.data?.dialogue || []).length > 0 || (h.data?.again === 'yes' && h.data?.third) || ['ignis', 'unio', 'mundus'].includes(h.practice)));
+const descentToday = d => S.sessions.some(h => (!d || h.id !== d.id) && dayKey(h.finishedAt || h.startedAt) === dayKey(Date.now()) && ((h.data?.dialogue || []).length > 0 || h.tripped || !!String(h.data?.image || '').trim() || (h.data?.again === 'yes' && h.data?.third) || ['ignis', 'unio', 'mundus'].includes(h.practice))) || dayKey(S.prefs.trippedAt || 0) === dayKey(Date.now()) || S.abandoned.items.some(a => a.entered && dayKey(a.at || 0) === dayKey(Date.now()));
 const earnedDescent = () => { const f = facts(); return f.total >= 4 && (f.byP.persona || 0) >= 1; };
 const descentNow = d => earnedDescent() && !descentToday(d) && !d.deepClosed;
 const corpusOpen = d => { const hs = S.sessions.filter(h => h.practice === 'corpus' && (!d || h.id !== d.id)); const last = hs[hs.length - 1]; return last && !(last.data?.moment || '').trim() ? last : null; };
@@ -1021,7 +1021,7 @@ function ready(st, d) {
     case 'figure': return !!(d.data.figure || '').trim();
     case 'dialogue': return (d.data.dialogue || []).filter(l => l.who !== 'A').length >= 2;
     case 'draw': return st.optional || ((v?.strokes || []).length >= 1);
-    case 'since': { const th = openThird(d), tc = d.data.thirdCheck || {}; const thOk = !th || (tc.status && (tc.status !== 'alive' || tc.died)); return (!openPromise(d) || !!d.data.promise?.status) && thOk && (!openTension(d) || !!d.data.tensionCheck?.status) && (gapDays(d) <= 21 || String(d.data.gap?.note || '').trim().length >= 3) && (!vesselDue(d) || String(d.data.vessel || '').trim().length >= 3); }
+    case 'since': { const th = openThird(d), tc = d.data.thirdCheck || {}; const thOk = !th || !!(tc.status && (tc.status !== 'alive' || tc.died)); return (!openPromise(d) || !!d.data.promise?.status) && thOk && (!openTension(d) || !!d.data.tensionCheck?.status) && (gapDays(d) <= 21 || String(d.data.gap?.note || '').trim().length >= 3) && (!vesselDue(d) || String(d.data.vessel || '').trim().length >= 3); }
     case 'circ': return !!circumstancesText() && !!(S.portrait.circ?.knows || '').trim();
     case 'affect': return !!affectWord(d);
     case 'symbol': return String(d.data.third || '').trim().length >= 10;
@@ -1517,7 +1517,7 @@ function Home() {
     <p class="sub small">An hour is one sitting of one practice, of any length. Dorn’s three conjunctions, as Jung reads them at the end of CW 14. The first two are walked when the file is full enough and the days have passed; the third is not on any list. It arrives when the second has been lived and coincidence has been gathering, and then it appears here by itself.</p>
     <ol class="practices">${ORDER.slice(10).map((k, i) => item(k, i + 10)).join('')}</ol>
     <details class="method"><summary><span class="label" style="margin:0">Why it is built this way, and what it is not</span></summary>
-      <p><b>This is not treatment.</b> It is an instrument for the part of Jung’s work that can be done alone, which is a great deal and is not the whole. Jung held that the shadow and the soul-image become real only in a relation to a partner (CW 9ii §42); his commentary on the coniunctio, The Psychology of the Transference (CW 16), is about the vessel that another person makes. Nothing here replaces that. If the images will not stop, if you cannot tell them from the room, if you are in crisis: close this and telephone a person. The Stop button is in the header of every screen.</p>
+      <p><b>This is not treatment.</b> It is an instrument for the part of Jung’s work that can be done alone, which is a great deal and is not the whole. Jung held that the shadow and the soul-image become real only in a relation to a partner (CW 9ii §42); his commentary on the coniunctio, The Psychology of the Transference (CW 16), is about the vessel that another person makes. Nothing here replaces that. If the images will not stop, if you cannot tell them from the room, if you are in crisis: close this and telephone a person. The Stop button is in the header of every screen of an hour; anything written in the Liber that calls for a person leads to the same stopping place.</p>
       <p><b>Self-analysis usually fails</b> because the ego does the analysing: it explains, chooses, interprets, and stays in charge. Jung’s method needs the ego to step back at some points and to stand its ground at others. Alone, nobody enforces the difference. This instrument does, by its sequence, and by remembering: every threshold asks about the last promise, whether the last third is still alive, whether a held tension released; figures return; a word disturbed twice is named as such; what was begun and abandoned is kept.</p>
       <p><b>The order</b> follows Jung where he gave one: confession first (CW 16 §§123–130; the four stages, §§122–174), the shadow before the soul-image; elsewhere it is this instrument’s arrangement. Active imagination is earned, not offered: every entry into it, the descent, the shadow’s face, the soul-image, the fire, and the imaginations of the first and third conjunction, opens after four hours, one of them the persona, and at most once a day, and a tripwire on what you write closes it for the hour and brings the closing step forward. <b>Dreams</b> are worked as Jung worked them: exact text, kind, dramatic structure, associations by circumambulation, the objective level before the subjective, compensation and the prospective reading, your sentence before any other, and the series read together. <b>The transcendent function</b> (CW 8 §§131–193) arises from bearing the tension; what comes is followed by what must die for it, and asked about again. <b>Mandalas</b> are drawn, not admired, and the centre is never filled in.</p>
       <p><b>The three conjunctions</b> are Gerhard Dorn’s, as Jung reads them (CW 14 §§654–789): unio mentalis, the reunion with the body, and the unus mundus. Here they are a distillation of the whole file into an image with blood in it, a stage lived in the body among other people that stays open until it has been true in the flesh, and an arrival that is not on the menu. Jung’s last word on the passage this page is named for: the experience of the self is always a defeat for the ego (CW 14 §778). The opus circles; it does not end.</p>
@@ -1640,16 +1640,19 @@ function advance() {
 }
 function goBack() { const d = S.draft, p = prevStep(d); if (!p) return; d.mi = p.mi; d.si = p.si; if (p.type === 'each') d.ei = Math.max(0, D(d, p.from, []).length - 1); saveDraft(); render(); }
 function tripCheck(text) {
-  const d = S.draft; if (!d) return false; const m = TRIP_RE.exec(String(text || '')); if (!m) return false;
-  const key = m[0].toLowerCase(); if (d.tripShow || d.tripMatch === key) return false;
+  const m = TRIP_RE.exec(String(text || '')); if (!m) return false;
+  const key = m[0].toLowerCase(), d = S.draft;
+  if (view.name !== 'session') { if (S.prefs.tripMatch === key) return false; S.prefs.tripMatch = key; S.prefs.trippedAt = Date.now(); save('prefs', S.prefs); view = { name: 'ground' }; render(); return true; }
+  if (!d || d.tripShow || d.tripMatch === key) return false;
+  S.prefs.trippedAt = Date.now(); save('prefs', S.prefs);
   d.tripped = true; d.tripShow = true; d.tripMatch = key; const wasDeep = PRACTICES[d.practice].movements[d.mi].deep && !d.deepClosed; d.deepClosed = true; saveDraft();
-  if (wasDeep && !['dialogue', 'close', 'grounded'].includes(curStep(d).id)) { advance(); } else render();
+  if (wasDeep && !['close', 'grounded'].includes(curStep(d).id)) { advance(); } else render();
   return true;
 }
-function recordAbandoned(d) { const st = curStep(d); S.abandoned = { at: Date.now(), items: [...S.abandoned.items, { id: d.id, practice: d.practice, step: txt(st.leaf, d) || st.prompt && String(txt(st.prompt, d)).slice(0, 40) || st.id, mi: d.mi, si: d.si, startedAt: d.startedAt, at: Date.now() }].slice(-200) }; save('abandoned', S.abandoned); pushDoc('abandoned', S.abandoned); }
+function recordAbandoned(d) { const st = curStep(d); S.abandoned = { at: Date.now(), items: [...S.abandoned.items, { id: d.id, practice: d.practice, entered: opened(d) || !!d.tripped || (d.practice === 'ignis' && !!String(d.data.full || '').trim()) || (d.practice === 'unio' && !!(d.data.drawing?.strokes || []).length) || (d.practice === 'mundus' && !!String(d.data.whole || '').trim()), step: txt(st.leaf, d) || st.prompt && String(txt(st.prompt, d)).slice(0, 40) || st.id, mi: d.mi, si: d.si, startedAt: d.startedAt, at: Date.now() }].slice(-200) }; save('abandoned', S.abandoned); pushDoc('abandoned', S.abandoned); }
 const act = {
-  begin(b) { const p = b.dataset.p || 'hour'; if (lockOf(p)) { toast(lockOf(p)); return; } if (S.draft && S.draft.practice !== p && b.dataset.sure !== '1') { b.dataset.sure = '1'; toast(`An hour is open: ${PRACTICES[S.draft.practice].name}. Tap again to set it aside and begin this.`); return; } if (S.draft) recordAbandoned(S.draft); const deep = PRACTICES[p].movements.some(m => m.deep); if (!S.prefs.gate || (deep && daysSince(S.prefs.gateAt || 0) > 90)) { view = { name: 'gate', p }; render(); return; } S.draft = newDraft(p); saveDraft(true); view = { name: 'session' }; render(); },
-  'gate-ok'(b) { S.prefs.gate = true; S.prefs.gateAt = Date.now(); save('prefs', S.prefs); if (b.dataset.p) act.begin({ dataset: { p: b.dataset.p } }); else { view = { name: 'home' }; render(); } },
+  begin(b) { const p = b.dataset.p || 'hour'; if (lockOf(p)) { toast(lockOf(p)); return; } if (S.draft && b.dataset.sure !== '1') { b.dataset.sure = '1'; toast(`An hour is open: ${PRACTICES[S.draft.practice].name}. Tap again to set it aside and begin afresh.`); return; } const deep = PRACTICES[p].movements.some(m => m.deep); if (!S.prefs.gate || (deep && daysSince(S.prefs.gateAt || 0) > 90)) { view = { name: 'gate', p }; render(); return; } if (S.draft) recordAbandoned(S.draft); S.draft = newDraft(p); saveDraft(true); view = { name: 'session' }; render(); },
+  'gate-ok'(b) { S.prefs.gate = true; S.prefs.gateAt = Date.now(); save('prefs', S.prefs); if (b.dataset.p) act.begin({ dataset: { p: b.dataset.p, sure: '1' } }); else { view = { name: 'home' }; render(); } },
   gate() { view = { name: 'gate', p: '' }; render(); },
   ground() { view = { name: 'ground' }; render(); },
   'trip-ok'() { const d = S.draft; if (d) { d.tripShow = false; saveDraft(); } render(); },
@@ -1664,7 +1667,7 @@ const act = {
   lang() { S.prefs.lang = S.prefs.lang === 'de' ? 'en' : 'de'; save('prefs', S.prefs); render(); },
   tier(b) { S.prefs.tier = b.dataset.t; save('prefs', S.prefs); render(); },
   portrait(b) { const f = b.dataset.f, v = S.portrait[f] === b.dataset.v ? '' : b.dataset.v; S.portrait = { ...S.portrait, [f]: v, at: Date.now() }; if (f === 'inferior') S.portrait.auxiliary = ''; save('portrait', S.portrait); pushDoc('portrait', S.portrait); render(); },
-  'sync-add'() { const g = id => (document.getElementById(id)?.value || '').trim(); const e = { inner: g('sync-inner'), outer: g('sync-outer'), why: g('sync-why') }; if (!e.inner && !e.outer) return; S.sync = { at: Date.now(), items: [...S.sync.items, { ...e, id: Date.now().toString(36), at: Date.now() }] }; save('synclog', S.sync); pushDoc('synclog', S.sync); render(); },
+  'sync-add'() { const g = id => (document.getElementById(id)?.value || '').trim(); const e = { inner: g('sync-inner'), outer: g('sync-outer'), why: g('sync-why') }; if (!e.inner && !e.outer) return; if (tripCheck(e.inner + ' ' + e.outer + ' ' + e.why)) return; S.sync = { at: Date.now(), items: [...S.sync.items, { ...e, id: Date.now().toString(36), at: Date.now() }] }; save('synclog', S.sync); pushDoc('synclog', S.sync); render(); },
   'sync-entry'() { const d = S.draft, e = d.syncEntry || {}; if (!(e.inner || '').trim() && !(e.outer || '').trim()) return; setPath(d.data, 'sync', [...D(d, 'sync', []), { inner: (e.inner || '').trim(), outer: (e.outer || '').trim(), why: (e.why || '').trim() }]); d.syncEntry = {}; saveDraft(); render(); },
   next() { const d = S.draft; if (!ready(curStep(d), d)) return; advance(); },
   back() { goBack(); },
@@ -1698,7 +1701,7 @@ const act = {
     const d = S.draft; d.finishedAt = Date.now(); d.updatedAt = Date.now(); delete d.dlgDraft; delete d.ei; delete d.padColour; delete d.syncEntry; delete d.tripShow; delete d.deepClosed; delete d.tripMatch;
     if (d.data.ops?.length) d.data.colour = colourFrom(d.data.ops, d.data.colourPick, d) || admitted(d.data.ops, d)[0];
     if (gapDays(d) > 21) d.data.gap = { ...(d.data.gap || {}), days: Math.round(gapDays(d)) };
-    if (d.data.thirdCheck?.status === 'alive' && d.data.thirdCheck.died === 'yes') { const e = S.sessions.find(h => h.id === d.data.thirdCheck.of); if (e && e.data) { if (e.data.two === 'merged') { e.data.two = 'both'; d.data.thirdCheck.died = 'seam'; e.updatedAt = Date.now(); pushHour(e); } else if (statusOf(e) !== 'not') { e.data.colour = 'rubedo'; e.updatedAt = Date.now(); pushHour(e); } } }
+    if (d.data.thirdCheck?.status === 'alive' && d.data.thirdCheck.died === 'yes') { const e = S.sessions.find(h => h.id === d.data.thirdCheck.of); if (e && e.data) { if (e.data.two === 'merged') { e.data.two = 'both'; d.data.thirdCheck.died = 'seam'; e.updatedAt = Date.now(); pushHour(e); } else if (statusOf(e) !== 'not' && e.data.two === 'both') { e.data.colour = 'rubedo'; e.updatedAt = Date.now(); pushHour(e); } } }
     S.sessions.push(d); S.sessions.sort((a, b) => a.startedAt - b.startedAt); save('sessions', S.sessions); pushHour(d);
     S.draft = null; saveDraft(true);
     view = { name: 'home' }; render(); toast(d.practice === 'mundus' ? 'The hour is kept. The circle closed, and opens again.' : 'The hour is kept.');
@@ -1707,12 +1710,13 @@ const act = {
 app.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (!b || b.disabled) return; const fn = act[b.dataset.act]; if (fn) fn(b, e); });
 app.addEventListener('input', e => {
   const t = e.target;
-  if (S.draft && (t.dataset?.circ || t.dataset?.field || t.id === 'list-in') && tripCheck(t.value)) return;
-  if (t.dataset?.circ) { S.portrait = { ...S.portrait, circ: { ...(S.portrait.circ || {}), [t.dataset.circ]: t.value }, at: Date.now() }; save('portrait', S.portrait); clearTimeout(app._pt); app._pt = setTimeout(() => pushDoc('portrait', S.portrait), 1200); refreshReady(); return; }
+  if (t.dataset?.circ) { S.portrait = { ...S.portrait, circ: { ...(S.portrait.circ || {}), [t.dataset.circ]: t.value }, at: Date.now() }; save('portrait', S.portrait); clearTimeout(app._pt); app._pt = setTimeout(() => pushDoc('portrait', S.portrait), 1200); if (tripCheck(t.value)) return; refreshReady(); return; }
+  if (t.id === 'sync-inner' || t.id === 'sync-outer' || t.id === 'sync-why' || t.id === 'list-in') { if (tripCheck(t.value)) return; }
   const f = t.dataset?.field; if (!f || !S.draft) return; const d = S.draft;
   if (f === 'dlgDraft') { d.dlgDraft = t.value; saveDraft(); }
   else if (f.startsWith('_syncEntry.')) { d.syncEntry = { ...(d.syncEntry || {}), [f.slice(11)]: t.value }; saveDraft(); }
   else { setPath(d.data, f, t.value); saveDraft(); }
+  if (tripCheck(t.value)) return;
   if (f.startsWith('_syncEntry.')) return;
   const st = curStep(d);
   if (st.type === 'text') { const nudge = document.getElementById('nudge'); const re = st.nudge ? NUDGE_RE : st.nudgeRe; if (nudge && re) nudge.hidden = !re.test(t.value); }
