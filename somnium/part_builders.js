@@ -198,6 +198,8 @@ B.pyramid = a => { const g = new THREE.Group(); const h = a.detail.height || 3; 
 B.thing = a => { const g = new THREE.Group(); const t = mesh(G.dod(0.32), mat(a.color, { flat: true, emissive: a.color, ei: 0.15 }), 0, 0.3, 0); g.add(t); g.userData.height = 0.6; g.userData.spinPart = t; return g; };
 
 const SOFT = new Set(['person', 'crowd', 'monster', 'skeleton', 'ghost']);
+// things a camera must not hide the subject behind, even though an actor may walk through them
+const LEAFY = new Set(['tree', 'forest', 'bush', 'sign', 'flower', 'fence']);
 // flat ground cover has to be cut where a pit is, exactly as the ground plane is
 const GROUNDCOVER = new Set(['road', 'path', 'field', 'water', 'river']);
 const SOLID = new Set(['house', 'shop', 'building', 'tower', 'castle', 'church', 'wall', 'hill', 'mountain', 'rock', 'cliff', 'cave', 'tent', 'bus', 'train', 'truck']);
@@ -205,6 +207,7 @@ function buildActor(a) {
   let g; try { g = (B[a.kind] || B.thing)(a); } catch (e) { console.warn('builder failed', a.kind, e); g = B.thing(a); }
   if (SOFT.has(a.kind)) g.traverse(o => { if (o.isMesh && o.geometry.type === 'CapsuleGeometry') { o.userData.solid = true; o.userData.soft = true; } });
   if (SOLID.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.material.side !== THREE.BackSide) o.userData.solid = true; });
+  if (LEAFY.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh) { o.userData.solid = true; o.userData.soft = true; } });
   if (GROUNDCOVER.has(a.kind)) g.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.stencilWrite = true; o.material.stencilFunc = THREE.NotEqualStencilFunc; o.material.stencilRef = 1; } });
   if (!g.userData.noScale) g.scale.setScalar(a.size); else g.scale.setScalar(1);
   g.userData.actor = a; g.userData.baseHeight = (g.userData.height || 1.8) * (g.userData.noScale ? 1 : a.size);

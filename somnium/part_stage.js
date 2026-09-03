@@ -49,7 +49,7 @@ const Stage = {
     for (const rec of this.actors.values()) { if (rec.g.userData.shadow) { const r = rec.g.userData.shadow; const blob = new THREE.Mesh(new THREE.CircleGeometry(r, 20), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.renderOrder = 1; this.root.add(blob); rec.blob = blob; } const mats = []; const seen = new Map(); rec.g.traverse(o => { if (o.isMesh && !o.material.userData.water) { let m = seen.get(o.material); if (!m) { m = o.material.clone(); m.userData = { ...o.material.userData, baseOpacity: o.material.opacity, baseColor: o.material.color.clone(), baseEmissive: o.material.emissive ? o.material.emissive.clone() : null }; seen.set(o.material, m); mats.push(m); } o.material = m; } }); rec.mats = mats; }
     this.solids = []; this.waterMats = [this.waterGround.material]; this.root.traverse(o => { if (o.userData.solid) this.solids.push(o); if (o.isMesh && o.material && o.material.userData.water) this.waterMats.push(o.material); }); this.boxTick = 0; this._rooms = null; this.applyWorld(scene.world); this.setTime(0); this.playing = true;
   },
-  setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
+  setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
   beatAt(t) { const bs = this.scene.beats; for (let i = bs.length - 1; i >= 0; i--) if (t >= bs[i].start) return i; return 0; },
   /* ---- evaluate all actor and world state at this.time ---- */
   evalActors(t) {
@@ -198,22 +198,45 @@ const Stage = {
     else if (c.mode === 'orbit') { const ang = c.angle + tg.yaw + local * 18; const dist = groupC ? Math.min(c.distance * 1.8, Math.max(c.distance, groupR * 1.8 + 3)) : c.distance; const ctr = groupC ? T.clone().lerp(groupC, 0.6) : T; pos = ctr.clone().add(dirAt(ang, dist, c.height + (dist - c.distance) * 0.2)); look = groupC ? new THREE.Vector3(ctr.x, eye.y, ctr.z) : eye; }
     else if (c.mode === 'wide') { const extent = Math.max(groupR * 2, (rec ? rec.g.userData.baseHeight : 1.8) * 2); const floorD = clamp(extent * 3.2, 12, 26); pos = T.clone().add(dirAt(c.angle, Math.max(c.distance, floorD), Math.max(c.height, floorD * 0.32) + local * 0.2)); look = groupC ? new THREE.Vector3(groupC.x, eye.y, groupC.z) : eye; }
     else { const sm = this.smoothYaw === undefined ? tg.yaw : this.smoothYaw; const d = ((tg.yaw - sm + 540) % 360) - 180; this.smoothYaw = snap ? tg.yaw : sm + d * Math.min(1, dt * 1.5); const dist = groupC ? Math.min(c.distance * 1.8, Math.max(c.distance, groupR * 1.6 + 3)) : c.distance; pos = T.clone().add(dirAt(this.smoothYaw + c.angle, dist, c.height + local * 0.05 + (dist - c.distance) * 0.25)); look = groupC ? new THREE.Vector3(lerp(T.x, groupC.x, 0.5), eye.y, lerp(T.z, groupC.z, 0.5)) : eye; }
-    // the subject is inside a room: keep the camera in there with them rather than outside a shell whose front faces are culled
-    { const room = this.roomAround(look); if (room) { const b = room.box; const pad = 0.45;
-        if (pos.x < b.min.x + pad || pos.x > b.max.x - pad || pos.z < b.min.z + pad || pos.z > b.max.z - pad || pos.y > b.max.y - 0.3) {
-          const d = pos.clone().sub(look); const dl = d.length() || 1; d.divideScalar(dl);
-          let t = dl; for (const [lo, hi, o, dd] of [[b.min.x + pad, b.max.x - pad, look.x, d.x], [b.min.z + pad, b.max.z - pad, look.z, d.z], [-1e6, b.max.y - 0.3, look.y, d.y]]) { if (Math.abs(dd) < 1e-4) continue; const t1 = (hi - o) / dd, t2 = (lo - o) / dd; for (const tt of [t1, t2]) if (tt > 0.2 && tt < t) t = tt; }
-          pos = look.clone().add(d.multiplyScalar(Math.max(1.2, t - 0.15)));
-        } } }
-    // part of the beat is happening below the ground: look down into the hole instead of across it
-    { const low = [], high = []; for (const x of beat.actions) { if (!x.actor) continue; const st = states.get(x.actor); const r2 = this.actors.get(x.actor); if (!st || st.op < 0.3 || !r2 || r2.g.userData.flat || r2.g.userData.big) continue; (st.pos[1] < -1 ? low : high).push(st); }
-      if (low.length && high.length) { const c0 = low.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(low.length);
-        look = new THREE.Vector3(c0.x, c0.y + 1.2, c0.z); const h = Math.hypot(pos.x - look.x, pos.z - look.z); pos.y = Math.max(pos.y, look.y + Math.max(h * 1.15, 4)); } }
-    // keep camera above ground and out of the target
-    const minY = Math.min(0.4, T.y + 0.5); if (pos.y < minY) pos.y = minY;
     const lookRec = typeof c.lookAt === 'string' ? this.actors.get(c.lookAt) : null;
     const selfs = [rec && rec.g, lookRec && lookRec.g].filter(Boolean);
-    pos = this.unblock(look, pos, selfs.length ? selfs : null);
+    const settle = (p0, l0) => { let p = p0.clone(), look2 = l0.clone();
+    // the subject is inside a room: keep the camera in there with them rather than outside a shell whose front faces are culled
+    { const room = this.roomAround(look2); if (room) { const b = room.box; const pad = 0.45;
+        if (p.x < b.min.x + pad || p.x > b.max.x - pad || p.z < b.min.z + pad || p.z > b.max.z - pad || p.y > b.max.y - 0.3) {
+          const d = p.clone().sub(look2); const dl = d.length() || 1; d.divideScalar(dl);
+          let t = dl; for (const [lo, hi, o, dd] of [[b.min.x + pad, b.max.x - pad, look2.x, d.x], [b.min.z + pad, b.max.z - pad, look2.z, d.z], [-1e6, b.max.y - 0.3, look2.y, d.y]]) { if (Math.abs(dd) < 1e-4) continue; const t1 = (hi - o) / dd, t2 = (lo - o) / dd; for (const tt of [t1, t2]) if (tt > 0.2 && tt < t) t = tt; }
+          p = look2.clone().add(d.multiplyScalar(Math.max(1.2, t - 0.15)));
+        } } }
+    // part of the beat is happening below the ground: look2 down into the hole instead of across it
+    { const low = [], high = []; for (const x of beat.actions) { if (!x.actor) continue; const st = states.get(x.actor); const r2 = this.actors.get(x.actor); if (!st || st.op < 0.3 || !r2 || r2.g.userData.flat || r2.g.userData.big) continue; const climbing = beat.actions.some(q => q.actor === x.actor && q.move && q.move[1] > -1); (st.pos[1] < -1 && !climbing ? low : high).push(st); }
+      if (low.length && high.length) { const c0 = low.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(low.length);
+        look2 = new THREE.Vector3(c0.x, c0.y + 1.2, c0.z); const h = Math.hypot(p.x - look2.x, p.z - look2.z); p.y = Math.max(p.y, look2.y + Math.max(h * 1.15, 4)); } }
+    // keep camera above ground and out of the target
+    const minY = Math.min(0.4, T.y + 0.5); if (p.y < minY) p.y = minY;
+    const look2Rec = typeof c.look2At === 'string' ? this.actors.get(c.look2At) : null;
+    const selfs = [rec && rec.g, look2Rec && look2Rec.g].filter(Boolean);
+    p = this.unblock(look2, p, selfs.length ? selfs : null);
+      return { pos: p, look: look2 };
+    };
+    // frame the actors the sentence names, not only the camera's target: try the shot, then a few wider or turned variants
+    const framed = [];
+    for (const x of beat.actions) { if (!x.actor) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; if (!framed.some(q => q.id === x.actor)) framed.push({ id: x.actor, g: r2.g, p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
+    if (snap || !this.framePick || this.framePick.beat !== this.lastBeat) {
+      let best = { az: 0, mul: 1, score: -1 };
+      if (framed.length > 1) {
+        for (const mul of [1, 1.35, 1.8]) for (const az of [0, 26, -26, 55, -55, 90, -90, 140, -140]) {
+          const cand = this.turnShot(pos, look, az, mul); const out = settle(cand, look);
+          let n = 0; for (const f of framed) if (this.inShot(out.pos, out.look, f.p, f.g)) n++;
+          const cost = Math.abs(az) / 900 + (mul - 1) * 0.35;
+          const score = n - cost; if (score > best.score) best = { az, mul, score, n };
+          if (n === framed.length && az === 0 && mul === 1) break;
+        }
+      }
+      this.framePick = { beat: this.lastBeat, az: best.az, mul: best.mul };
+    }
+    if (this.framePick.az || this.framePick.mul !== 1) pos = this.turnShot(pos, look, this.framePick.az, this.framePick.mul);
+    { const out = settle(pos, look); pos = out.pos; look = out.look; }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f); }
     const hh = this.user.on ? 0 : 0.035; const drift = new THREE.Vector3(Math.sin(this.time * 0.7) * hh + Math.sin(this.time * 1.9) * hh * 0.4, Math.sin(this.time * 0.9 + 1) * hh * 0.7, Math.cos(this.time * 0.5) * hh);
@@ -231,6 +254,18 @@ const Stage = {
     this._ray = this._ray || new THREE.Raycaster(); const r = this._ray; r.set(look, dir); r.near = 0.3; r.far = len; const hits = r.intersectObjects(this.solidsNow || [], false);
     for (const h of hits) { if (self && this.isOwn(h.object, self)) continue; if (h.object.userData.soft && len - h.distance > Math.max(1.2, len * 0.4)) continue; return h.distance; }
     return Infinity;
+  },
+  turnShot(pos, look, azDeg, mul) {
+    const off = pos.clone().sub(look); const r = azDeg * Math.PI / 180; const c = Math.cos(r), sn = Math.sin(r);
+    const x = off.x * c - off.z * sn, z = off.x * sn + off.z * c;
+    return look.clone().add(new THREE.Vector3(x, off.y, z).multiplyScalar(mul));
+  },
+  inShot(pos, look, point, own) {
+    const c2 = this._cam2 || (this._cam2 = new THREE.PerspectiveCamera(50, 1, 0.1, 1200));
+    c2.fov = this.camera.fov; c2.aspect = this.camera.aspect; c2.position.copy(pos); c2.up.set(0, 1, 0); c2.lookAt(look); c2.updateMatrixWorld(true); c2.updateProjectionMatrix();
+    const v = point.clone().project(c2);
+    if (v.z > 1 || Math.abs(v.x) > 0.9 || Math.abs(v.y) > 0.82) return false;
+    return !this.occluded(pos, point, own);
   },
   roomAround(p) {
     if (!this._rooms) { this._rooms = []; for (const rec of this.actors.values()) { if (rec.a.kind !== 'room' && rec.a.kind !== 'corridor') continue; const box = new THREE.Box3().setFromObject(rec.g); this._rooms.push({ rec, box }); } }

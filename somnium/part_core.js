@@ -54,7 +54,7 @@ STAGE SCRIPT FORMAT (all keys shown; hex colours like "#a1b2c3"; y is up; units 
  "beats": [
    { "dur": seconds 4-12,
      "text": "the exact words of the dream this beat performs (verbatim excerpt, in order; the beats together cover the whole dream)",
-     "camera": { "mode": one of ${JSON.stringify(CAMERA_MODES)}, "target": actorId (for follow/orbit/pov/wide), "pos": [x,y,z] and "lookAt": [x,y,z] or actorId (for fixed), "distance": metres (follow/orbit, 3-40), "height": metres, "angle": degrees, measured from the target's own facing (0 = in front of them, so their face is seen; 90 = from their left; 180 = from behind); used by follow and orbit },
+     "camera": { "mode": one of ${JSON.stringify(CAMERA_MODES)}, "target": actorId (for follow/orbit/pov/wide), "pos": [x,y,z] and "lookAt": [x,y,z] or actorId (for fixed), "distance": metres (follow/orbit, 3-40), "height": metres, "angle": degrees, measured from the target's own facing (0 = in front of them, so their face is seen; 90 = from their left; 180 = from behind); used by follow, orbit and wide },
      "actions": [
        { "actor": actorId, "move": [x,y,z] (destination reached by the end of the beat), "path": "line"|"arc"|"circle", "yaw": degrees, "state": one of STATES,
          "appear": true, "vanish": true, "size": n, "color": hex, "say": "short line shown as a speech label; only words the report quotes or reports", "at": 0-1 (fraction of the beat when the action starts, default 0), "for": 0-1 (fraction it lasts, default until the end) },
@@ -72,7 +72,7 @@ Rules that matter:
 1. Fidelity first. Every place, person, creature and thing the dream names is an actor with a recognisable label. Events happen in the order the dream tells them; nothing is invented that contradicts the text; where the dream is vague, choose the plainest reading. Emotions are staged through colour, light, fog, weather, camera distance and effect, not left out. "say" carries only words the report quotes or reports; when the report says someone yelled without saying what, use the state shake and no invented words.
 2. Cover the whole dream: 5 to 14 beats, each carrying a verbatim excerpt of the report in "text" (fix nothing, quote in order; the excerpts joined should reproduce the report). One clear event per beat, and the thing the sentence is about must be on screen and legible in that beat.
 3. The dreamer is an actor with id "me" (kind person, label "me") whenever the dream is in the first person; the camera usually follows "me" (mode follow, distance 6-10, height 2-4) and cuts to fixed or wide shots for big scenery, and to orbit for a moment to be looked at. Keep whoever acts in the beat inside the frame: look at them or follow them. A fixed camera position must be outside every building, room, hill and wall and at least 3 m from any person or crowd; never look at a scene through a wall. States: melt flattens a whole figure, fold crumples only the head and face, collapse drops a figure to the ground, kneel and sit need no seat.
-4. Space is real: put the actors of a beat within a few metres of each other; a person who walks moves 1.4 m per second, a run 4 m/s; scenery is around, not under, the people. Buildings are at least 6 m apart and never straddle the road. A small town, a village, a suburb or a slum is made of house and shop actors, not building or city. Interiors: put a "room" actor around the people (width/depth/height) and set ground "floor"; when the people leave a room, vanish the room in that beat or cut to a camera outside. Underground (a cave, a hold, a cellar): keep ground "soil" or "stone" at y 0 with the people on it, sky "void", a cave actor around them, and a lamp, candle or fire for light; do not put people below y 0 except at the bottom of a pit. People stand on sand or grass next to water, never inside a water disc unless they swim. Anything the report dwells on is its own labelled actor, not a word inside another actor's label: the big lens on the camera, the dishes, the money, the teeth. Use the base sizes: a sand castle is castle at size 0.3, a tooth is tooth at size 1-3, a puddle is water at size 0.1, a lens or a camera is box at size 0.2 with a label. People riding in a vehicle move with it: give them the same move in the same beat, with y about 1 for a car and 1.2 for a helicopter, and state sit.
+4. Space is real: put the actors of a beat within a few metres of each other; a person who walks moves 1.4 m per second, a run 4 m/s; scenery is around, not under, the people. Buildings are at least 6 m apart and never straddle the road. A small town, a village, a suburb or a slum is made of house and shop actors, not building or city. Interiors: put a "room" actor around the people (width/depth/height) and set ground "floor"; when the people leave a room, vanish the room in that beat or cut to a camera outside. Underground (a cave, a hold, a cellar): keep ground "soil" or "stone" at y 0 with the people on it, sky "void", a cave actor around them, and a lamp, candle or fire for light; do not put people below y 0 except at the bottom of a pit. People stand on sand or grass next to water, never inside a water disc unless they swim. Something a person carries stays with them: give it the same move in the same beat and a y of about 1.1 so it sits at hand height. Anything the report dwells on is its own labelled actor, not a word inside another actor's label: the big lens on the camera, the dishes, the money, the teeth. Use the base sizes: a sand castle is castle at size 0.3, a tooth is tooth at size 1-3, a puddle is water at size 0.1, a lens or a camera is box at size 0.2 with a label. People riding in a vehicle move with it: give them the same move in the same beat, with y about 1 for a car and 1.2 for a helicopter, and state sit.
 5. The audience must always be able to see the actors, even in a night or underground scene: keep ambient at or above a dim grey-blue like #3a4060, sunIntensity at or above 0.4, fogDensity at or below 0.03 unless the sentence is about not being able to see, and never below-black skies. Darkness is a mood, not a blindfold.
 6. Stage transitions of place as a beat with a "blackout" effect at 0 plus "world" changes and moves, or by having the old scenery vanish and the new appear. Actors that are not yet in the story start hidden and get "appear"; actors that leave get "vanish" (both happen within about a quarter of the beat unless you give "for"). Hidden actors still need a pos. Things a person carries or wears (money, a bag, a hat, a camera) are not separate actors unless the dream makes them act: name them in the person's label instead ("me, with my money"). A moon or sun is a disc at exactly its pos: put it 60-150 m away, only 15-40 m up so it hangs low over the horizon, and on the side the camera of the beats that show it will be facing (for a follow camera that is behind the actor, so a moon the dreamer walks toward goes in front of them).
 7. Output ONLY the JSON object, no commentary, no markdown fences.`;
@@ -85,9 +85,11 @@ function aimSky(scene) {
   const b = scene.beats[0]; if (!b) return null; const c = b.camera;
   if (c.mode === 'fixed' && c.pos) { const l = Array.isArray(c.lookAt) ? c.lookAt : (scene.actors.find(a => a.id === (typeof c.lookAt === 'string' ? c.lookAt : c.target)) || {}).pos; if (!l) return null; const d = [l[0] - c.pos[0], l[2] - c.pos[2]]; const n = Math.hypot(d[0], d[1]); return n > 0.1 ? [d[0] / n, d[1] / n] : null; }
   const t = scene.actors.find(a => a.id === c.target); if (!t) return null;
-  const r = (t.yaw + (c.mode === 'follow' ? 0 : 180)) * Math.PI / 180; return [Math.sin(r), Math.cos(r)];
+  // the camera sits at dirAt(target yaw + angle) and looks back at the target, so it faces the opposite way
+  if (c.mode === 'pov') { const r = t.yaw * Math.PI / 180; return [Math.sin(r), Math.cos(r)]; }
+  const r = (t.yaw + c.angle) * Math.PI / 180; return [-Math.sin(r), -Math.cos(r)];
 }
-function skyPos(p) { let [x, y, z] = p; let h = Math.hypot(x, z); if (h < 60) { const k = 60 / Math.max(0.001, h); x *= k; z *= k; h = 60; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } return [x, clamp(y, 10, h * 0.42), z]; }
+function skyPos(p) { let [x, y, z] = p; let h = Math.hypot(x, z); if (h < 60) { const k = 60 / Math.max(0.001, h); x *= k; z *= k; h = 60; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } return [x, clamp(y, 10, h * 0.26), z]; }
 function opt(v, a, b) { v = +v; return Number.isFinite(v) && v > 0 ? clamp(v, a, b) : 0; }
 function num(v, d, a = -1e6, b = 1e6) { v = +v; return Number.isFinite(v) ? clamp(v, a, b) : d; }
 function vec(v, d) { return Array.isArray(v) && v.length >= 3 && v.slice(0, 3).every(x => Number.isFinite(+x)) ? v.slice(0, 3).map(x => clamp(+x, -500, 500)) : d.slice(); }
@@ -125,7 +127,7 @@ function normalizeScene(raw, dreamText) {
       if (x.effect) return { effect: oneOf(x.effect, EFFECTS, 'none'), at: num(x.at, 0, 0, 1) };
       const actor = typeof x.actor === 'string' ? x.actor.toLowerCase().replace(/[^a-z0-9_]+/g, '_') : '';
       if (!ids.has(actor)) return null;
-      const a = { actor, at: num(x.at, 0, 0, 0.95), for: num(x.for, (x.appear || x.vanish) && x.move === undefined ? 0.25 : 1, 0.05, 1) };
+      const a = { actor, at: num(x.at, 0, 0, 0.95), for: num(x.for, (x.appear || x.vanish) && x.move === undefined && !x.say ? 0.25 : 1, 0.05, 1) };
       if (x.move !== undefined) a.move = vec(x.move, null) || null;
       if (a.move === null) delete a.move;
       if (x.path) a.path = oneOf(x.path, ['line', 'arc', 'circle'], 'line');
@@ -141,8 +143,18 @@ function normalizeScene(raw, dreamText) {
     return { dur: num(b.dur, 6, 2, 30), text: typeof b.text === 'string' ? b.text.trim() : '', camera, actions };
   });
   // put any moon or sun in the half of the sky the opening shot faces, so what the page says is there can be seen
-  { const view = aimSky({ beats, actors, world }); if (view) for (const a of actors) { if (a.kind !== 'moon' && a.kind !== 'sun') continue; const h = Math.hypot(a.pos[0], a.pos[2]) || 90; if ((a.pos[0] / h) * view[0] + (a.pos[2] / h) * view[1] < 0.2) a.pos = [view[0] * h, a.pos[1], view[1] * h]; } }
+  { const view = aimSky({ beats, actors, world }); if (view) for (const a of actors) { if (a.kind !== 'moon' && a.kind !== 'sun') continue; const h = Math.hypot(a.pos[0], a.pos[2]) || 90; if ((a.pos[0] / h) * view[0] + (a.pos[2] / h) * view[1] < -0.1) a.pos = [view[0] * h, a.pos[1], view[1] * h]; } }
   if (!beats.length) beats = [{ dur: 8, text: dreamText ? dreamText.slice(0, 200) : '', camera: { mode: 'orbit', target: firstId, pos: null, lookAt: null, distance: 10, height: 3, angle: 160 }, actions: [] }];
+  // a beat that arrives somewhere should show the place, not spend itself on the journey
+  const PLACE = new Set(['room', 'corridor', 'house', 'shop', 'building', 'church', 'cave', 'city', 'tower']);
+  { const cur = new Map(actors.map(a => [a.id, a.pos.slice()]));
+    for (const b of beats) {
+      const jump = b.actions.some(x => x.effect === 'blackout') || b.actions.some(x => x.world && x.world.ground !== undefined)
+        || b.actions.some(x => x.appear && PLACE.has((actors.find(q => q.id === x.actor) || {}).kind));
+      for (const x of b.actions) { if (!x.actor || !x.move) continue; const from = cur.get(x.actor); if (!from) continue;
+        if (jump) { const far = Math.hypot(x.move[0] - from[0], x.move[2] - from[2]), drop = Math.abs(x.move[1] - from[1]);
+          if ((far > 15 || drop > 5) && x.for > 0.4) x.for = 0.3; }
+        cur.set(x.actor, x.move.slice()); } } }
   let t = 0; for (const b of beats) { b.start = t; t += b.dur; }
   return { title: typeof s.title === 'string' && s.title.trim() ? s.title.trim().slice(0, 80) : 'Untitled dream', mood: typeof s.mood === 'string' ? s.mood.slice(0, 200) : '', world, actors, beats, total: t };
 }
