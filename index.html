@@ -1170,7 +1170,7 @@ function dossierText(f) {
 }
 function tailFor(kind, d) {
   const H = S.sessions.filter(h => h.id !== d.id), T = [];
-  const full = (label, h, keys) => { const parts = keys.map(k => { const v = getPath(h.data, k); const s = v && typeof v === 'object' ? (Array.isArray(v) ? v.join('; ') : Object.entries(v).filter(([, x]) => x && String(x).trim()).map(([a, x]) => `\n- ${a}: ${x}`).join('')) : v; return s && String(s).trim() ? `${k}: ${s}` : ''; }).filter(Boolean); if (parts.length) T.push(`— ${label}, ${fmtDate(h.startedAt)}:\n${parts.join('\n')}`); };
+  const full = (label, h, keys) => { const parts = keys.map(k => { const v = getPath(h.data, k); const s = v && typeof v === 'object' ? (Array.isArray(v) ? v.join('; ') : Object.entries(v).filter(([, x]) => x && String(x).trim()).map(([a, x]) => `\n- ${a}: ${x}`).join('')) : v; return s && String(s).trim() ? `${k}: ${s}`.replace(': \n', ':\n') : ''; }).filter(Boolean); if (parts.length) T.push(`— ${label}, ${fmtDate(h.startedAt)}:\n${parts.join('\n')}`); };
   if (kind === 'constellation') H.filter(h => h.data?.wae?.done).slice(-3).forEach(h => full('Earlier protocol', h, ['seed.word', 'interrogation']));
   if (kind === 'frame' || kind === 'amplification') { const F = figureName(d).toLowerCase(); H.filter(h => (h.data?.figure || '').trim().toLowerCase() === F).slice(-3).forEach(h => { T.push(`— ${figureName(h)} in ${PRACTICES[h.practice].name}, ${fmtDate(h.startedAt)}:\n${dialogueText(h)}${h.data.wants?.F ? `\nIt wanted: ${h.data.wants.F}` : ''}${h.data.third ? `\nThe third then: ${h.data.third}` : ''}`); }); }
   if (kind === 'amplification') H.filter(h => h.data?.third && !h.data.nothing).slice(-4).forEach(h => full('Earlier third', h, ['image', 'third', 'mortificatio']));
