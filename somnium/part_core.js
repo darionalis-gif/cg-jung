@@ -89,7 +89,7 @@ function aimSky(scene) {
   if (c.mode === 'pov') { const r = t.yaw * Math.PI / 180; return [Math.sin(r), Math.cos(r)]; }
   const r = (t.yaw + c.angle) * Math.PI / 180; return [-Math.sin(r), -Math.cos(r)];
 }
-function skyPos(p) { let [x, y, z] = p; let h = Math.hypot(x, z); if (h < 60) { const k = 60 / Math.max(0.001, h); x *= k; z *= k; h = 60; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } return [x, clamp(y, 10, h * 0.26), z]; }
+function skyPos(p) { let [x, y, z] = p; let h = Math.hypot(x, z); if (h < 60) { const k = 60 / Math.max(0.001, h); x *= k; z *= k; h = 60; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } return [x, clamp(y, 8, h * 0.13), z]; }
 function opt(v, a, b) { v = +v; return Number.isFinite(v) && v > 0 ? clamp(v, a, b) : 0; }
 function num(v, d, a = -1e6, b = 1e6) { v = +v; return Number.isFinite(v) ? clamp(v, a, b) : d; }
 function vec(v, d) { return Array.isArray(v) && v.length >= 3 && v.slice(0, 3).every(x => Number.isFinite(+x)) ? v.slice(0, 3).map(x => clamp(+x, -500, 500)) : d.slice(); }
@@ -145,6 +145,12 @@ function normalizeScene(raw, dreamText) {
   // put any moon or sun in the half of the sky the opening shot faces, so what the page says is there can be seen
   { const view = aimSky({ beats, actors, world }); if (view) for (const a of actors) { if (a.kind !== 'moon' && a.kind !== 'sun') continue; const h = Math.hypot(a.pos[0], a.pos[2]) || 90; if ((a.pos[0] / h) * view[0] + (a.pos[2] / h) * view[1] < -0.1) a.pos = [view[0] * h, a.pos[1], view[1] * h]; } }
   if (!beats.length) beats = [{ dur: 8, text: dreamText ? dreamText.slice(0, 200) : '', camera: { mode: 'orbit', target: firstId, pos: null, lookAt: null, distance: 10, height: 3, angle: 160 }, actions: [] }];
+  // nothing that stands on the ground belongs across the mouth of a hole
+  { const pits = actors.filter(a => a.kind === 'pit');
+    for (const p of pits) { const r = (p.detail.radius || 1.5) * p.size;
+      for (const a of actors) { if (a === p || a.pos[1] < -0.5) continue; if (a.kind === 'pit') continue;
+        const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
+        if (d < r + 0.4) { const n = d > 0.01 ? [dx / d, dz / d] : [1, 0]; a.pos = [p.pos[0] + n[0] * (r + 1.1), a.pos[1], p.pos[2] + n[1] * (r + 1.1)]; } } } }
   // a beat that arrives somewhere should show the place, not spend itself on the journey
   const PLACE = new Set(['room', 'corridor', 'house', 'shop', 'building', 'church', 'cave', 'city', 'tower']);
   { const cur = new Map(actors.map(a => [a.id, a.pos.slice()]));

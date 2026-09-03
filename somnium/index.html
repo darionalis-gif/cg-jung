@@ -62,7 +62,7 @@ canvas#stage { display: block; width: 100%; height: 100%; touch-action: none; }
 #labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .lbl { position: absolute; transform: translate(-50%, -100%); font-size: 12px; letter-spacing: .02em; color: #fff; background: rgba(8,9,22,.55); padding: 2px 7px; border-radius: 4px; white-space: nowrap; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,.15); transition: opacity .2s; }
 #fx { position: absolute; inset: 0; pointer-events: none; background: #fff; opacity: 0; }
-#subtitle { position: absolute; left: 50%; bottom: 76px; transform: translateX(-50%); max-width: min(720px, 90%); text-align: center; color: #F3F0FA; font-family: "Fraunces", Georgia, serif; font-size: clamp(16px, 2vw, 21px); font-weight: 300; line-height: 1.35; text-shadow: 0 2px 12px rgba(0,0,0,.8), 0 0 2px rgba(0,0,0,.9); pointer-events: none; text-wrap: balance; }
+#subtitle { position: absolute; left: 50%; bottom: 76px; transform: translateX(-50%); max-width: min(720px, 90%); text-align: center; color: #F6F4FB; background: rgba(6,7,14,.52); padding: 5px 16px; border-radius: 12px; backdrop-filter: blur(5px); box-decoration-break: clone; font-family: "Fraunces", Georgia, serif; font-size: clamp(16px, 2vw, 21px); font-weight: 300; line-height: 1.35; text-shadow: 0 1px 3px rgba(0,0,0,.9); pointer-events: none; text-wrap: balance; }
 #transport { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 10px 14px 12px; background: linear-gradient(to top, rgba(5,6,15,.85), rgba(5,6,15,0)); color: #fff; }
 #transport .btn { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.2); color: #fff; }
 #transport .btn:hover { background: rgba(255,255,255,.2); }
@@ -76,7 +76,7 @@ canvas#stage { display: block; width: 100%; height: 100%; touch-action: none; }
 #stageTop > * { pointer-events: auto; }
 #stageTop .btn { background: rgba(8,9,22,.55); border-color: rgba(255,255,255,.2); color: #fff; backdrop-filter: blur(6px); }
 #stageTop .spacer { flex: 1; }
-#stageTitle { color: #fff; font-family: "Fraunces", Georgia, serif; font-style: italic; font-size: 18px; text-shadow: 0 2px 10px rgba(0,0,0,.8); padding: 6px 0; max-width: 50%; }
+#stageTitle { color: #fff; font-family: "Fraunces", Georgia, serif; font-style: italic; font-size: 18px; text-shadow: 0 1px 3px rgba(0,0,0,.95), 0 0 10px rgba(0,0,0,.6); background: rgba(6,7,14,.42); border-radius: 10px; backdrop-filter: blur(4px); padding: 6px 0; max-width: 50%; }
 #busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(5,6,15,.72); color: #fff; text-align: center; padding: 20px; backdrop-filter: blur(3px); }
 #busy .ring { width: 54px; height: 54px; border-radius: 50%; border: 2px solid rgba(255,255,255,.2); border-top-color: var(--moon); animation: spin 1.1s linear infinite; margin: 0 auto 16px; }
 #busy .what { font-family: "Fraunces", Georgia, serif; font-style: italic; font-size: 20px; }
@@ -307,7 +307,7 @@ function aimSky(scene) {
   if (c.mode === 'pov') { const r = t.yaw * Math.PI / 180; return [Math.sin(r), Math.cos(r)]; }
   const r = (t.yaw + c.angle) * Math.PI / 180; return [-Math.sin(r), -Math.cos(r)];
 }
-function skyPos(p) { let [x, y, z] = p; let h = Math.hypot(x, z); if (h < 60) { const k = 60 / Math.max(0.001, h); x *= k; z *= k; h = 60; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } return [x, clamp(y, 10, h * 0.26), z]; }
+function skyPos(p) { let [x, y, z] = p; let h = Math.hypot(x, z); if (h < 60) { const k = 60 / Math.max(0.001, h); x *= k; z *= k; h = 60; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } return [x, clamp(y, 8, h * 0.13), z]; }
 function opt(v, a, b) { v = +v; return Number.isFinite(v) && v > 0 ? clamp(v, a, b) : 0; }
 function num(v, d, a = -1e6, b = 1e6) { v = +v; return Number.isFinite(v) ? clamp(v, a, b) : d; }
 function vec(v, d) { return Array.isArray(v) && v.length >= 3 && v.slice(0, 3).every(x => Number.isFinite(+x)) ? v.slice(0, 3).map(x => clamp(+x, -500, 500)) : d.slice(); }
@@ -363,6 +363,12 @@ function normalizeScene(raw, dreamText) {
   // put any moon or sun in the half of the sky the opening shot faces, so what the page says is there can be seen
   { const view = aimSky({ beats, actors, world }); if (view) for (const a of actors) { if (a.kind !== 'moon' && a.kind !== 'sun') continue; const h = Math.hypot(a.pos[0], a.pos[2]) || 90; if ((a.pos[0] / h) * view[0] + (a.pos[2] / h) * view[1] < -0.1) a.pos = [view[0] * h, a.pos[1], view[1] * h]; } }
   if (!beats.length) beats = [{ dur: 8, text: dreamText ? dreamText.slice(0, 200) : '', camera: { mode: 'orbit', target: firstId, pos: null, lookAt: null, distance: 10, height: 3, angle: 160 }, actions: [] }];
+  // nothing that stands on the ground belongs across the mouth of a hole
+  { const pits = actors.filter(a => a.kind === 'pit');
+    for (const p of pits) { const r = (p.detail.radius || 1.5) * p.size;
+      for (const a of actors) { if (a === p || a.pos[1] < -0.5) continue; if (a.kind === 'pit') continue;
+        const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
+        if (d < r + 0.4) { const n = d > 0.01 ? [dx / d, dz / d] : [1, 0]; a.pos = [p.pos[0] + n[0] * (r + 1.1), a.pos[1], p.pos[2] + n[1] * (r + 1.1)]; } } } }
   // a beat that arrives somewhere should show the place, not spend itself on the journey
   const PLACE = new Set(['room', 'corridor', 'house', 'shop', 'building', 'church', 'cave', 'city', 'tower']);
   { const cur = new Map(actors.map(a => [a.id, a.pos.slice()]));
@@ -560,7 +566,7 @@ B.hill = a => { const g = new THREE.Group(); const R = Math.min(60, (a.detail.ra
 B.rock = a => { const g = new THREE.Group(); const r = mesh(G.dod(0.8), mat(a.color, { flat: true }), 0, 0.6, 0); r.scale.set(1.3, 0.8, 1); g.add(r); g.userData.height = 1.3; return g; };
 B.cliff = a => { const g = new THREE.Group(); const w = a.detail.width || 40, h = a.detail.height || 30, d = a.detail.depth || 20; g.add(mesh(G.box(w, h, d), mat(a.color, { flat: true }), 0, h / 2, -d / 2)); g.userData.height = h; g.userData.big = true; return g; };
 B.cave = a => { const g = new THREE.Group(); const r = 3; const rockM = mat(a.color, { flat: true, side: THREE.DoubleSide }); const shell = new THREE.Mesh(new THREE.SphereGeometry(r * 2, 14, 10, Math.PI * 0.72, Math.PI * 1.56), rockM); shell.position.set(0, r * 0.2, -r * 1.2); shell.scale.set(1.3, 0.8, 1); shell.castShadow = true; g.add(shell); const inner = new THREE.Mesh(new THREE.SphereGeometry(r * 1.9, 14, 10, Math.PI * 0.72, Math.PI * 1.56), new THREE.MeshStandardMaterial({ color: '#2b2420', roughness: 1, side: THREE.BackSide })); inner.position.copy(shell.position); inner.scale.copy(shell.scale); g.add(inner); const l = new THREE.PointLight('#d9b080', 18, 26, 1.5); l.position.set(0, 2.5, -3); g.add(l); g.userData.height = r * 2; g.userData.big = true; g.userData.room = true; return g; };
-B.pit = a => { const g = new THREE.Group(); const r = a.detail.radius || 1.5; const depth = a.detail.height || 4; const shaft = new THREE.Mesh(G.cyl(r, r * 0.8, depth, 20, 1, true), new THREE.MeshStandardMaterial({ color: '#5f564b', roughness: 1, side: THREE.BackSide })); shaft.position.y = -depth / 2; g.add(shaft); const floor = mesh(G.cyl(r * 0.8, r * 0.8, 0.05, 20), mat('#4a423a'), 0, -depth, 0); g.add(floor); const pl = new THREE.PointLight('#e8d5b6', 26, depth + r * 5, 1.0); pl.position.y = -depth * 0.3; g.add(pl); const pl2 = new THREE.PointLight('#d2bd9a', 14, depth + r * 4, 1.1); pl2.position.y = -depth * 0.85; g.add(pl2); const cut = new THREE.Mesh(new THREE.CircleGeometry(r, 32), new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, stencilWrite: true, stencilRef: 1, stencilZPass: THREE.ReplaceStencilOp, stencilFunc: THREE.AlwaysStencilFunc })); cut.rotation.x = -Math.PI / 2; cut.position.y = 0.01; cut.renderOrder = -10; g.add(cut); g.add(mesh(G.torus(r, 0.12), mat(a.color === '#0a0a0c' ? '#5a5048' : a.color), 0, 0.05, 0).rotateX(1.57)); g.userData.height = 0.2; g.userData.flat = true; return g; };
+B.pit = a => { const g = new THREE.Group(); const r = a.detail.radius || 1.5; const depth = a.detail.height || 4; const shaft = new THREE.Mesh(G.cyl(r, r * 0.8, depth, 20, 1, true), new THREE.MeshStandardMaterial({ color: '#5f564b', roughness: 1, side: THREE.BackSide })); shaft.position.y = -depth / 2; g.add(shaft); const floor = mesh(G.cyl(r * 0.8, r * 0.8, 0.05, 20), mat('#4a423a'), 0, -depth, 0); g.add(floor); const pl = new THREE.PointLight('#e8d5b6', 7, depth * 0.9, 1.4); pl.position.y = -depth * 0.45; g.add(pl); const pl2 = new THREE.PointLight('#d2bd9a', 5, depth * 0.8, 1.5); pl2.position.y = -depth * 0.85; g.add(pl2); const cut = new THREE.Mesh(new THREE.CircleGeometry(r, 32), new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, stencilWrite: true, stencilRef: 1, stencilZPass: THREE.ReplaceStencilOp, stencilFunc: THREE.AlwaysStencilFunc })); cut.rotation.x = -Math.PI / 2; cut.position.y = 0.01; cut.renderOrder = -10; g.add(cut); g.add(mesh(G.torus(r, 0.12), mat(shade(a.color === '#0a0a0c' ? '#5a5048' : a.color, 0.55)), 0, 0.05, 0).rotateX(1.57)); g.userData.height = 0.2; g.userData.flat = true; return g; };
 function waterMaterial(color) { const m = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.25, metalness: 0.3, transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); m.onBeforeCompile = sh => { sh.uniforms.uTime = { value: 0 }; m.userData.sh = sh; sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed.z += sin(position.x * 0.6 + uTime * 1.3) * 0.04 + sin(position.y * 0.9 + uTime * 0.9) * 0.03;'); }; m.userData.water = true; return m; }
 B.water = a => { const g = new THREE.Group(); const R = a.detail.radius || 15; const p = mesh(new THREE.RingGeometry(0.001, R, 48, Math.min(40, Math.max(8, Math.round(R / 1.5)))), waterMaterial(a.color), 0, 0.09, 0); p.rotation.x = -Math.PI / 2; p.castShadow = false; g.add(p); g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; return g; };
 B.river = a => { const g = new THREE.Group(); const w = a.detail.width || 8, d = a.detail.depth || 120; const p = mesh(new THREE.PlaneGeometry(w, d, 8, 60), waterMaterial(a.color), 0, 0.09, 0); p.rotation.x = -Math.PI / 2; p.castShadow = false; g.add(p); g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; return g; };
@@ -636,7 +642,7 @@ const Stage = {
     const r = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     r.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.25; r.outputColorSpace = THREE.SRGBColorSpace;
     this.r = r; this.three = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(50, 1, 0.25, 1200);
-    this.sky = new THREE.Mesh(new THREE.SphereGeometry(500, 24, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: true, uniforms: { top: { value: new THREE.Color('#0b1030') }, hor: { value: new THREE.Color('#2a2f5c') }, fogc: { value: new THREE.Color('#171b3d') } }, vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform vec3 top;\nuniform vec3 hor;\nuniform vec3 fogc;\nvarying vec3 vP;\nvoid main(){\n float h = normalize(vP).y;\n vec3 low = mix(fogc, hor, smoothstep(0.0, 0.14, h));\n float t = smoothstep(0.04, 0.5, h);\n gl_FragColor = vec4(mix(low, top, t), 1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}' }));
+    this.sky = new THREE.Mesh(new THREE.SphereGeometry(500, 24, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: true, uniforms: { top: { value: new THREE.Color('#0b1030') }, hor: { value: new THREE.Color('#2a2f5c') }, fogRaw: { value: new THREE.Vector3(0.09, 0.11, 0.24) } }, vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform vec3 top;\nuniform vec3 hor;\nuniform vec3 fogRaw;\nvarying vec3 vP;\nvoid main(){\n float h = normalize(vP).y;\n float t = smoothstep(0.04, 0.5, h);\n gl_FragColor = vec4(mix(hor, top, t), 1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n gl_FragColor.rgb = mix(gl_FragColor.rgb, fogRaw, 1.0 - smoothstep(0.0, 0.16, h));\n}' }));
     this.three.add(this.sky);
     const sg = new THREE.BufferGeometry(); const sp = []; const rnd = seeded(42); for (let i = 0; i < 1600; i++) { const th = rnd() * 6.283, ph = Math.acos(rnd() * 0.95); sp.push(Math.sin(ph) * Math.cos(th) * 460, Math.cos(ph) * 460, Math.sin(ph) * Math.sin(th) * 460); } sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
     this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: '#ffffff', size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.85, fog: false })); this.three.add(this.stars);
@@ -676,7 +682,15 @@ const Stage = {
     this.scene = scene; this.root.clear(); this.actors.clear(); this.labelsEl.innerHTML = ''; this.lastBeat = -1; this.fx = []; this.time = 0; this.cam.snap = true; this.user.on = false; $('#resetCam').classList.remove('primary');
     for (const a of scene.actors) { const g = buildActor(a); g.position.set(a.pos[0], a.pos[1], a.pos[2]); g.rotation.y = a.yaw * Math.PI / 180; this.root.add(g); const lbl = document.createElement('div'); lbl.className = 'lbl'; lbl.textContent = a.label; lbl.hidden = !a.label; this.labelsEl.appendChild(lbl); this.actors.set(a.id, { a, g, lbl, st: null, mats: null }); }
     for (const rec of this.actors.values()) { if (rec.g.userData.shadow) { const r = rec.g.userData.shadow; const blob = new THREE.Mesh(new THREE.CircleGeometry(r, 20), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.renderOrder = 1; this.root.add(blob); rec.blob = blob; } const mats = []; const seen = new Map(); rec.g.traverse(o => { if (o.isMesh && !o.material.userData.water) { let m = seen.get(o.material); if (!m) { m = o.material.clone(); m.userData = { ...o.material.userData, baseOpacity: o.material.opacity, baseColor: o.material.color.clone(), baseEmissive: o.material.emissive ? o.material.emissive.clone() : null }; seen.set(o.material, m); mats.push(m); } o.material = m; } }); rec.mats = mats; }
-    this.solids = []; this.waterMats = [this.waterGround.material]; this.root.traverse(o => { if (o.userData.solid) this.solids.push(o); if (o.isMesh && o.material && o.material.userData.water) this.waterMats.push(o.material); }); this.boxTick = 0; this._rooms = null; this.applyWorld(scene.world); this.setTime(0); this.playing = true;
+    this.solids = []; this.waterMats = [this.waterGround.material]; this.root.traverse(o => { if (o.userData.solid) this.solids.push(o); if (o.isMesh && o.material && o.material.userData.water) this.waterMats.push(o.material); }); this.boxTick = 0; this._rooms = null;
+    { const boxes = []; for (const o of this.solids) { if (o.material && o.material.side === THREE.BackSide) continue; if (o.userData.soft) continue; const bx = new THREE.Box3().setFromObject(o); if (bx.max.x - bx.min.x > 0.8 && bx.max.z - bx.min.z > 0.8) boxes.push(bx); }
+      for (const rec of this.actors.values()) { if (!rec.g.userData.members) continue; const base = new THREE.Vector3();
+        for (const m of rec.g.userData.members) { rec.g.getWorldPosition(base); const wx = base.x + m.position.x, wz = base.z + m.position.z;
+          for (const bx of boxes) { if (wx < bx.min.x - 0.3 || wx > bx.max.x + 0.3 || wz < bx.min.z - 0.3 || wz > bx.max.z + 0.3) continue;
+            const cx = (bx.min.x + bx.max.x) / 2, cz = (bx.min.z + bx.max.z) / 2; const dx = wx - cx, dz = wz - cz;
+            const outX = (bx.max.x - bx.min.x) / 2 + 0.55, outZ = (bx.max.z - bx.min.z) / 2 + 0.55;
+            if (Math.abs(dx) / outX > Math.abs(dz) / outZ) m.position.x += Math.sign(dx || 1) * outX - dx; else m.position.z += Math.sign(dz || 1) * outZ - dz;
+            break; } } } } this.applyWorld(scene.world); this.setTime(0); this.playing = true;
   },
   setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
   beatAt(t) { const bs = this.scene.beats; for (let i = bs.length - 1; i >= 0; i--) if (t >= bs[i].start) return i; return 0; },
@@ -713,7 +727,7 @@ const Stage = {
     return w;
   },
   applyWorld(w) {
-    this.sky.material.uniforms.top.value.set(w.skyColor); this.sky.material.uniforms.hor.value.set(w.horizonColor); this.sky.material.uniforms.fogc.value.set(w.fogColor); this.three.fog.color.set(w.fogColor); this.three.fog.density = w.fogDensity; this.r.setClearColor(w.fogColor);
+    this.sky.material.uniforms.top.value.set(w.skyColor); this.sky.material.uniforms.hor.value.set(w.horizonColor); this.sky.material.uniforms.fogRaw.value.set(parseInt(w.fogColor.slice(1, 3), 16) / 255, parseInt(w.fogColor.slice(3, 5), 16) / 255, parseInt(w.fogColor.slice(5, 7), 16) / 255); this.three.fog.color.set(w.fogColor); this.three.fog.density = w.fogDensity; this.r.setClearColor(w.fogColor);
     const amb = new THREE.Color(w.ambient); const L = 0.2126 * amb.r + 0.7152 * amb.g + 0.0722 * amb.b; if (L < 0.26) amb.lerp(new THREE.Color('#8f93b4'), (0.26 - L) / 0.26 * 0.7);
     this.ambient.color.copy(amb); this.ambient.groundColor.set(shade(w.groundColor, 0.6)); this.ambient.intensity = w.sky === 'day' ? 2.4 : (w.sky === 'void' ? 1.4 : 2.0);
     this.sun.color.set(w.sunColor); this.sun.intensity = Math.max(0.8, w.sunIntensity * 2.4);
@@ -765,14 +779,14 @@ const Stage = {
     else if (s === 'fall') { T.bodyX = -0.7 + Math.sin(t * 2) * 0.4; T.bodyZ = Math.sin(t * 1.5) * 0.5; T.armsX = [-2.7, -2.7]; T.armsZ = [0.6, -0.6]; T.legs = [0.6, -0.3]; T.shins = [-0.5, -0.2]; keepHead = false; }
     else if (s === 'float') { T.y = 0.4 + Math.sin(t * 1.3) * 0.25; T.armsZ = [0.7, -0.7]; T.armsX = [-0.4 + Math.sin(t) * 0.1, -0.4 - Math.sin(t) * 0.1]; T.legs = [0.15, -0.1]; T.headX = -0.2; }
     else if (s === 'swim') { T.bodyX = 1.45; T.y = 0.6; T.armsX = [-2.8 + Math.sin(t * 5) * 0.9, -2.8 - Math.sin(t * 5) * 0.9]; T.fore = [-0.3, -0.3]; T.legs = [Math.sin(t * 8) * 0.35, -Math.sin(t * 8) * 0.35]; T.headX = -1.0; }
-    else if (s === 'sit') { T.legs = [-1.5, -1.5]; T.shins = [-1.45, -1.45]; T.y = -0.44; T.armsX = [-0.6, -0.6]; T.fore = [-0.9, -0.9]; }
-    else if (s === 'kneel') { T.legs = [1.5, 1.5]; T.shins = [-2.7, -2.7]; T.y = -0.52; T.armsX = [-0.7, -0.7]; T.fore = [-0.8, -0.8]; T.bodyX = 0.2; }
-    else if (s === 'lie') { T.bodyX = -1.5; T.y = 0.2 - 0.96 + 0.18; T.armsX = [-0.2, -0.2]; T.armsZ = [0.25, -0.25]; T.headX = 0.2; keepHead = false; }
-    else if (s === 'collapse') { const p = easeInOut(window); T.bodyX = -1.5 * p; T.y = (0.2 - 0.96 + 0.18) * p; T.legs = [0.5 * p, 0.2 * p]; T.shins = [-0.6 * p, -0.3 * p]; T.armsX = [-0.6 * p, -0.9 * p]; T.headX = 0.5 * p; keepHead = false; }
+    else if (s === 'sit') { T.legs = [-1.5, -1.5]; T.shins = [-1.45, -1.45]; T.y = -0.44; T.ground = true; T.armsX = [-0.6, -0.6]; T.fore = [-0.9, -0.9]; }
+    else if (s === 'kneel') { T.legs = [1.5, 1.5]; T.shins = [-2.7, -2.7]; T.y = -0.52; T.ground = true; T.armsX = [-0.7, -0.7]; T.fore = [-0.8, -0.8]; T.bodyX = 0.2; }
+    else if (s === 'lie') { T.bodyX = -1.5; T.y = 0.2 - 0.96 + 0.18; T.ground = true; T.armsX = [-0.2, -0.2]; T.armsZ = [0.25, -0.25]; T.headX = 0.2; keepHead = false; }
+    else if (s === 'collapse') { const p = easeInOut(window); T.ground = p > 0.6; T.bodyX = -1.5 * p; T.y = (0.2 - 0.96 - 0.02) * p; T.legs = [0.5 * p, 0.2 * p]; T.shins = [-0.6 * p, -0.3 * p]; T.armsX = [-0.6 * p, -0.9 * p]; T.headX = 0.5 * p; keepHead = false; }
     else if (s === 'shake') { T.armsX = [-0.9 + Math.sin(t * 20) * 0.35, -0.9 - Math.sin(t * 20) * 0.35]; T.fore = [-1.2, -1.2]; T.armsZ = [0.3, -0.3]; T.bodyX = 0.18 + Math.sin(t * 9) * 0.1; T.headZ = Math.sin(t * 30) * 0.15; T.hipsZ = Math.sin(t * 25) * 0.04; }
     else if (s === 'push') { T.armsX = [-1.5, -1.5]; T.fore = [-0.1, -0.1]; T.bodyX = 0.2 + Math.max(0, Math.sin(t * 4)) * 0.15; T.legs = [0.3, -0.3]; T.shins = [-0.2, -0.5]; }
     else if (s === 'spin') { T.armsZ = [0.9, -0.9]; T.armsX = [-0.3, -0.3]; }
-    else if (s === 'dance') { T.y = Math.abs(Math.sin(t * 6)) * 0.12; T.armsZ = [2.4 + Math.sin(t * 6) * 0.4, -2.4 - Math.sin(t * 6 + 1) * 0.4]; T.fore = [-0.6, -0.6]; T.legs = [Math.sin(t * 6) * 0.2, -Math.sin(t * 6) * 0.2]; T.hipsZ = Math.sin(t * 6) * 0.12; }
+    else if (s === 'dance') { const v = 0.5 + 0.5 * Math.sin(phase * 3.7); T.y = Math.abs(Math.sin(t * 6)) * 0.12; T.armsZ = [1.1 + v * 1.3 + Math.sin(t * 6) * 0.5, -(0.9 + (1 - v) * 1.5) - Math.sin(t * 6 + 1) * 0.5]; T.fore = [-0.6, -0.6]; T.legs = [Math.sin(t * 6) * 0.2, -Math.sin(t * 6) * 0.2]; T.hipsZ = Math.sin(t * 6) * 0.12; }
     else if (s === 'wave') { T.armsZ = [0.08, -2.7]; T.armsX = [0, -0.2]; T.fore = [-0.25, -0.3 + Math.sin(t * 8) * 0.5]; T.headY = 0; }
     else if (s === 'melt') { const p = window; T.torsoS = Math.max(0.05, 1 - p); T.y = -0.9 * p; T.armsZ = [0.8 * p, -0.8 * p]; }
     else if (s === 'fold') { const p = window; T.headS = Math.max(0.15, 1 - p * 0.85); T.headX = p * 1.1; T.headZ = Math.sin(p * 6) * 0.3 * p; T.armsX = [-1.6 * p, -1.6 * p]; T.fore = [-0.9 * p, -0.9 * p]; T.bodyX = 0.35 * p; keepHead = false; }
@@ -786,6 +800,8 @@ const Stage = {
     for (let i = 0; i < 2; i++) { L.legs[i].rotation.x = P.legs[i]; L.shins[i].rotation.x = P.shins[i]; L.arms[i].rotation.x = P.armsX[i]; L.arms[i].rotation.z = P.armsZ[i]; L.fore[i].rotation.x = P.fore[i]; }
     L.head.rotation.set(P.headX, P.headY, P.headZ); L.head.scale.set(1 + (1 - P.headS) * 0.5, P.headS, 1 + (1 - P.headS) * 0.3);
     L.torso.scale.set(1 + (1 - P.torsoS) * 0.5, P.torsoS, 1 + (1 - P.torsoS) * 0.5); L.hips.rotation.set(P.bodyX, 0, P.bodyZ + P.hipsZ); L.hips.position.y = 0.96 + P.y;
+    // a pose that folds the limbs cannot know where they end up: measure the rig and set it on the ground
+    if (T.ground) { g.updateMatrixWorld(true); const bb = this._bb || (this._bb = new THREE.Box3()); bb.setFromObject(L.hips); const foot = bb.min.y - g.position.y; if (Number.isFinite(foot)) L.hips.position.y += -foot + 0.03; }
   },
   headTarget(rec, st) {
     // who should this figure look at: the nearest other visible actor acting in this beat, within 7 m
@@ -820,7 +836,7 @@ const Stage = {
     const c = beat.camera, tg = states.get(c.target) || states.values().next().value; const T = new THREE.Vector3(tg.pos[0], tg.pos[1], tg.pos[2]); const rec = this.actors.get(c.target); const hgt = rec ? rec.g.userData.baseHeight * (tg.size / rec.a.size) : 1.8; const eye = T.clone().add(new THREE.Vector3(0, Math.min(hgt * 0.6, 1.6), 0));
     let pos, look; const local = this.time - beat.start;
     // frame the whole group that acts in this beat, not only the target
-    let groupC = null, groupR = 0; { const active = beat.actions.filter(x => x.actor && (x.move || x.say || x.appear || (x.state && x.state !== 'idle'))).map(x => x.actor); const ids = [...new Set(active.concat([c.target]))]; const pts = []; for (const id of ids) { const st = states.get(id); const r2 = this.actors.get(id); if (!st || st.op < 0.3 || !r2 || r2.g.userData.big || r2.g.userData.flat) continue; if (Math.abs(st.pos[1] - T.y) > 3) continue; pts.push(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])); } if (pts.length > 1) { groupC = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(pts.length); for (const p of pts) groupR = Math.max(groupR, Math.hypot(p.x - groupC.x, p.z - groupC.z)); if (groupR > 7 || groupR < 1.2) { groupC = null; groupR = 0; } } }
+    let groupC = null, groupR = 0; { const active = beat.actions.filter(x => x.actor && (x.move || x.say || x.appear || (x.state && x.state !== 'idle'))).map(x => x.actor); const ids = [...new Set(active.concat([c.target]))]; const pts = []; for (const id of ids) { const st = states.get(id); const r2 = this.actors.get(id); if (!st || st.op < 0.3 || !r2 || r2.g.userData.big || r2.g.userData.flat) continue; if (r2.g.userData.members && id !== c.target) continue; if (Math.abs(st.pos[1] - T.y) > 3) continue; pts.push(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])); } if (pts.length > 1) { groupC = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(pts.length); for (const p of pts) groupR = Math.max(groupR, Math.hypot(p.x - groupC.x, p.z - groupC.z)); if (groupR > 7 || groupR < 1.2) { groupC = null; groupR = 0; } } }
     const dirAt = (deg, d, h) => new THREE.Vector3(Math.sin(deg * Math.PI / 180) * d, h, Math.cos(deg * Math.PI / 180) * d);
     if (c.mode === 'fixed' && c.pos) { pos = new THREE.Vector3(...c.pos); look = Array.isArray(c.lookAt) ? new THREE.Vector3(...c.lookAt) : (typeof c.lookAt === 'string' && states.get(c.lookAt) ? new THREE.Vector3(...states.get(c.lookAt).pos).add(new THREE.Vector3(0, 1, 0)) : eye); }
     else if (c.mode === 'pov') { pos = T.clone().add(new THREE.Vector3(0, Math.max(0.5, hgt * 0.88), 0)); look = pos.clone().add(dirAt(tg.yaw, 10, -0.5)); }
@@ -840,26 +856,30 @@ const Stage = {
     // part of the beat is happening below the ground: look2 down into the hole instead of across it
     { const low = [], high = []; for (const x of beat.actions) { if (!x.actor) continue; const st = states.get(x.actor); const r2 = this.actors.get(x.actor); if (!st || st.op < 0.3 || !r2 || r2.g.userData.flat || r2.g.userData.big) continue; const climbing = beat.actions.some(q => q.actor === x.actor && q.move && q.move[1] > -1); (st.pos[1] < -1 && !climbing ? low : high).push(st); }
       if (low.length && high.length) { const c0 = low.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(low.length);
-        look2 = new THREE.Vector3(c0.x, c0.y + 1.2, c0.z); const h = Math.hypot(p.x - look2.x, p.z - look2.z); p.y = Math.max(p.y, look2.y + Math.max(h * 1.15, 4)); } }
+        look2 = new THREE.Vector3(c0.x, c0.y + 1.2, c0.z);
+        const off = p.clone().sub(look2); const len = Math.max(3, off.length()); const flat = Math.hypot(off.x, off.z) || 0.001;
+        const pitch = Math.PI / 180 * 58; p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
     // keep camera above ground and out of the target
     const minY = Math.min(0.4, T.y + 0.5); if (p.y < minY) p.y = minY;
     const look2Rec = typeof c.look2At === 'string' ? this.actors.get(c.look2At) : null;
     const selfs = [rec && rec.g, look2Rec && look2Rec.g].filter(Boolean);
     p = this.unblock(look2, p, selfs.length ? selfs : null);
+      p = this.pushOffLens(p, look2, selfs);
       return { pos: p, look: look2 };
     };
     // frame the actors the sentence names, not only the camera's target: try the shot, then a few wider or turned variants
     const framed = [];
-    for (const x of beat.actions) { if (!x.actor) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; if (!framed.some(q => q.id === x.actor)) framed.push({ id: x.actor, g: r2.g, p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
+    const cut = beat.actions.some(x => x.effect === 'blackout');
+    for (const x of beat.actions) { if (!x.actor) continue; if (cut && !x.appear && !x.say && !x.move) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; if (!framed.some(q => q.id === x.actor)) framed.push({ id: x.actor, g: r2.g, p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
     if (snap || !this.framePick || this.framePick.beat !== this.lastBeat) {
       let best = { az: 0, mul: 1, score: -1 };
-      if (framed.length > 1) {
+      if (framed.length >= 1) {
         for (const mul of [1, 1.35, 1.8]) for (const az of [0, 26, -26, 55, -55, 90, -90, 140, -140]) {
           const cand = this.turnShot(pos, look, az, mul); const out = settle(cand, look);
           let n = 0; for (const f of framed) if (this.inShot(out.pos, out.look, f.p, f.g)) n++;
-          const cost = Math.abs(az) / 900 + (mul - 1) * 0.35;
+          const cost = Math.abs(az) / 900 + (mul - 1) * 0.35 + this.lensCrowding(out.pos, selfs) * 0.7;
           const score = n - cost; if (score > best.score) best = { az, mul, score, n };
-          if (n === framed.length && az === 0 && mul === 1) break;
+          if (n === framed.length && az === 0 && mul === 1 && this.lensCrowding(out.pos, selfs) === 0) break;
         }
       }
       this.framePick = { beat: this.lastBeat, az: best.az, mul: best.mul };
@@ -883,6 +903,23 @@ const Stage = {
     this._ray = this._ray || new THREE.Raycaster(); const r = this._ray; r.set(look, dir); r.near = 0.3; r.far = len; const hits = r.intersectObjects(this.solidsNow || [], false);
     for (const h of hits) { if (self && this.isOwn(h.object, self)) continue; if (h.object.userData.soft && len - h.distance > Math.max(1.2, len * 0.4)) continue; return h.distance; }
     return Infinity;
+  },
+  lensCrowding(pos, self) {
+    const sol = this.solidsNow; if (!sol || !sol.length) return 0; const w = this._v3 || (this._v3 = new THREE.Vector3()); let n = 0; const seen = new Set();
+    for (const o of sol) { if (this.isOwn(o, self)) continue; const owner = o.parent && o.parent.parent ? o.parent.parent : o.parent; if (seen.has(owner)) continue; o.getWorldPosition(w); if (w.distanceTo(pos) < 2.4) { seen.add(owner); n++; } }
+    return n;
+  },
+  pushOffLens(pos, look, self) {
+    const sol = this.solidsNow; if (!sol || !sol.length) return pos;
+    const dir = pos.clone().sub(look); const len = dir.length(); if (len < 0.6) return pos; dir.divideScalar(len);
+    const w = this._v2 || (this._v2 = new THREE.Vector3()); let extra = 0;
+    for (let step = 0; step < 4; step++) {
+      let hit = false;
+      for (const o of sol) { if (this.isOwn(o, self)) continue; o.getWorldPosition(w); if (w.distanceTo(pos) < 1.45) { hit = true; break; } }
+      if (!hit) break;
+      pos = pos.clone().add(dir.clone().multiplyScalar(0.9)); extra += 0.9; if (extra > 3.6) break;
+    }
+    return pos;
   },
   turnShot(pos, look, azDeg, mul) {
     const off = pos.clone().sub(look); const r = azDeg * Math.PI / 180; const c = Math.cos(r), sn = Math.sin(r);
@@ -983,7 +1020,7 @@ const App = {
   useText(text, src) { $('#dreamText').value = text; this.pendingSrc = src || null; this.tab('write'); $('#dreamText').focus(); $('#writeErr').hidden = true; },
   /* ---- Claude ---- */
   genPrompt(text) { return DSL_DOC + '\n\nTHE DREAM REPORT:\n<<<\n' + text + '\n>>>\n\nWrite the stage script for this dream. JSON only.'; },
-  editPrompt(d, request) { const hist = d.chat.slice(-8).map(m => (m.role === 'user' ? 'DREAMER: ' : 'DIRECTOR: ') + m.text).join('\n'); return DSL_DOC + '\n\nTHE DREAM REPORT:\n<<<\n' + d.text + '\n>>>\n\nTHE CURRENT STAGE SCRIPT (JSON):\n' + JSON.stringify(this.exportScene(d.scene)) + (hist ? '\n\nCONVERSATION SO FAR:\n' + hist : '') + '\n\nTHE DREAMER NOW ASKS:\n' + request + '\n\nRevise the stage script to honour the request. Change only what the request needs: keep every id, every beat and its text, every colour, size and position you were not asked to touch exactly as they are (the dreamer will compare before and after). Anything you add must actually be visible from the cameras of the beats it appears in (a moon within 150 m and inside the fog range, a figure inside the frame). Answer with one JSON object and nothing else: {"reply": "one or two sentences to the dreamer, in plain words, on what changed and where it can be seen; claim nothing that is not on screen", "scene": <the complete revised stage script>}.'; },
+  editPrompt(d, request) { const hist = d.chat.slice(-8).map(m => (m.role === 'user' ? 'DREAMER: ' : 'DIRECTOR: ') + m.text).join('\n'); return DSL_DOC + '\n\nTHE DREAM REPORT:\n<<<\n' + d.text + '\n>>>\n\nTHE CURRENT STAGE SCRIPT (JSON):\n' + JSON.stringify(this.exportScene(d.scene)) + (hist ? '\n\nCONVERSATION SO FAR:\n' + hist : '') + '\n\nTHE DREAMER NOW ASKS:\n' + request + '\n\nRevise the stage script to honour the request. Change only what the request needs: keep every id, every beat and its text, every colour, size and position you were not asked to touch exactly as they are (the dreamer will compare before and after). If the dream is staged indoors (a room around the people, ground floor), a change to the sky, the fog or a moon will not be seen at all: change the light in the room, its colours and what is in it instead, and say so plainly. Anything you add must actually be visible from the cameras of the beats it appears in (a moon within 150 m and inside the fog range, a figure inside the frame). Answer with one JSON object and nothing else: {"reply": "one or two sentences to the dreamer, in plain words, on what changed and where it can be seen; claim nothing that is not on screen", "scene": <the complete revised stage script>}.'; },
   exportScene(s) { const cleanDetail = d => { const o = {}; for (const k of Object.keys(d || {})) { const v = d[k]; if (v === 0 || v === '' || v === null || v === false || v === undefined) continue; o[k] = v; } return o; }; const cleanCam = c => { const o = { mode: c.mode, target: c.target }; if (c.pos) o.pos = c.pos; if (c.lookAt) o.lookAt = c.lookAt; if (c.mode !== 'fixed' && c.mode !== 'pov') { o.distance = c.distance; o.height = c.height; o.angle = c.angle; } return o; }; const cleanWorld = w => { const o = {}; for (const k of Object.keys(w)) if (w[k] !== undefined) o[k] = w[k]; return o; }; return { title: s.title, mood: s.mood, world: cleanWorld(s.world), actors: s.actors.map(a => { const o = { id: a.id, kind: a.kind, label: a.label, color: a.color, size: a.size, pos: a.pos, yaw: a.yaw }; if (a.hidden) o.hidden = true; if (a.glow) o.glow = true; if (a.ghost) o.ghost = true; const d = cleanDetail(a.detail); if (Object.keys(d).length) o.detail = d; return o; }), beats: s.beats.map(b => ({ dur: b.dur, text: b.text, camera: cleanCam(b.camera), actions: b.actions.map(x => { const o = {}; for (const k of Object.keys(x)) { if (k === 'world') o.world = cleanWorld(x.world); else if (k === 'at' && x.at === 0) continue; else if (k === 'for' && x.for === 1) continue; else o[k] = x[k]; } return o; }) })) }; },
   async ask(prompt, tier) {
     if (!this.sample) throw { code: 'not_granted', message: 'Claude is not available here.' };
