@@ -142,7 +142,7 @@ const SECTIONS = [
 const TIERS = [['complex', 'Deepest'], ['default', 'Balanced'], ['quick', 'Quick']];
 const normTier = t => (TIERS.some(x => x[0] === t) ? t : 'complex');
 const tierName = t => (TIERS.find(x => x[0] === t) || TIERS[0])[1].toLowerCase();
-const tierLine = (asked, applied) => applied === asked ? `answered at the ${tierName(applied)} tier` : `your plan served the ${tierName(applied)} tier instead of the ${tierName(asked)}`;
+const tierLine = (asked, applied) => applied === asked ? `answered by the ${tierName(applied)} model` : `your plan offered the ${tierName(applied)} model instead of the ${tierName(asked)}`;
 
 /* Viewer copy for the failure codes of the sample capability. */
 const COPY = {

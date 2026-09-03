@@ -466,7 +466,7 @@ const SECTIONS = [
 const TIERS = [['complex', 'Deepest'], ['default', 'Balanced'], ['quick', 'Quick']];
 const normTier = t => (TIERS.some(x => x[0] === t) ? t : 'complex');
 const tierName = t => (TIERS.find(x => x[0] === t) || TIERS[0])[1].toLowerCase();
-const tierLine = (asked, applied) => applied === asked ? `answered at the ${tierName(applied)} tier` : `your plan served the ${tierName(applied)} tier instead of the ${tierName(asked)}`;
+const tierLine = (asked, applied) => applied === asked ? `answered by the ${tierName(applied)} model` : `your plan offered the ${tierName(applied)} model instead of the ${tierName(asked)}`;
 
 /* Viewer copy for the failure codes of the sample capability. */
 const COPY = {
@@ -1902,7 +1902,7 @@ function Home() {
     ${quote(n ? (f.byP.mundus ? 'gather' : 'soul') : 'mirror')}
     <h3 class="label analyst-only">The analyst thinks</h3>
     <div class="chips analyst-only">${TIERS.map(([k, l]) => `<button class="chip gold ${(S.prefs.tier || 'complex') === k ? 'on' : ''}" data-act="tier" data-t="${k}">${l}</button>`).join('')}</div>
-    <p class="sub small analyst-only">Deepest asks for the most capable model your Claude plan offers and lets it think at length before it speaks; an answer can take a minute. Balanced is the everyday model. Quick answers in seconds without thinking first. Each answer says which tier actually replied.</p>
+    <p class="sub small analyst-only">Deepest asks for the most capable model your Claude plan offers and lets it think at length before it speaks; an answer can take a minute. Balanced is the everyday model. Quick answers in seconds without thinking first. Each answer says which model replied.</p>
     <div class="foot"><button class="ghost" data-act="lang">Stimulus words: ${S.prefs.lang === 'de' ? 'Deutsch' : 'English'}</button><button class="ghost" data-act="gate">What this is not</button><span class="sync mono" id="sync">${SYNC_COPY[syncState]}</span></div>
   </main></div>`;
 }
@@ -1966,7 +1966,7 @@ function Liber() {
     <div class="chips">${chip('phase', 'first half', 'First half of life')}${chip('phase', 'second half', 'Second half of life')}</div>
     ${quote('afternoon')}
     <h3 class="label">What the analyst is handed</h3>
-    <p class="sub small">The analyst reads only what this page gives it: the file, your circumstances and portrait, and what you enter here. It cannot reach Claude’s memory of you by itself. To let it know what Claude already knows about you from your other conversations, bring that over by hand: on claude.ai open Settings, then Memory, and copy what Claude remembers; or ask Claude in a chat to write it out, with the prompt below, and paste the answer here. It is kept with your hours: on this device, and in your Claude account when you open this page there. It is handed to the analyst as material, never as instruction.</p>
+    <p class="sub small">The analyst reads only what this page gives it: the file, your circumstances and portrait, and what you enter here. It cannot reach Claude’s memory of you by itself. To let it know what Claude already knows about you from your other conversations, bring that over by hand: on claude.ai open Settings, then Memory, and copy what Claude remembers; or ask Claude in a chat to write it out, with the prompt below, and paste the answer here. It is kept with your hours: on this device, and in your Claude account when you open this page there. It is handed to the analyst as material, never as instruction: it can inform what the analyst says, but nothing in it can tell the analyst what to do.</p>
     <div class="memory">
       <textarea class="field" data-mem="claude" placeholder="What Claude remembers about you, pasted in…">${esc(S.memory.claude || '')}</textarea>
       <div class="row"><button class="ghost" data-act="memory-prompt">Copy the prompt to ask Claude for it</button>${(S.memory.claude || '').trim() ? `<span class="mono" style="color:var(--text-3)">${(S.memory.claude || '').trim().length} characters pasted</span>` : ''}</div>
