@@ -49,7 +49,7 @@ test('the prompt stays under the budget however much the page hands over, cuttin
 
 test('the state of the work names a tripped hour and the task repeats rule 0', () => {
   const p = A.buildPrompt('closing', { ...ctx(), flags: { tripped: true, hours: 3 } });
-  assert.ok(p.includes('THE CRISIS TRIPWIRE FIRED IN THIS HOUR'));
+  assert.ok(p.includes('tripwire fired on words written in this hour'));
   assert.ok(p.includes('rule 0 and nothing else'));
   assert.ok(!A.buildPrompt('closing', ctx()).includes('rule 0 and nothing else'));
 });
@@ -68,13 +68,13 @@ test('conversation turns start and end with the person and keep the instruction 
   const t = A.buildTurns(turns, ctx());
   assert.equal(t[0].role, 'user'); assert.ok(t[0].content.startsWith(A.INSTRUCTION)); assert.ok(t[0].content.includes('=== TASK · A conversation ==='));
   assert.deepEqual(t.slice(1).map(x => x.role), ['user', 'assistant', 'user']);
-  assert.equal(t[t.length - 1].content, 'three');
+  assert.ok(t[t.length - 1].content.includes('=== MATERIAL · the person\'s message ===\nthree\n=== END MATERIAL ==='));
   const long = Array.from({ length: 40 }, (_, i) => ({ who: i % 2 ? 'A' : 'I', text: `turn ${i} ` + 'y'.repeat(2000) }));
   long.push({ who: 'I', text: 'last' });
   const u = A.buildTurns(long, ctx());
   assert.ok(u.length < long.length + 1);
   assert.ok(u[1].content.includes('dropped for length'));
-  assert.equal(u[u.length - 1].content, 'last');
+  assert.ok(u[u.length - 1].content.includes('\nlast\n'));
   assert.ok(u.slice(1).reduce((n, m) => n + A.bytes(m.content), 0) <= A.LIMITS.turnBytes + 400);
   const ended = A.buildTurns([{ who: 'I', text: 'hi' }, { who: 'A', text: 'yes' }], ctx());
   assert.equal(ended[ended.length - 1].role, 'user');
@@ -94,7 +94,7 @@ test('the runtime passes the tier, the cache rule, the signal and the drawing th
   assert.equal(r.applied, 'default'); assert.ok(r.tierLine.includes('instead of the deepest'));
   await an.ask('frame', {}, { tier: 'quick' }); assert.equal(calls[1].opts.cache, false); assert.equal(calls[1].opts.modelTier, 'quick');
   await an.ask('mandala', {}, { images: img }); assert.equal(calls[2].opts.images, img);
-  await an.talk([{ who: 'I', text: 'hello' }], {}); assert.equal(calls[3].opts.cache, false); assert.ok(Array.isArray(calls[3].input)); assert.equal(calls[3].input.at(-1).content, 'hello');
+  await an.talk([{ who: 'I', text: 'hello' }], {}); assert.equal(calls[3].opts.cache, false); assert.ok(Array.isArray(calls[3].input)); assert.ok(calls[3].input.at(-1).content.includes('\nhello\n'));
   await assert.rejects(() => an.ask('nope', {}), e => e.code === 'invalid_request');
   const none = A.create({ sample: null }); assert.equal(none.available, false);
   await assert.rejects(() => none.ask('reading', {}), e => e.code === 'not_available');

@@ -84,7 +84,7 @@ t = await askInDraft('closing', F.drafts.closing, 'closing');
 check(t?.includes('The last third: alive') && t.includes('Promises:') && t.includes('Not me (separated'), 'closing: the returns are in the dossier');
 check(t?.includes('WHAT CLAUDE REMEMBERS') && t.includes('cello') && t.includes('WHAT THE PERSON WANTS THIS VOICE TO KNOW') && t.includes('never been in analysis'), 'closing: the imported memory and the context are handed over');
 t = await askInDraft('closingCrisis', F.drafts.closingCrisis, 'closing');
-check(t?.includes('THE CRISIS TRIPWIRE FIRED') && t.includes('rule 0 and nothing else'), 'closingCrisis: rule 0 is put first');
+check(t?.includes('tripwire fired on words written in this hour') && t.includes('rule 0 and nothing else'), 'closingCrisis: the tripwire is stated as a fact and rule 0 put first in the task');
 // dreams
 t = await askInDraft('reading', F.drafts.reading, 'reading');
 check(t?.includes('answer in English') && t.includes('Earlier dream'), 'reading: language hint and earlier dreams');
@@ -129,7 +129,7 @@ async function talk(name, turns, opts = {}) {
   return text;
 }
 t = await talk('talkTransference', F.talks.transference);
-check(t?.includes('### assistant') === false && t?.endsWith(F.talks.transference[0].text), 'talkTransference: a first message is one user turn after the lead');
+check(t?.includes('### assistant') === false && t?.includes(F.talks.transference[0].text) && t?.trimEnd().endsWith('=== END MATERIAL ==='), 'talkTransference: a first message is one user turn after the lead, marked as material');
 t = await talk('talkInterpretFirst', F.talks.interpretFirst);
 t = await talk('talkGerman', F.talks.german);
 check(t?.includes('answer in German'), 'talkGerman: the person\'s German message sets the language hint');
