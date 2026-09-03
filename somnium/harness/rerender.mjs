@@ -48,7 +48,8 @@ for (const id of ids) {
     shots.push({ beat: i + 1, file, start: +t.toFixed(1), dur: beats[i].dur, text: beats[i].text, motion: +diff.toFixed(2), metrics: m });
     t += beats[i].dur;
   }
-  await page.evaluate(() => { window.__somnium.Stage.setTime(0.5); window.__somnium.Stage.playing = true; });
+  let moveAt = 0.5; { let acc = 0; for (const b of beats) { if (b.actions.some(x => x.actor && (x.move || (x.state && x.state !== 'idle')))) { moveAt = acc + 0.4; break; } acc += b.dur; } }
+  await page.evaluate(m => { window.__somnium.Stage.setTime(m); window.__somnium.Stage.playing = true; }, moveAt);
   for (let k = 0; k < 6; k++) { await page.waitForTimeout(700); await page.screenshot({ path: path.join(dir, `play-${k + 1}.png`) }); }
   const fps = await page.evaluate(() => { const ft = window.__somnium.Stage.frameTimes.slice(-120); return ft.length ? +(1000 / (ft.reduce((a, b) => a + b, 0) / ft.length)).toFixed(1) : 0; });
   await page.setViewportSize({ width: 390, height: 780 }); await page.waitForTimeout(400); await page.screenshot({ path: path.join(dir, 'phone.png') }); await page.setViewportSize({ width: 1280, height: 800 }); await page.waitForTimeout(300);
