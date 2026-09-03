@@ -20,13 +20,17 @@ const CWD = path.join(OUT, '_cli'); mkdirSync(CWD, { recursive: true });
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 let spend = 0;
 
-function askClaude(prompt) {
+function askOnce(prompt) {
   return new Promise((resolve, reject) => {
     const t0 = Date.now();
     const p = spawn('claude', ['-p', '--model', MODEL, '--output-format', 'json', '--session-id', randomUUID(), '--effort', args.effort || 'high'], { cwd: CWD, env: { ...process.env, CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' } });
-    let out = '', err = ''; p.stdout.on('data', d => out += d); p.stderr.on('data', d => err += d); p.stdin.write(prompt); p.stdin.end();
-    p.on('close', code => { if (code !== 0) return reject(new Error('claude exited ' + code + ': ' + err.slice(0, 500))); try { const j = JSON.parse(out); spend += j.total_cost_usd || 0; log(`claude answered in ${((Date.now() - t0) / 1000).toFixed(0)}s, $${(j.total_cost_usd || 0).toFixed(3)}, total $${spend.toFixed(2)}`); resolve(j.result || ''); } catch (e) { reject(new Error('bad cli output: ' + out.slice(0, 300))); } });
+    let out = '', err = ''; p.stdout.on('data', d => out += d); p.stderr.on('data', d => err += d);
+    p.on('close', code => { let j = null; try { j = JSON.parse(out); } catch (e) {} if (!j) return reject(new Error('claude exited ' + code + ': ' + (err || out).slice(0, 300))); if (j.is_error) return reject(Object.assign(new Error('api: ' + String(j.result).slice(0, 200)), { retryable: true })); spend += j.total_cost_usd || 0; log(`claude answered in ${((Date.now() - t0) / 1000).toFixed(0)}s, $${(j.total_cost_usd || 0).toFixed(3)}, total $${spend.toFixed(2)}`); resolve(j.result || ''); });
+    p.stdin.write(prompt); p.stdin.end();
   });
+}
+async function askClaude(prompt) {
+  for (let i = 0; i < 4; i++) { try { return await askOnce(prompt); } catch (e) { log('claude call failed:', e.message); if (!e.retryable || i === 3) throw e; await new Promise(r => setTimeout(r, 45000 * (i + 1))); } }
 }
 const html = readFileSync(HTML, 'utf8');
 const server = createServer(async (req, res) => {

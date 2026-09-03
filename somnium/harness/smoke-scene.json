@@ -1,25 +1,18 @@
-{"title":"Smoke: the hold and the moon","mood":"probe","world":{"sky":"night","ground":"road","groundColor":"#3a3a40","weather":"snow","fogDensity":0.02},
+{"title":"Smoke 3","mood":"probe","world":{"sky":"dusk","ground":"sand","weather":"none","fogDensity":0.01},
 "actors":[
- {"id":"me","kind":"person","label":"me","color":"#5a6fa8","pos":[0,0,0],"yaw":0},
- {"id":"steve","kind":"person","label":"my brother Steve","color":"#8a7a4a","pos":[1.5,0,0],"yaw":0},
- {"id":"man1","kind":"person","label":"one man","color":"#7a4a4a","pos":[0,-5,5]},
- {"id":"man2","kind":"person","label":"the other man","color":"#4a7a4a","pos":[1.2,-5,5.5]},
- {"id":"pit","kind":"pit","label":"a manhole","color":"#5a5048","pos":[0.6,0,5],"detail":{"radius":1.6}},
- {"id":"shop","kind":"shop","label":"a shop","color":"#c9b59a","pos":[-9,0,8],"yaw":90,"detail":{"text":"BAKERY"}},
- {"id":"block","kind":"building","label":"an apartment block","color":"#8f9299","pos":[10,0,12],"detail":{"width":10,"depth":10,"height":9}},
- {"id":"moon","kind":"moon","label":"a red moon","color":"#e04030","pos":[20,35,110],"size":3},
- {"id":"lake","kind":"water","label":"the lake","color":"#1f4d6e","pos":[-12,0,-14],"detail":{"radius":10}},
+ {"id":"me","kind":"person","label":"me","color":"#5a6fa8","pos":[0,0,0],"yaw":180},
+ {"id":"steve","kind":"person","label":"my brother Steve","color":"#8a7a4a","pos":[1.5,0,0],"yaw":180},
+ {"id":"tooth","kind":"tooth","label":"my tooth","color":"#f6f3ea","pos":[-0.6,0,1],"size":3},
+ {"id":"house","kind":"house","label":"a house","color":"#c9b59a","pos":[0,0,8]},
+ {"id":"room","kind":"room","label":"","color":"#c9c0b0","pos":[20,0,0],"hidden":true,"detail":{"width":8,"depth":8,"height":3}},
  {"id":"cave","kind":"cave","label":"like a cave","color":"#5a4a3a","pos":[0,0,-30],"size":2},
- {"id":"hill","kind":"hill","label":"a hill","color":"#4f7a45","pos":[40,0,-60],"size":8},
- {"id":"woods","kind":"forest","label":"timberland","color":"#2f5f33","pos":[40,0,-60],"detail":{"count":30,"radius":20}},
- {"id":"castle","kind":"castle","label":"our sand castle","color":"#c9b27e","pos":[3,0,-3],"size":0.3},
- {"id":"tooth","kind":"tooth","label":"my tooth","color":"#f6f3ea","pos":[-1.5,0,-2],"size":3},
- {"id":"crowd","kind":"crowd","label":"the platoon","color":"#4a5a3a","pos":[-6,0,-6],"detail":{"count":8,"radius":2}}
+ {"id":"cafe","kind":"table","label":"the cafe","color":"#8a6a4a","pos":[0,0,-36]},
+ {"id":"door","kind":"door","label":"a door","color":"#6d4a2c","pos":[3,0,-38],"yaw":90}
 ],
 "beats":[
- {"dur":6,"text":"We looked thru the manhole and there were two men down there.","camera":{"mode":"orbit","target":"pit","distance":6,"height":4,"angle":200},"actions":[{"actor":"me","move":[0,0,3.5],"state":"walk"},{"actor":"steve","move":[1.6,0,3.5],"state":"limp"},{"actor":"crowd","state":"limp","move":[-4,0,-4]}]},
- {"dur":6,"text":"A red moon over the lake; the shop and the block.","camera":{"mode":"fixed","target":"me","pos":[-4,3,-8],"lookAt":[6,10,60]},"actions":[{"actor":"me","state":"shake"},{"actor":"castle","state":"grow"}]},
- {"dur":6,"text":"It was like a cave.","camera":{"mode":"follow","target":"me","distance":8,"height":3,"angle":180},"actions":[{"actor":"me","move":[0,0,-27],"state":"walk"},{"actor":"steve","move":[1.2,0,-26],"state":"walk"}]},
- {"dur":6,"text":"Flying over heavily wooded timberland.","camera":{"mode":"wide","target":"woods","distance":60,"height":30,"angle":150},"actions":[{"actor":"me","move":[30,25,-40],"state":"fly"}]},
- {"dur":6,"text":"Inside the block, a fixed camera set in the wall.","camera":{"mode":"fixed","target":"me","pos":[10,3,12],"lookAt":"me"},"actions":[{"actor":"me","move":[4,0,6],"state":"kneel"},{"actor":"steve","move":[5,0,6],"state":"push"}]}
+ {"dur":6,"text":"Close on the face and the tooth.","camera":{"mode":"orbit","target":"me","distance":2.5,"height":1.6,"angle":0},"actions":[{"actor":"me","state":"fold"}]},
+ {"dur":6,"text":"A fixed camera scripted inside the house.","camera":{"mode":"fixed","target":"me","pos":[0,2,8],"lookAt":"me"},"actions":[{"actor":"me","move":[0,0,3],"state":"walk"}]},
+ {"dur":6,"text":"A wide shot next to a hidden room.","camera":{"mode":"wide","target":"me","distance":30,"height":12,"angle":200},"actions":[{"actor":"me","move":[18,0,0],"state":"walk"},{"actor":"steve","move":[19,0,0],"state":"walk"}]},
+ {"dur":6,"text":"Into the cave, camera follows.","camera":{"mode":"follow","target":"me","distance":7,"height":2.5,"angle":180},"actions":[{"actor":"me","move":[0,0,-34],"state":"walk"},{"actor":"steve","move":[1.5,0,-34],"state":"walk"}]},
+ {"dur":6,"text":"A fixed camera flush against the cave from outside.","camera":{"mode":"fixed","target":"me","pos":[0,2,-22],"lookAt":"me"},"actions":[{"actor":"me","state":"sit"}]}
 ]}

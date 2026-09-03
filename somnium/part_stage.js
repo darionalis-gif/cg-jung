@@ -6,7 +6,7 @@ const Stage = {
   init(canvas) {
     const r = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     r.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.25; r.outputColorSpace = THREE.SRGBColorSpace;
-    this.r = r; this.three = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1200);
+    this.r = r; this.three = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(50, 1, 0.25, 1200);
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(500, 24, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { top: { value: new THREE.Color('#0b1030') }, hor: { value: new THREE.Color('#2a2f5c') }, fogc: { value: new THREE.Color('#171b3d') } }, vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform vec3 top; uniform vec3 hor; uniform vec3 fogc; varying vec3 vP; void main(){ float h = normalize(vP).y; vec3 low = mix(fogc, hor, smoothstep(0.0, 0.14, h)); float t = smoothstep(0.04, 0.5, h); gl_FragColor = vec4(mix(low, top, t), 1.0); }' }));
     this.three.add(this.sky);
     const sg = new THREE.BufferGeometry(); const sp = []; const rnd = seeded(42); for (let i = 0; i < 1600; i++) { const th = rnd() * 6.283, ph = Math.acos(rnd() * 0.95); sp.push(Math.sin(ph) * Math.cos(th) * 460, Math.cos(ph) * 460, Math.sin(ph) * Math.sin(th) * 460); } sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
@@ -100,13 +100,15 @@ const Stage = {
     // ambient animations
     for (const rec of this.actors.values()) { const ud = rec.g.userData; if (ud.flames) { ud.flames.forEach((f, i) => { f.scale.y = 1 + Math.sin(τ * 11 + i * 2) * 0.25; f.scale.x = f.scale.z = 1 + Math.sin(τ * 9 + i) * 0.15; }); if (ud.light) ud.light.intensity = 30 + Math.sin(τ * 13) * 6; } if (ud.puffs) ud.puffs.forEach((p, i) => { p.position.y = 0.8 + ((τ * 0.6 + i * 0.9) % 5.4); p.scale.setScalar(0.6 + ((τ * 0.6 + i * 0.9) % 5.4) * 0.25); }); if (ud.rotor) ud.rotor.rotation.y = τ * 25; if (ud.spinPart) ud.spinPart.rotation.y = τ * 1.2; if (ud.drift) rec.g.position.x += Math.sin(τ * 0.05) * 0.0; if (ud.canopy) ud.canopy.forEach(c => c.rotation.z = Math.sin(τ * 0.8) * 0.02); if (ud.trees) ud.trees.forEach((tr, i) => tr.rotation.z = Math.sin(τ * 0.7 + i) * 0.02); if (ud.pulse) rec.mats.forEach(m => { if (m.emissiveIntensity) m.emissiveIntensity = 0.8 + Math.sin(τ * 3) * 0.4; }); }
     for (const o of [this.waterGround]) if (o.material.userData.sh) o.material.userData.sh.uniforms.uTime.value = τ; this.root.traverse(o => { if (o.isMesh && o.material.userData.sh) o.material.userData.sh.uniforms.uTime.value = τ; });
+    this.solidsNow = this.solids ? this.solids.filter(o => { let p = o; while (p) { if (p.visible === false) return false; p = p.parent; } return true; }) : [];
+    this.solidBoxes = []; for (const o of this.solidsNow) { if (o.material && o.material.side === THREE.BackSide) continue; if (o.geometry.type === 'CapsuleGeometry') continue; const bx = new THREE.Box3().setFromObject(o); if (bx.max.x - bx.min.x > 1.5 && bx.max.z - bx.min.z > 1.5) { bx.expandByScalar(0.4); this.solidBoxes.push(bx); } }
     this.updateCamera(S.beats[bi], states, dt, snap || this.cam.snap); this.cam.snap = false;
     this.updateWeather(dt, τ); this.updateEffects(dt);
     this.r.render(this.three, this.camera); this.updateLabels(states);
     if (this.onTime) this.onTime(t, false);
   },
   poseHuman(g, L, s, τ, dt, size, window, phase, moving) {
-    const { legs, arms, head, torso } = L; const sp = moving > 2.5 || s === 'run' ? 11 : 6; legs.forEach(l => l.rotation.set(0, 0, 0)); arms.forEach(a => a.rotation.set(0, 0, 0)); g.rotation.x = 0; g.rotation.z = 0; head.rotation.set(0, 0, 0); torso.scale.y = 1; τ += phase;
+    const { legs, arms, head, torso } = L; const sp = moving > 2.5 || s === 'run' ? 11 : 6; legs.forEach(l => l.rotation.set(0, 0, 0)); arms.forEach(a => a.rotation.set(0, 0, 0)); g.rotation.x = 0; g.rotation.z = 0; head.rotation.set(0, 0, 0); head.scale.set(1, 1, 1); torso.scale.y = 1; τ += phase;
     if (s === 'walk' || s === 'run' || s === 'crawl' || s === 'limp') { const amp = s === 'run' ? 0.9 : 0.55; legs[0].rotation.x = Math.sin(τ * sp) * amp; legs[1].rotation.x = -Math.sin(τ * sp) * amp * (s === 'limp' ? 0.3 : 1); arms[0].rotation.x = -Math.sin(τ * sp) * amp * 0.8; arms[1].rotation.x = Math.sin(τ * sp) * amp * 0.8; g.position.y += Math.abs(Math.sin(τ * sp)) * 0.04 * size; if (s === 'run') g.rotation.x = 0.2; if (s === 'limp') { g.rotation.z = Math.sin(τ * sp) * 0.12; g.rotation.x = 0.15; g.position.y -= Math.max(0, Math.sin(τ * sp)) * 0.1 * size; } if (s === 'crawl') { g.rotation.x = -1.3; g.position.y += 0.35 * size; } }
     else if (s === 'fly') { g.rotation.x = 0.9; arms[0].rotation.z = 1.3; arms[1].rotation.z = -1.3; legs.forEach(l => l.rotation.x = 0.2); g.position.y += Math.sin(τ * 2) * 0.15 * size; }
     else if (s === 'fall') { g.rotation.x = -0.6 + Math.sin(τ * 2) * 0.4; g.rotation.z = Math.sin(τ * 1.5) * 0.5; arms[0].rotation.x = -2.6; arms[1].rotation.x = -2.6; legs[0].rotation.x = 0.5; legs[1].rotation.x = -0.3; }
@@ -122,6 +124,7 @@ const Stage = {
     else if (s === 'dance') { g.position.y += Math.abs(Math.sin(τ * 6)) * 0.12 * size; arms[0].rotation.z = 2.4 + Math.sin(τ * 6) * 0.4; arms[1].rotation.z = -2.4 - Math.sin(τ * 6 + 1) * 0.4; g.rotation.y += Math.sin(τ * 3) * 0.3; }
     else if (s === 'wave') { arms[1].rotation.z = -2.6; arms[1].rotation.x = Math.sin(τ * 8) * 0.4; }
     else if (s === 'melt') { const p = window; g.scale.y *= Math.max(0.05, 1 - p); g.scale.x *= 1 + p * 0.5; g.scale.z *= 1 + p * 0.5; }
+    else if (s === 'fold') { const p = window; head.scale.set(1 + p * 0.6, Math.max(0.15, 1 - p * 0.85), 1 + p * 0.3); head.rotation.x = p * 1.1; head.rotation.z = Math.sin(p * 6) * 0.3 * p; arms.forEach(a => a.rotation.x = -1.6 * p); g.rotation.x = 0.35 * p; }
     else { torso.scale.y = 1 + Math.sin(τ * 1.5) * 0.02; head.rotation.y = Math.sin(τ * 0.7) * 0.2; arms[0].rotation.x = Math.sin(τ * 1.2) * 0.08; }
   },
   animate(rec, st, τ, dt) {
@@ -157,13 +160,25 @@ const Stage = {
     const camDist = this.camera.position.distanceTo(this.cam.look); this.three.fog.density = Math.min(this.three.fog.density, 1.6 / Math.max(4, camDist));
     this.camera.lookAt(this.cam.look); this.sky.position.copy(this.camera.position); this.stars.position.copy(this.camera.position); this.ground.position.set(this.cam.look.x, 0, this.cam.look.z); this.waterGround.position.set(this.cam.look.x, 0, this.cam.look.z);
   },
+  insideSolid(p) {
+    if (!this.solidBoxes) return false; for (const bx of this.solidBoxes) if (bx.containsPoint(p)) return true; return false;
+  },
+  clearDist(look, dir, len) {
+    this._ray = this._ray || new THREE.Raycaster(); const r = this._ray; r.set(look, dir); r.near = 0.3; r.far = len; const hits = r.intersectObjects(this.solidsNow || [], false); return hits.length ? hits[0].distance : Infinity;
+  },
   unblock(look, pos) {
-    if (!this.solids || !this.solids.length) return pos; const dir = pos.clone().sub(look); const len = dir.length(); if (len < 0.5) return pos; dir.divideScalar(len);
-    this._ray = this._ray || new THREE.Raycaster(); const r = this._ray; r.set(look, dir); r.near = 0.3; r.far = len; const hits = r.intersectObjects(this.solids, false); if (!hits.length) return pos;
-    const d = Math.max(0.6, hits[0].distance - 0.6); return look.clone().add(dir.multiplyScalar(d));
+    const sol = this.solidsNow; if (!sol || !sol.length) return pos; const off = pos.clone().sub(look); const len = off.length(); if (len < 0.5) return pos; const dir = off.clone().divideScalar(len);
+    let d0 = this.clearDist(look, dir, len); if (d0 === Infinity && this.insideSolid(pos)) d0 = Math.max(0.8, len * 0.3); if (d0 === Infinity) return pos;
+    if (d0 - 0.6 >= Math.min(2.5, len * 0.4)) return look.clone().add(dir.multiplyScalar(d0 - 0.6));
+    // the scripted side is blocked close to the target: try the other sides, then from above, keep the best
+    let best = look.clone().add(dir.clone().multiplyScalar(Math.max(0.8, d0 - 0.6))), bestD = d0;
+    const flat = new THREE.Vector3(off.x, 0, off.z); const fl = flat.length() || 1; const up = Math.max(off.y, 1.5);
+    for (const a of [Math.PI, Math.PI / 2, -Math.PI / 2, Math.PI * 0.75, -Math.PI * 0.75]) { const c = new THREE.Vector3(flat.x * Math.cos(a) - flat.z * Math.sin(a), up, flat.x * Math.sin(a) + flat.z * Math.cos(a)); const cl = c.length(); const cd = c.clone().divideScalar(cl); const d = this.clearDist(look, cd, cl); if (d === Infinity && !this.insideSolid(look.clone().add(c))) return look.clone().add(c); if (d > bestD) { bestD = d; best = look.clone().add(cd.multiplyScalar(d - 0.6)); } }
+    const top = new THREE.Vector3(0.3, Math.max(len * 0.8, 4), 0.3); const tl = top.length(); const td = this.clearDist(look, top.clone().divideScalar(tl), tl); if (td === Infinity) return look.clone().add(top);
+    return best;
   },
   occluded(from, to, self) {
-    if (!this.solids || !this.solids.length) return false; this._ray2 = this._ray2 || new THREE.Raycaster(); const r = this._ray2; const dir = to.clone().sub(from); const len = dir.length(); if (len < 0.5) return false; dir.divideScalar(len); r.set(from, dir); r.near = 0.2; r.far = len - 0.3; const hits = r.intersectObjects(this.solids, false); for (const h of hits) { let o = h.object, own = false; while (o) { if (o === self) { own = true; break; } o = o.parent; } if (!own) return true; } return false;
+    if (!this.solids || !this.solids.length) return false; this._ray2 = this._ray2 || new THREE.Raycaster(); const r = this._ray2; const dir = to.clone().sub(from); const len = dir.length(); if (len < 0.5) return false; dir.divideScalar(len); r.set(from, dir); r.near = 0.2; r.far = len - 0.3; const hits = r.intersectObjects(this.solidsNow || this.solids, false); for (const h of hits) { let o = h.object, own = false; while (o) { if (o === self) { own = true; break; } o = o.parent; } if (!own) return true; } return false;
   },
   triggerEffect(k) { if (k === 'flash') this.fx.push({ k, t: 0.7 }); else if (k === 'blackout') { this.fx.push({ k, t: 1.4 }); this.cam.snap = true; } else if (k === 'quake') this.quake = 1.0; else if (k === 'blur') this.fx.push({ k, t: 1.6 }); else if (k === 'pulse') this.fx.push({ k, t: 2.4 }); },
   updateEffects(dt) {
@@ -174,7 +189,7 @@ const Stage = {
     const W = this.canvas.clientWidth, H = this.canvas.clientHeight; const v = new THREE.Vector3(); const camPos = this.camera.position;
     const curBeat = this.scene.beats[this.lastBeat]; const povId = curBeat && curBeat.camera.mode === 'pov' && !this.user.on ? curBeat.camera.target : null; const curTarget = curBeat ? curBeat.camera.target : null;
     const placed = [];
-    for (const [id, rec] of this.actors) { const st = states.get(id); const lbl = rec.lbl; const text = st.say ? `${rec.a.label || rec.a.kind}: “${st.say}”` : rec.a.label; if (!this.labelsOn || !text || st.op < 0.05 || id === povId) { lbl.hidden = true; continue; } const top = rec.g.userData.centered ? rec.g.userData.baseHeight * (st.size / rec.a.size) + 1 : rec.g.userData.baseHeight * (st.size / rec.a.size) + 0.25; v.set(st.pos[0], st.pos[1] + Math.min(top, 12), st.pos[2]); const dist = v.distanceTo(camPos); const isTarget = id === curTarget; if (!rec.g.userData.far && !st.say && !isTarget && dist > 38) { lbl.hidden = true; continue; } if (!rec.g.userData.far && this.occluded(camPos, v, rec.g)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.86); lbl.hidden = false; lbl.textContent = text; lbl.style.left = ((v.x + 1) / 2 * W).toFixed(1) + 'px'; lbl.style.top = ((1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; placed.push({ lbl, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist }); }
+    for (const [id, rec] of this.actors) { const st = states.get(id); const lbl = rec.lbl; const text = st.say ? `${rec.a.label || rec.a.kind}: “${st.say}”` : rec.a.label; if (!this.labelsOn || !text || st.op < 0.05 || id === povId) { lbl.hidden = true; continue; } const top = rec.g.userData.centered ? rec.g.userData.baseHeight * (st.size / rec.a.size) + 1 : rec.g.userData.baseHeight * (st.size / rec.a.size) + 0.25; v.set(st.pos[0], st.pos[1] + Math.min(top, 12), st.pos[2]); const dist = v.distanceTo(camPos); const isTarget = id === curTarget; if (!rec.g.userData.far && !st.say && !isTarget && dist > 38) { lbl.hidden = true; continue; } if (!rec.g.userData.far && this.occluded(camPos, v, rec.g)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.86); lbl.hidden = false; lbl.textContent = text; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = ((1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; placed.push({ lbl, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist }); }
     placed.sort((a, b) => a.dist - b.dist); const rects = [];
     for (const p of placed) { const w = p.lbl.offsetWidth || 60, h = p.lbl.offsetHeight || 20; let y = p.y, tries = 0; const overlaps = yy => rects.some(r => Math.abs(r.x - p.x) < (r.w + w) / 2 + 4 && Math.abs(r.y - yy) < h + 2); while (overlaps(y) && tries++ < 6) y -= h + 3; if (y !== p.y) p.lbl.style.top = y.toFixed(1) + 'px'; rects.push({ x: p.x, y, w, h }); }
   },
