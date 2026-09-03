@@ -10,7 +10,8 @@ await p.route('**/*', r => { const u = r.request().url(); if (u.includes('cdnjs.
 await p.goto(`http://127.0.0.1:${port}/`); await p.waitForFunction(() => window.__somnium && window.__somnium.Stage.ready, null, { timeout: 15000 });
 const scene = JSON.parse(readFileSync(new URL('./smoke-scene.json', import.meta.url), 'utf8'));
 await p.evaluate(s => { const S = window.__somnium; const d = { id: 'smoke', title: 'smoke', text: 'smoke test', scene: S.normalizeScene(s, 'x'), chat: [], src: null, at: Date.now() }; S.App.cur = d; S.App.open(d); }, scene);
+const idem = await p.evaluate(s => { const S = window.__somnium; const a = S.App.exportScene(S.normalizeScene(s, 'x')); const b = S.App.exportScene(S.normalizeScene(JSON.parse(JSON.stringify(a)), 'x')); return JSON.stringify(a) === JSON.stringify(b) ? 'idempotent' : 'NOT idempotent: ' + JSON.stringify(a).length + ' vs ' + JSON.stringify(b).length; }, scene); console.log(idem);
 const total = await p.evaluate(() => window.__somnium.Stage.scene.total);
-for (const f of [0.02, 0.2, 0.4, 0.6, 0.8, 0.98]) { await p.evaluate(t => { window.__somnium.Stage.setTime(t); window.__somnium.Stage.playing = false; }, f * total); await p.waitForTimeout(250); await p.screenshot({ path: `harness/out/smoke-${f}.png` }); const m = await p.evaluate(() => window.__somnium.Stage.metrics()); console.log(f, JSON.stringify(m)); }
+for (const f of [0.1, 0.3, 0.5, 0.7, 0.9]) { await p.evaluate(t => { window.__somnium.Stage.setTime(t); window.__somnium.Stage.playing = false; }, f * total); await p.waitForTimeout(250); await p.screenshot({ path: `harness/out/smoke-${f}.png` }); const m = await p.evaluate(() => window.__somnium.Stage.metrics()); console.log(f, JSON.stringify(m)); }
 await p.setViewportSize({ width: 390, height: 780 }); await p.waitForTimeout(300); await p.screenshot({ path: 'harness/out/smoke-phone.png' });
 console.log('errors:', errs); await b.close(); server.close();
