@@ -152,29 +152,34 @@ const Stage = {
     else if (c.mode === 'wide') { pos = T.clone().add(dirAt(c.angle, Math.max(c.distance, 24), Math.max(c.height, 8) + local * 0.2)); look = eye; }
     else { const sm = this.smoothYaw === undefined ? tg.yaw : this.smoothYaw; const d = ((tg.yaw - sm + 540) % 360) - 180; this.smoothYaw = snap ? tg.yaw : sm + d * Math.min(1, dt * 1.5); pos = T.clone().add(dirAt(this.smoothYaw + c.angle, c.distance, c.height + local * 0.05)); look = eye; }
     // keep camera above ground and out of the target
-    if (pos.y < 0.4) pos.y = 0.4;
-    if (c.mode !== 'pov') pos = this.unblock(look, pos);
-    if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < 0.3) pos.y = 0.3; }
-    if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3); const f = 1 - Math.exp(-dt * k); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f); }
+    const minY = Math.min(0.4, T.y + 0.5); if (pos.y < minY) pos.y = minY;
+    if (c.mode !== 'pov') pos = this.unblock(look, pos, rec ? rec.g : null);
+    if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
+    if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f); }
     if (this.quake > 0) { this.quake -= dt; const q = Math.min(1, this.quake) * 0.25; this.camera.position.copy(this.cam.pos).add(new THREE.Vector3((Math.random() - 0.5) * q, (Math.random() - 0.5) * q, (Math.random() - 0.5) * q)); } else this.camera.position.copy(this.cam.pos);
-    const camDist = this.camera.position.distanceTo(this.cam.look); this.three.fog.density = Math.min(this.three.fog.density, 1.6 / Math.max(4, camDist));
+    const camDist = this.camera.position.distanceTo(this.cam.look); this.three.fog.density = Math.min(this.three.fog.density, 0.9 / Math.max(4, camDist));
     this.camera.lookAt(this.cam.look); this.sky.position.copy(this.camera.position); this.stars.position.copy(this.camera.position); this.ground.position.set(this.cam.look.x, 0, this.cam.look.z); this.waterGround.position.set(this.cam.look.x, 0, this.cam.look.z);
   },
-  insideSolid(p) {
-    if (!this.solidBoxes) return false; for (const bx of this.solidBoxes) if (bx.containsPoint(p)) return true; return false;
+  insideSolid(p, self) {
+    if (!this.solidsNow) return false; const v = this._v || (this._v = new THREE.Vector3());
+    for (const o of this.solidsNow) { if (o.userData.soft || (o.material && o.material.side === THREE.BackSide)) continue; if (self && this.isOwn(o, self)) continue; const bb = o.geometry.boundingBox || (o.geometry.computeBoundingBox(), o.geometry.boundingBox); if (!bb) continue; v.copy(p); o.worldToLocal(v); const sx = o.getWorldScale(this._s || (this._s = new THREE.Vector3())); const m = 0.4 / Math.max(0.05, Math.max(sx.x, sx.y, sx.z)); if (v.x > bb.min.x - m && v.x < bb.max.x + m && v.y > bb.min.y - m && v.y < bb.max.y + m && v.z > bb.min.z - m && v.z < bb.max.z + m) return true; }
+    return false;
   },
-  clearDist(look, dir, len) {
-    this._ray = this._ray || new THREE.Raycaster(); const r = this._ray; r.set(look, dir); r.near = 0.3; r.far = len; const hits = r.intersectObjects(this.solidsNow || [], false); return hits.length ? hits[0].distance : Infinity;
+  isOwn(o, self) { let p = o; while (p) { if (p === self) return true; p = p.parent; } return false; },
+  clearDist(look, dir, len, self) {
+    this._ray = this._ray || new THREE.Raycaster(); const r = this._ray; r.set(look, dir); r.near = 0.3; r.far = len; const hits = r.intersectObjects(this.solidsNow || [], false);
+    for (const h of hits) { if (self && this.isOwn(h.object, self)) continue; if (h.object.userData.soft && len - h.distance > 1.2) continue; return h.distance; }
+    return Infinity;
   },
-  unblock(look, pos) {
+  unblock(look, pos, self) {
     const sol = this.solidsNow; if (!sol || !sol.length) return pos; const off = pos.clone().sub(look); const len = off.length(); if (len < 0.5) return pos; const dir = off.clone().divideScalar(len);
-    let d0 = this.clearDist(look, dir, len); if (d0 === Infinity && this.insideSolid(pos)) d0 = Math.max(0.8, len * 0.3); if (d0 === Infinity) return pos;
-    if (d0 - 0.6 >= Math.min(2.5, len * 0.4)) return look.clone().add(dir.multiplyScalar(d0 - 0.6));
-    // the scripted side is blocked close to the target: try the other sides, then from above, keep the best
+    let d0 = this.clearDist(look, dir, len, self); const inside = d0 === Infinity && this.insideSolid(pos, self); if (inside) d0 = Math.max(0.8, len * 0.3); if (d0 === Infinity) return pos;
+    if (d0 - 0.6 >= 1.5) return look.clone().add(dir.multiplyScalar(d0 - 0.6));
+    // the blocker is almost touching the target: try the other sides, then from above, keep the best
     let best = look.clone().add(dir.clone().multiplyScalar(Math.max(0.8, d0 - 0.6))), bestD = d0;
-    const flat = new THREE.Vector3(off.x, 0, off.z); const fl = flat.length() || 1; const up = Math.max(off.y, 1.5);
-    for (const a of [Math.PI, Math.PI / 2, -Math.PI / 2, Math.PI * 0.75, -Math.PI * 0.75]) { const c = new THREE.Vector3(flat.x * Math.cos(a) - flat.z * Math.sin(a), up, flat.x * Math.sin(a) + flat.z * Math.cos(a)); const cl = c.length(); const cd = c.clone().divideScalar(cl); const d = this.clearDist(look, cd, cl); if (d === Infinity && !this.insideSolid(look.clone().add(c))) return look.clone().add(c); if (d > bestD) { bestD = d; best = look.clone().add(cd.multiplyScalar(d - 0.6)); } }
-    const top = new THREE.Vector3(0.3, Math.max(len * 0.8, 4), 0.3); const tl = top.length(); const td = this.clearDist(look, top.clone().divideScalar(tl), tl); if (td === Infinity) return look.clone().add(top);
+    const flat = new THREE.Vector3(off.x, 0, off.z); const up = Math.max(off.y, 1.5);
+    for (const a of [Math.PI, Math.PI / 2, -Math.PI / 2, Math.PI * 0.75, -Math.PI * 0.75]) { const c = new THREE.Vector3(flat.x * Math.cos(a) - flat.z * Math.sin(a), up, flat.x * Math.sin(a) + flat.z * Math.cos(a)); const cl = c.length(); if (cl < 0.5) continue; const cd = c.clone().divideScalar(cl); const d = this.clearDist(look, cd, cl, self); const cand = look.clone().add(c); if (d === Infinity && !this.insideSolid(cand, self)) return cand; if (d > bestD) { bestD = d; best = look.clone().add(cd.multiplyScalar(Math.max(0.8, d - 0.6))); } }
+    const th = clamp(len * 0.7, 3, 7); const top = new THREE.Vector3(off.x * 0.25, th, off.z * 0.25); const tl = top.length(); const td = this.clearDist(look, top.clone().divideScalar(tl), tl, self); const tc = look.clone().add(top); if (td === Infinity && !this.insideSolid(tc, self)) return tc;
     return best;
   },
   occluded(from, to, self) {
