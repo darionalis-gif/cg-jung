@@ -1170,7 +1170,7 @@ function dossierText(f) {
 }
 function tailFor(kind, d) {
   const H = S.sessions.filter(h => h.id !== d.id), T = [];
-  const full = (label, h, keys) => { const parts = keys.map(k => { const v = getPath(h.data, k); return v && String(v).trim() ? `${k}: ${v}` : ''; }).filter(Boolean); if (parts.length) T.push(`— ${label}, ${fmtDate(h.startedAt)}:\n${parts.join('\n')}`); };
+  const full = (label, h, keys) => { const parts = keys.map(k => { const v = getPath(h.data, k); const s = v && typeof v === 'object' ? (Array.isArray(v) ? v.join('; ') : Object.entries(v).filter(([, x]) => x && String(x).trim()).map(([a, x]) => `\n- ${a}: ${x}`).join('')) : v; return s && String(s).trim() ? `${k}: ${s}` : ''; }).filter(Boolean); if (parts.length) T.push(`— ${label}, ${fmtDate(h.startedAt)}:\n${parts.join('\n')}`); };
   if (kind === 'constellation') H.filter(h => h.data?.wae?.done).slice(-3).forEach(h => full('Earlier protocol', h, ['seed.word', 'interrogation']));
   if (kind === 'frame' || kind === 'amplification') { const F = figureName(d).toLowerCase(); H.filter(h => (h.data?.figure || '').trim().toLowerCase() === F).slice(-3).forEach(h => { T.push(`— ${figureName(h)} in ${PRACTICES[h.practice].name}, ${fmtDate(h.startedAt)}:\n${dialogueText(h)}${h.data.wants?.F ? `\nIt wanted: ${h.data.wants.F}` : ''}${h.data.third ? `\nThe third then: ${h.data.third}` : ''}`); }); }
   if (kind === 'amplification') H.filter(h => h.data?.third && !h.data.nothing).slice(-4).forEach(h => full('Earlier third', h, ['image', 'third', 'mortificatio']));
@@ -1740,8 +1740,9 @@ async function ask(kind) {
   ctl = new AbortController();
   const tierEl = box.querySelector('.tier'); if (tierEl) tierEl.hidden = true;
   try {
-    const images = kind === 'mandala' ? await drawingBlob(d) : null;
-    const r = await analyst.ask(kind, contextFor(kind, d), { signal: ctl.signal, images, onText: ({ text }) => { p.textContent = text; } });
+    const images = kind === 'mandala' ? await drawingBlob(d) : null, ctx = contextFor(kind, d);
+    if (kind === 'mandala') ctx.extra = images ? 'A picture of the drawing is attached to this question.' : 'No picture of the drawing could be attached from this device; the drawing is present only through the person\'s reading of it in the hour above.';
+    const r = await analyst.ask(kind, ctx, { signal: ctl.signal, images, onText: ({ text }) => { p.textContent = text; } });
     if (kind === 'frame') { (d.analyst.frames ||= []).push({ after: (d.data.dialogue || []).filter(l => l.who !== 'A').length, text: r.text }); saveDraft(); render(); if (r.applied !== r.asked) toast(r.tierLine); return; }
     if (kind === 'opus') { addTalk({ kind: 'opus', turns: [{ who: 'A', text: r.text, at: Date.now() }], tier: r.tierLine }); }
     else { d.analyst[kind] = r.text; d.analyst[kind + 'Tier'] = r.tierLine; saveDraft(); }

@@ -73,7 +73,7 @@ async function askInDraft(name, draft, kind) {
 // the hour and its steps
 let t = await askInDraft('constellation', F.drafts.constellation, 'constellation');
 check(t?.includes('Protocol (word · answer · seconds') && t.includes('Interrogation:'), 'constellation: the protocol and the interrogation are handed over');
-check(t?.includes('Earlier protocol'), 'constellation: earlier protocols are handed over');
+check(t?.includes('Earlier protocol') && !t.includes('[object Object]') && /interrogation:\n- /.test(t), 'constellation: earlier protocols are handed over with their interrogations as lines');
 t = await askInDraft('frame', F.drafts.frame, 'frame');
 check(calls.frame?.cache === false, 'frame: never cached');
 check(t?.includes('the ferryman in The Hour'), 'frame: the figure\'s earlier hours are handed over');
