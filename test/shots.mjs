@@ -35,7 +35,8 @@ for (const scheme of ['dark', 'light']) {
   const mem = page.locator('.memory'); await mem.scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(OUT, `liber-memory-${scheme}.png`), clip: { x: 0, y: Math.max(0, (await mem.boundingBox()).y - 260), width: 400, height: 820 } });
   await page.evaluate(({ draft, shadowAnswer }) => { const T = window.__tertium, st = T.stepsOf(draft.practice).find(s => s.id === draft.step); T.S.draft = { ...T.newDraft(draft.practice), ...draft, mi: st.mi, si: st.si, analyst: { shadow: shadowAnswer, shadowTier: '' } }; T.setView({ name: 'session' }); T.render(); }, { draft: F.drafts.shadow, shadowAnswer });
-  await page.screenshot({ path: path.join(OUT, `shadow-turn-${scheme}.png`), fullPage: true });
+  await page.evaluate(() => document.getElementById('an-shadow')?.scrollIntoView({ block: 'end' }));
+  await page.screenshot({ path: path.join(OUT, `shadow-turn-${scheme}.png`), fullPage: false });
   await ctx.close();
 }
 await browser.close(); server.close(); console.log('shots written to test/out/shots');
