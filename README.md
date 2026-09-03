@@ -47,7 +47,7 @@ The analyst is not accepted on the strength of its instruction. It is run agains
 
 ## Storage
 
-Hours, the draft, the portrait, the synchronicity log, the abandoned list, what Claude remembers and the conversations with the analyst are kept in the artifact's document store (`db` capability, owner-only rules) and cached in `localStorage`. Hours from the first version migrate on load. The journal exports as Markdown, conversations included.
+Hours, the draft, the portrait, the synchronicity log, the abandoned list, what Claude remembers and the conversations with the analyst are kept in the artifact's document store (`db` capability, owner-only rules) and cached in `localStorage`. The conversations share one document, so the oldest are dropped once they would exceed about 180 KB together; the journal export carries them out before that. Hours from the first version migrate on load. The journal exports as Markdown, conversations included.
 
 ## Files
 
