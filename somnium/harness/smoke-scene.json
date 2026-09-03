@@ -1,14 +1,12 @@
-{"title":"Smoke: pit, carried prop, melt","mood":"probe","world":{"sky":"day","ground":"soil","fogDensity":0.006},
+{"title":"Smoke 5: motion","mood":"probe","world":{"sky":"day","ground":"grass","fogDensity":0.006},
 "actors":[
- {"id":"me","kind":"person","label":"me","color":"#5a6fa8","pos":[0,0,-4],"yaw":0},
- {"id":"hold","kind":"pit","label":"the hole","color":"#0a0a0c","pos":[0,0,2],"detail":{"radius":1.6,"height":4}},
- {"id":"man_one","kind":"person","label":"one man","color":"#a05a30","pos":[0.8,-4,2.6],"yaw":180},
- {"id":"man_two","kind":"person","label":"the other man","color":"#30a05a","pos":[-0.9,-4,1.4],"yaw":180},
- {"id":"rock","kind":"rock","label":"a rock","color":"#6f6a62","size":0.25,"pos":[0,0,-4],"carriedBy":"me"},
- {"id":"waxman","kind":"person","label":"melting","color":"#a0a030","pos":[5,0,-2],"yaw":180}
+ {"id":"me","kind":"person","label":"me","color":"#5a6fa8","pos":[0,0,0],"yaw":180},
+ {"id":"man","kind":"person","label":"the man","color":"#8a4a4a","pos":[0,0,4],"yaw":180,"detail":{"second":"#333"}},
+ {"id":"crowd","kind":"crowd","label":"the guests","color":"#7c7f96","pos":[-6,0,-4],"detail":{"count":8,"radius":2.5}},
+ {"id":"dog","kind":"animal","label":"a dog","color":"#a0783c","pos":[3,0,-2],"detail":{"species":"dog"}}
 ],
 "beats":[
- {"dur":6,"text":"Looking into the hole from the side.","camera":{"mode":"fixed","target":"hold","pos":[0,2.2,-8],"lookAt":"hold"},"actions":[{"actor":"me","state":"idle"},{"actor":"man_one","state":"idle"},{"actor":"man_two","state":"idle"},{"actor":"waxman","state":"melt"}]},
- {"dur":6,"text":"Steeply down into the hole.","camera":{"mode":"orbit","target":"hold","distance":6,"height":8,"angle":0},"actions":[{"actor":"man_one","say":"down here","state":"idle"},{"actor":"man_two","state":"idle"}]},
- {"dur":6,"text":"The rock in my hand.","camera":{"mode":"orbit","target":"me","distance":3,"height":1.6,"angle":40},"actions":[{"actor":"me","state":"idle","say":"a rock"},{"actor":"waxman","state":"melt"}]}
+ {"dur":6,"text":"Walking toward the man.","camera":{"mode":"follow","target":"me","distance":6,"height":2,"angle":140},"actions":[{"actor":"me","move":[0,0,2.5],"state":"walk"},{"actor":"man","state":"idle"}]},
+ {"dur":6,"text":"Talking; the man shakes, then pushes.","camera":{"mode":"orbit","target":"man","distance":4,"height":1.8,"angle":30},"actions":[{"actor":"man","state":"shake"},{"actor":"man","state":"push","at":0.6},{"actor":"crowd","state":"walk","move":[-2,0,-4]}]},
+ {"dur":6,"text":"Running away; sitting; the dog runs.","camera":{"mode":"follow","target":"me","distance":7,"height":2.5,"angle":200},"actions":[{"actor":"me","move":[-8,0,-6],"state":"run"},{"actor":"dog","move":[-6,0,-8]},{"actor":"man","state":"kneel"}]}
 ]}
