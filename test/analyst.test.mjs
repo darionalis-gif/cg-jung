@@ -50,8 +50,8 @@ test('the prompt stays under the budget however much the page hands over, cuttin
 test('the state of the work names a tripped hour and the task repeats rule 0', () => {
   const p = A.buildPrompt('closing', { ...ctx(), flags: { tripped: true, hours: 3 } });
   assert.ok(p.includes('THE CRISIS TRIPWIRE FIRED IN THIS HOUR'));
-  assert.ok(p.includes('Apply rule 0 first'));
-  assert.ok(!A.buildPrompt('closing', ctx()).includes('Apply rule 0 first'));
+  assert.ok(p.includes('rule 0 and nothing else'));
+  assert.ok(!A.buildPrompt('closing', ctx()).includes('rule 0 and nothing else'));
 });
 
 test('the language hint follows what the person wrote', () => {

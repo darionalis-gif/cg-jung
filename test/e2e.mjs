@@ -84,7 +84,7 @@ t = await askInDraft('closing', F.drafts.closing, 'closing');
 check(t?.includes('The last third: alive') && t.includes('Promises:') && t.includes('Not me (separated'), 'closing: the returns are in the dossier');
 check(t?.includes('WHAT CLAUDE REMEMBERS') && t.includes('cello') && t.includes('WHAT THE PERSON WANTS THIS VOICE TO KNOW') && t.includes('never been in analysis'), 'closing: the imported memory and the context are handed over');
 t = await askInDraft('closingCrisis', F.drafts.closingCrisis, 'closing');
-check(t?.includes('THE CRISIS TRIPWIRE FIRED') && t.includes('Apply rule 0 first'), 'closingCrisis: rule 0 is put first');
+check(t?.includes('THE CRISIS TRIPWIRE FIRED') && t.includes('rule 0 and nothing else'), 'closingCrisis: rule 0 is put first');
 // dreams
 t = await askInDraft('reading', F.drafts.reading, 'reading');
 check(t?.includes('answer in English') && t.includes('Earlier dream'), 'reading: language hint and earlier dreams');
