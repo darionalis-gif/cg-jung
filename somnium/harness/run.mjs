@@ -75,9 +75,10 @@ for (const id of IDS) {
     shots.push({ beat: i + 1, file, start: +t.toFixed(1), dur: beats[i].dur, text: beats[i].text, motion: +diff.toFixed(2), metrics: m });
     t += beats[i].dur;
   }
-  // a few frames of the first beat while playing, to judge the animation itself
-  await page.evaluate(() => { window.__somnium.Stage.setTime(0.5); window.__somnium.Stage.playing = true; });
-  for (let k = 0; k < 3; k++) { await page.waitForTimeout(900); await page.screenshot({ path: path.join(dir, `play-${k + 1}.png`) }); }
+  // consecutive frames while playing, from the first beat in which someone moves, to judge the animation itself
+  let playBeat = beats.findIndex(b => b.actions.some(x => x.actor && (x.move || ['walk', 'run', 'fly', 'fall', 'swim', 'dance', 'shake', 'limp'].includes(x.state)))); if (playBeat < 0) playBeat = 0;
+  await page.evaluate(t => { window.__somnium.Stage.setTime(t); window.__somnium.Stage.playing = true; }, beats.slice(0, playBeat).reduce((s, b) => s + b.dur, 0) + 0.8);
+  for (let k = 0; k < 6; k++) { await page.waitForTimeout(350); await page.screenshot({ path: path.join(dir, `play-${k + 1}.png`) }); }
   const fps = await page.evaluate(() => { const ft = window.__somnium.Stage.frameTimes.slice(-120); return ft.length ? +(1000 / (ft.reduce((a, b) => a + b, 0) / ft.length)).toFixed(1) : 0; });
   // phone layout
   await page.setViewportSize({ width: 390, height: 780 }); await page.waitForTimeout(400); await page.screenshot({ path: path.join(dir, 'phone.png') }); await page.setViewportSize({ width: 1280, height: 800 }); await page.waitForTimeout(300);
