@@ -6,19 +6,19 @@ let n = 0; const id = () => 'h' + String(++n).padStart(2, '0');
 
 const wae = (items, extra = {}) => ({ done: true, lang: 'en', mode: 'type', median: 1900, thr: 2850, items, disturbed: items.map((it, i) => i).filter(i => items[i].flags.length), order: items.map(x => x.ix), ...extra });
 const it = (ix, resp, rt, repro, flags = []) => ({ ix, resp, rt, repro: repro ?? resp, reproOk: repro == null, reproNear: false, flags });
-const ORDER = [0, 2, 4, 6, 7, 9, 10, 12, 16, 18, 20, 22, 25, 30, 35, 40, 45, 47, 53, 60, 66, 69, 74, 84];
-// words: 0 head 2 water 4 death 6 ship 7 to pay 9 friendly 10 table 12 village 16 lake 18 pride 20 ink 22 needle 25 blue 30 tree 35 to die 40 money 45 finger 47 to fall 53 white 60 house 66 to paint 69 old 74 family 84 brother
+const ORDER = [0, 2, 4, 6, 7, 9, 10, 12, 16, 18, 20, 22, 25, 30, 35, 40, 45, 47, 53, 60, 66, 69, 74, 82];
+// words: 0 head 2 water 4 death 6 ship 7 to pay 9 friendly 10 table 12 village 16 lake 18 pride 20 ink 22 needle 25 blue 30 tree 35 to die 40 money 45 expensive 47 to fall 53 white 60 house 66 carrot 69 old 74 family 82 brother
 const protocol1 = [
   it(0, 'clear', 1400), it(2, 'rising in the cellar', 3400, null, ['prolonged', 'several words']), it(4, 'father', 3900, 'my father', ['prolonged', 'reproduced differently']), it(6, 'sail', 1500), it(7, 'debt', 2100), it(9, 'neighbour', 1600),
   it(10, 'drawing', 1300), it(12, 'church', 1900), it(16, 'still', 2000), it(18, 'mine', 1700), it(20, 'black', 1500), it(22, 'thread', 1800),
   it(25, 'sky', 1400), it(30, 'roots', 2200), it(35, 'quietly', 3600, null, ['prolonged']), it(40, 'enough', 1900), it(45, 'ring', 1600), it(47, '', null, '', ['no reaction', 'not reproduced']),
-  it(53, 'wall', 1700), it(60, 'his', 3100, 'my house', ['prolonged', 'reproduced differently']), it(66, 'walls', 1800), it(69, 'coat', 2400), it(74, 'table', 2000), it(84, 'none', 2900, 'no one', ['prolonged', 'reproduced differently'])
+  it(53, 'wall', 1700), it(60, 'his', 3100, 'my house', ['prolonged', 'reproduced differently']), it(66, 'walls', 1800), it(69, 'coat', 2400), it(74, 'table', 2000), it(82, 'none', 2900, 'no one', ['prolonged', 'reproduced differently'])
 ];
 const protocol2 = [
   it(0, 'heavy', 1600), it(2, 'cellar', 3000, null, ['prolonged']), it(4, 'the coat', 3500, 'coat', ['prolonged', 'reproduced differently']), it(6, 'ferry', 1900), it(7, 'I always do', 2600, null, ['several words']), it(9, 'K.', 2200),
   it(10, 'plan', 1300), it(12, 'Elgg', 1500), it(16, 'grey', 1900), it(18, 'the calm one', 2700, null, ['several words']), it(20, 'blue', 1400), it(22, 'sharp', 1600),
   it(25, 'blue', 1200), it(30, 'ash', 2000), it(35, 'in the night', 3300, null, ['prolonged', 'several words']), it(40, 'the office', 1800), it(45, 'ring', 1500), it(47, 'the stairs', 3800, 'stairs', ['prolonged', 'reproduced differently']),
-  it(53, 'hospital', 2300), it(60, 'sold', 2900, null, ['prolonged']), it(66, 'no time', 1700), it(69, 'him', 2100), it(74, 'quiet', 1800), it(84, 'gone', 2600)
+  it(53, 'hospital', 2300), it(60, 'sold', 2900, null, ['prolonged']), it(66, 'no time', 1700), it(69, 'him', 2100), it(74, 'quiet', 1800), it(82, 'gone', 2600)
 ];
 
 export const portrait = { at: at(1), attitude: 'introverted', inferior: 'feeling', auxiliary: 'sensation', phase: 'second half', circ: { age: '47', days: 'run a small architecture office, twelve people, mostly housing', household: 'with R., my partner, and our daughter L., 15', body: 'lower back gone twice this year; sleep short', losses3: 'my father, two years ago, after a fall on the cellar stairs; the office nearly went under in 2024', knows: 'R. knows I am doing something with Jung; nobody else' } };
@@ -228,7 +228,7 @@ export const drafts = {
     it(0, 'ache', 1500), it(2, 'clear', 1800), it(4, 'the coat', 3200, 'coat', ['prolonged', 'reproduced differently']), it(6, 'boat', 1400), it(7, 'always', 1700), it(9, 'K.', 2900, null, ['prolonged']),
     it(10, 'drawing', 1200), it(12, 'Elgg', 1600), it(16, 'city', 1500), it(18, 'mine', 3100, 'his', ['prolonged', 'reproduced differently']), it(20, 'black', 1300), it(22, 'thread', 1500),
     it(25, 'lake', 1400), it(30, 'roots', 1900), it(35, 'quietly', 2200), it(40, 'enough', 1800), it(45, 'ring', 1500), it(47, 'garden hatch', 2600, null, ['several words']),
-    it(53, 'swept', 1700), it(60, 'ours', 1600), it(66, 'walls', 1500), it(69, 'him', 1900), it(74, 'the table', 3400, 'table', ['prolonged', 'reproduced differently', 'several words']), it(84, 'Christmas', 2000)
+    it(53, 'swept', 1700), it(60, 'ours', 1600), it(66, 'walls', 1500), it(69, 'him', 1900), it(74, 'the table', 3400, 'table', ['prolonged', 'reproduced differently', 'several words']), it(82, 'Christmas', 2000)
   ], { median: 1700, thr: 2550 }), interrogation: { 'death': 'the coat again; I am tired of the coat.', 'friendly': 'K. smiled at me on Monday and I went cold.', 'pride': 'mine; then his. I do not know whose the office is.', 'to fall': 'the hatch, the other way in.', 'family': 'the table at Christmas with my brother not at it. I said three words and lost one.' } } },
   frame: { practice: 'hour', step: 'dialogue', startedAt: at(45), data: { affect: { word: 'restless', intensity: 3, body: 'jaw' }, wae: wae(protocol2), seed: { word: 'family', source: 'wae', ix: 22 }, image: 'The shore again, but a table has been set on the sand, a long one, with chairs, and nobody at it. The boat is behind it. The ferryman sits at the head of the table.', figure: 'the ferryman', figureReturn: true, dialogue: [
     { who: 'I', text: 'Why are you at the table?' }, { who: 'F', text: 'Someone had to sit down first.' }, { who: 'I', text: 'That is my father\'s chair.' }, { who: 'F', text: 'Then sit somewhere else. There are eleven chairs.' }, { who: 'I', text: 'You are right, of course. I see what you mean, I should just let go of the seating. That makes sense.' }

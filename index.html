@@ -1665,9 +1665,10 @@ function protocolText(d) {
 function moodText(d) { const a = d.data.affect || {}; return `${affectWord(d) || '—'}${a.intensity ? `, intensity ${a.intensity}/5` : ''}${a.body ? `, felt in the ${a.body}` : ''}`; }
 function dialogueText(d) { const fr = d.analyst?.frames || []; let n = 0, out = []; for (const l of (d.data.dialogue || [])) { out.push(`${l.who === 'I' ? 'I' : l.who === 'F' ? figureName(d) : 'Analyst'}: ${l.text}`); if (l.who !== 'A') n++; fr.filter(f => f.after === n).forEach(f => out.push(`[Analyst, from outside the dialogue: ${f.text}]`)); } return out.join('\n'); }
 function hourText(d) {
-  const P = PRACTICES[d.practice], out = [`Practice: ${P.name} (${P.latin})`];
+  const P = PRACTICES[d.practice], out = [`Practice: ${P.name} (${P.latin})`], seen = new Set();
   for (const st of stepsOf(d.practice)) {
-    if (!st.leaf) continue; const label = txt(st.leaf, d), v = st.field ? getPath(d.data, st.field) : null;
+    if (!st.leaf || (st.field && seen.has(st.field))) continue; const label = txt(st.leaf, d), v = st.field ? getPath(d.data, st.field) : null;
+    if (st.field && v && String(v).trim()) seen.add(st.field);
     if (st.type === 'affect') out.push(`Mood: ${moodText(d)}`);
     else if (st.type === 'protocol') { out.push(`Disturbed words: ${(d.data.wae?.disturbed || []).map(ix => wordOf(d, d.data.wae.items[ix])).join(', ') || 'none'}`); if (d.data.seed) out.push(`Seed: ${d.data.seed.word}`); }
     else if (st.type === 'dialogue') { if (d.data.dialogue?.length) out.push(`Dialogue with ${figureName(d)}:\n${dialogueText(d)}`); }
