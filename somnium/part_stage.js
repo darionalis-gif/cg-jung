@@ -1,0 +1,168 @@
+/* =====================================================================
+   The stage: renderer, world, actors, timeline evaluation, camera.
+   ===================================================================== */
+const Stage = {
+  ready: false, scene: null, time: 0, playing: false, actors: new Map(), cam: { pos: new THREE.Vector3(0, 3, 10), look: new THREE.Vector3(0, 1, 0), snap: true }, user: { on: false, theta: 0, phi: 0.4, dist: 8 }, fx: [], lastBeat: -1, frameTimes: [], onBeat: null, onTime: null, labelsOn: true,
+  init(canvas) {
+    const r = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    r.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05; r.outputColorSpace = THREE.SRGBColorSpace;
+    this.r = r; this.three = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1200);
+    this.sky = new THREE.Mesh(new THREE.SphereGeometry(500, 24, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { top: { value: new THREE.Color('#0b1030') }, hor: { value: new THREE.Color('#2a2f5c') } }, vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform vec3 top; uniform vec3 hor; varying vec3 vP; void main(){ float h = normalize(vP).y; float t = smoothstep(-0.05, 0.45, h); gl_FragColor = vec4(mix(hor, top, t), 1.0); }' }));
+    this.three.add(this.sky);
+    const sg = new THREE.BufferGeometry(); const sp = []; const rnd = seeded(42); for (let i = 0; i < 1600; i++) { const th = rnd() * 6.283, ph = Math.acos(rnd() * 0.95); sp.push(Math.sin(ph) * Math.cos(th) * 460, Math.cos(ph) * 460, Math.sin(ph) * Math.sin(th) * 460); } sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+    this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: '#ffffff', size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.85, fog: false })); this.three.add(this.stars);
+    this.ambient = new THREE.HemisphereLight('#6a6f9a', '#202030', 1.2); this.three.add(this.ambient);
+    this.sun = new THREE.DirectionalLight('#cfd6ff', 1); this.sun.castShadow = true; this.sun.shadow.mapSize.set(1024, 1024); const sc = this.sun.shadow.camera; sc.left = sc.bottom = -40; sc.right = sc.top = 40; sc.near = 1; sc.far = 200; this.sun.shadow.bias = -0.0015; this.three.add(this.sun); this.three.add(this.sun.target);
+    this.groundMat = new THREE.MeshStandardMaterial({ color: '#2f4a33', roughness: 1 }); this.ground = new THREE.Mesh(new THREE.CircleGeometry(600, 48), this.groundMat); this.ground.rotation.x = -Math.PI / 2; this.ground.receiveShadow = true; this.three.add(this.ground);
+    this.waterGround = new THREE.Mesh(new THREE.PlaneGeometry(600, 600, 60, 60), waterMaterial('#1f4d6e')); this.waterGround.rotation.x = -Math.PI / 2; this.waterGround.visible = false; this.three.add(this.waterGround);
+    this.three.fog = new THREE.FogExp2('#171b3d', 0.012);
+    this.root = new THREE.Group(); this.three.add(this.root);
+    this.initWeather(); this.initInput(canvas);
+    this.labelsEl = $('#labels'); this.fxEl = $('#fx'); this.canvas = canvas;
+    this.resize(); new ResizeObserver(() => this.resize()).observe(canvas.parentElement);
+    this.ready = true; this.clock = performance.now(); requestAnimationFrame(() => this.frame());
+  },
+  resize() { const w = this.canvas.parentElement.clientWidth || 1, h = this.canvas.parentElement.clientHeight || 1; this.r.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); },
+  initWeather() {
+    const n = 900; this.wN = n; const g = new THREE.BufferGeometry(); this.wPos = new Float32Array(n * 3); this.wVel = new Float32Array(n * 3); const rnd = seeded(7); for (let i = 0; i < n; i++) { this.wPos[i * 3] = (rnd() - 0.5) * 60; this.wPos[i * 3 + 1] = rnd() * 30; this.wPos[i * 3 + 2] = (rnd() - 0.5) * 60; this.wVel[i * 3] = rnd(); this.wVel[i * 3 + 1] = rnd(); this.wVel[i * 3 + 2] = rnd(); }
+    g.setAttribute('position', new THREE.BufferAttribute(this.wPos, 3)); this.weather = new THREE.Points(g, new THREE.PointsMaterial({ color: '#ffffff', size: 0.12, transparent: true, opacity: 0.8, depthWrite: false })); this.weather.visible = false; this.weather.frustumCulled = false; this.three.add(this.weather); this.weatherKind = 'none';
+  },
+  setWeather(k) { if (k === this.weatherKind) return; this.weatherKind = k; const m = this.weather.material; this.weather.visible = k !== 'none'; const cfg = { rain: ['#aec6ff', 0.09, 0.7, THREE.NormalBlending], snow: ['#ffffff', 0.22, 0.9, THREE.NormalBlending], ash: ['#9a9a9a', 0.16, 0.7, THREE.NormalBlending], fireflies: ['#ffe27a', 0.28, 0.9, THREE.AdditiveBlending], bubbles: ['#bfe8ff', 0.18, 0.6, THREE.AdditiveBlending], leaves: ['#c98a3a', 0.24, 0.9, THREE.NormalBlending], sparks: ['#ff9a3a', 0.16, 0.9, THREE.AdditiveBlending] }[k]; if (cfg) { m.color.set(cfg[0]); m.size = cfg[1]; m.opacity = cfg[2]; m.blending = cfg[3]; m.needsUpdate = true; } },
+  updateWeather(dt, τ) {
+    if (!this.weather.visible) return; const k = this.weatherKind, p = this.wPos, v = this.wVel, c = this.cam.look; const n = this.wN;
+    for (let i = 0; i < n; i++) { const j = i * 3; let x = p[j], y = p[j + 1], z = p[j + 2];
+      if (k === 'rain') { y -= dt * (18 + v[j] * 6); x += dt * 1.5; } else if (k === 'snow') { y -= dt * (1 + v[j]); x += Math.sin(τ + v[j + 2] * 6) * dt * 0.8; z += Math.cos(τ * 0.7 + v[j] * 6) * dt * 0.8; } else if (k === 'ash') { y -= dt * (0.6 + v[j]); x += Math.sin(τ * 0.5 + v[j + 2] * 6) * dt * 0.5; } else if (k === 'fireflies') { x += Math.sin(τ * 0.8 + v[j] * 9) * dt * 1.2; y += Math.cos(τ * 0.6 + v[j + 1] * 9) * dt * 0.6; z += Math.sin(τ * 0.7 + v[j + 2] * 9) * dt * 1.2; if (y > 6) y = 6; } else if (k === 'bubbles') { y += dt * (0.8 + v[j]); x += Math.sin(τ + v[j + 2] * 6) * dt * 0.4; } else if (k === 'leaves') { y -= dt * (0.8 + v[j]); x += dt * (1.5 + Math.sin(τ + v[j + 1] * 6)); z += Math.cos(τ + v[j] * 6) * dt; } else if (k === 'sparks') { y += dt * (3 + v[j] * 3); x += Math.sin(τ * 3 + v[j + 2] * 9) * dt; }
+      if (y < 0) y = k === 'fireflies' ? 0.5 : 28; if (y > 30) y = 0.2; if (x - c.x > 30) x -= 60; if (x - c.x < -30) x += 60; if (z - c.z > 30) z -= 60; if (z - c.z < -30) z += 60; p[j] = x; p[j + 1] = y; p[j + 2] = z; }
+    this.weather.geometry.attributes.position.needsUpdate = true;
+  },
+  initInput(canvas) {
+    let drag = null; const u = this.user;
+    const down = (x, y) => { drag = { x, y }; }; const move = (x, y) => { if (!drag) return; if (!u.on) { u.on = true; const d = this.cam.pos.clone().sub(this.cam.look); u.dist = Math.max(2, d.length()); u.theta = Math.atan2(d.x, d.z); u.phi = Math.asin(clamp(d.y / u.dist, -0.99, 0.99)); $('#resetCam').classList.add('primary'); } u.theta -= (x - drag.x) * 0.006; u.phi = clamp(u.phi + (y - drag.y) * 0.004, -0.2, 1.4); drag = { x, y }; };
+    canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); down(e.clientX, e.clientY); }); canvas.addEventListener('pointermove', e => move(e.clientX, e.clientY)); canvas.addEventListener('pointerup', () => drag = null); canvas.addEventListener('pointercancel', () => drag = null);
+    canvas.addEventListener('wheel', e => { e.preventDefault(); if (!u.on) { u.on = true; const d = this.cam.pos.clone().sub(this.cam.look); u.dist = d.length(); u.theta = Math.atan2(d.x, d.z); u.phi = Math.asin(clamp(d.y / u.dist, -0.99, 0.99)); $('#resetCam').classList.add('primary'); } u.dist = clamp(u.dist * (1 + e.deltaY * 0.0015), 1.5, 150); }, { passive: false });
+  },
+  resetCamera() { this.user.on = false; this.cam.snap = true; $('#resetCam').classList.remove('primary'); },
+  load(scene) {
+    this.scene = scene; this.root.clear(); this.actors.clear(); this.labelsEl.innerHTML = ''; this.lastBeat = -1; this.fx = []; this.time = 0; this.cam.snap = true; this.user.on = false; $('#resetCam').classList.remove('primary');
+    for (const a of scene.actors) { const g = buildActor(a); g.position.set(a.pos[0], a.pos[1], a.pos[2]); g.rotation.y = a.yaw * Math.PI / 180; this.root.add(g); const lbl = document.createElement('div'); lbl.className = 'lbl'; lbl.textContent = a.label; lbl.hidden = !a.label; this.labelsEl.appendChild(lbl); this.actors.set(a.id, { a, g, lbl, st: null, mats: null }); }
+    for (const rec of this.actors.values()) { const mats = []; rec.g.traverse(o => { if (o.isMesh && !o.material.userData.water) { o.material = o.material.clone(); o.material.userData.baseOpacity = o.material.opacity; o.material.userData.baseColor = o.material.color.clone(); o.material.userData.baseEmissive = o.material.emissive.clone(); mats.push(o.material); } }); rec.mats = mats; }
+    this.applyWorld(scene.world); this.setTime(0); this.playing = true;
+  },
+  setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.evaluate(0, true); },
+  beatAt(t) { const bs = this.scene.beats; for (let i = bs.length - 1; i >= 0; i--) if (t >= bs[i].start) return i; return 0; },
+  /* ---- evaluate all actor and world state at this.time ---- */
+  evalActors(t) {
+    const out = new Map(); const S = this.scene;
+    for (const a of S.actors) out.set(a.id, { pos: a.pos.slice(), yaw: a.yaw, size: a.size, color: a.color, op: a.hidden ? 0 : 1, state: 'idle', say: null, moving: 0, window: 0, colorC: null });
+    for (const b of S.beats) { if (t < b.start) break; for (const x of b.actions) { if (!x.actor) continue; const st = out.get(x.actor); if (!st) continue; const a0 = b.start + x.at * b.dur, a1 = Math.min(b.start + b.dur, a0 + x.for * b.dur); const p = a1 > a0 ? clamp((t - a0) / (a1 - a0), 0, 1) : (t >= a0 ? 1 : 0); if (t < a0) continue; const e = easeInOut(p);
+        if (x.move) { const from = st.pos, to = x.move; let np = [lerp(from[0], to[0], e), lerp(from[1], to[1], e), lerp(from[2], to[2], e)]; const dist = Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]); if (x.path === 'arc') np[1] += Math.sin(p * Math.PI) * Math.min(dist * 0.3, 6); if (x.path === 'circle') { const cx = (from[0] + to[0]) / 2, cz = (from[2] + to[2]) / 2, r = Math.hypot(from[0] - cx, from[2] - cz), a00 = Math.atan2(from[2] - cz, from[0] - cx); np[0] = cx + Math.cos(a00 + p * Math.PI) * r; np[2] = cz + Math.sin(a00 + p * Math.PI) * r; } if (p < 1 && dist > 0.05) { st.moving = dist / Math.max(0.5, a1 - a0); if (x.yaw === undefined && dist > 0.2) { const dx = (x.path === 'circle' ? np[0] - st.lastPos?.[0] : to[0] - from[0]) || 0, dz = (x.path === 'circle' ? np[2] - st.lastPos?.[2] : to[2] - from[2]) || 0; if (Math.hypot(dx, dz) > 0.01) st.yaw = Math.atan2(dx, dz) * 180 / Math.PI; } } else st.moving = 0; st.lastPos = np; if (p >= 1) st.pos = to.slice(); else st.pos = np; }
+        if (x.yaw !== undefined) { const d = ((x.yaw - st.yaw + 540) % 360) - 180; st.yaw = st.yaw + d * e; }
+        if (x.size !== undefined) st.size = lerp(st.size, x.size, e);
+        if (x.color) { st.colorC = [st.color, x.color, e]; if (p >= 1) st.color = x.color; }
+        if (x.appear) st.op = Math.max(st.op, p >= 1 ? 1 : Math.min(1, p * 2)); if (x.vanish) st.op = p >= 1 ? 0 : Math.min(st.op, 1 - Math.min(1, p * 2));
+        if (x.state) { const transient = ['walk', 'run', 'shake', 'spin', 'collapse', 'wave', 'dance', 'fall', 'open', 'grow', 'shrink'].includes(x.state); if (!transient || p < 1) { st.state = x.state; st.window = p; } else if (x.state === 'collapse') st.state = 'lie'; else if (x.state === 'fall') st.state = 'lie'; else if (x.state === 'open') st.state = 'open'; else if (x.state === 'grow' || x.state === 'shrink') st.state = 'idle'; }
+        if (x.say && p < 1) st.say = x.say; }
+    }
+    for (const st of out.values()) if (st.moving && st.state === 'idle') st.state = st.moving > 2.5 ? 'run' : 'walk';
+    return out;
+  },
+  evalWorld(t) {
+    const S = this.scene; const w = { ...S.world };
+    for (const b of S.beats) { if (t < b.start) break; for (const x of b.actions) { if (!x.world) continue; const a0 = b.start + x.at * b.dur, a1 = Math.min(b.start + b.dur, a0 + x.for * b.dur); if (t < a0) continue; const p = a1 > a0 ? clamp((t - a0) / (a1 - a0), 0, 1) : 1; for (const k of Object.keys(x.world)) { const v = x.world[k]; if (v === undefined) continue; if (typeof v === 'number') w[k] = lerp(w[k], v, p); else if (typeof v === 'string' && HEX.test(v)) w[k] = p >= 1 ? v : '#' + new THREE.Color(w[k]).lerp(new THREE.Color(v), p).getHexString(); else if (Array.isArray(v)) w[k] = w[k].map((q, i) => lerp(q, v[i], p)); else if (p > 0.5 || k === 'weather' && p > 0) w[k] = v; } } }
+    return w;
+  },
+  applyWorld(w) {
+    this.sky.material.uniforms.top.value.set(w.skyColor); this.sky.material.uniforms.hor.value.set(w.horizonColor); this.three.fog.color.set(w.fogColor); this.three.fog.density = w.fogDensity; this.r.setClearColor(w.fogColor);
+    this.ambient.color.set(w.ambient); this.ambient.groundColor.set(shade(w.groundColor, 0.5)); this.ambient.intensity = w.sky === 'day' ? 1.6 : 1.1;
+    this.sun.color.set(w.sunColor); this.sun.intensity = w.sunIntensity * 1.6; const d = new THREE.Vector3(...w.sunDir).normalize().multiplyScalar(80); this.sun.position.copy(this.cam.look).add(d); this.sun.target.position.copy(this.cam.look);
+    this.stars.visible = !!w.stars && w.sky !== 'day';
+    const water = w.ground === 'water'; this.waterGround.visible = water; this.ground.visible = !water && w.ground !== 'none'; if (water) this.waterGround.material.color.set(w.groundColor); else { const c = new THREE.Color(w.groundColor); this.groundMat.color.copy(c); const tex = noiseTexture(w.groundColor, w.ground === 'floor' || w.ground === 'road' ? 0.05 : 0.14, w.ground === 'floor' ? 120 : 60); this.groundMat.map = tex; this.groundMat.color.set('#ffffff'); this.groundMat.roughness = w.ground === 'snow' ? 0.7 : (w.ground === 'floor' ? 0.6 : 1); this.groundMat.needsUpdate = true; }
+    this.setWeather(w.weather); this.worldNow = w;
+  },
+  /* ---- per-frame ---- */
+  frame() {
+    requestAnimationFrame(() => this.frame()); const now = performance.now(); let dt = Math.min(0.1, (now - this.clock) / 1000); this.clock = now; if (!this.scene) { this.r.render(this.three, this.camera); return; }
+    if (this.playing) { this.time += dt; if (this.time >= this.scene.total) { this.time = this.scene.total; this.playing = false; if (this.onTime) this.onTime(this.time, true); } }
+    this.evaluate(dt, false); const t1 = performance.now(); this.frameTimes.push(t1 - now); if (this.frameTimes.length > 240) this.frameTimes.shift();
+  },
+  evaluate(dt, snap) {
+    const t = this.time, S = this.scene, τ = t; const states = this.evalActors(t); this.states = states; const w = this.evalWorld(t); this.applyWorld(w);
+    const bi = this.beatAt(t); if (bi !== this.lastBeat) { const prev = this.lastBeat; this.lastBeat = bi; if (this.onBeat) this.onBeat(bi); if (prev >= 0 && !snap) this.camBlend = 0; }
+    if (!snap && dt > 0) { for (const x of S.beats[bi].actions) { if (!x.effect || x.effect === 'none') continue; const at = S.beats[bi].start + x.at * S.beats[bi].dur; if (t - dt < at && t >= at) this.triggerEffect(x.effect); } }
+    // actors
+    for (const [id, rec] of this.actors) { const st = states.get(id), g = rec.g, a = rec.a, ud = g.userData; g.visible = st.op > 0.01; g.position.set(st.pos[0], st.pos[1], st.pos[2]); g.rotation.set(0, st.yaw * Math.PI / 180, 0); const sc = ud.noScale ? 1 : st.size; g.scale.setScalar(sc);
+      for (const m of rec.mats) { const bo = m.userData.baseOpacity; const want = st.op * bo; if (Math.abs(m.opacity - want) > 0.001) { m.opacity = want; m.transparent = want < 0.999 || m.userData.baseOpacity < 0.999; m.needsUpdate = false; } if (st.colorC && !ud.noColor) { const bc = m.userData.baseColor; const from = new THREE.Color(st.colorC[0]), to = new THREE.Color(st.colorC[1]); const ratio = bc.clone().multiply(new THREE.Color(1 / Math.max(0.05, from.r), 1 / Math.max(0.05, from.g), 1 / Math.max(0.05, from.b))); m.color.copy(from.clone().lerp(to, st.colorC[2]).multiply(ratio)); } else if (st.color !== a.color) { const bc = m.userData.baseColor; const from = new THREE.Color(a.color), to = new THREE.Color(st.color); const ratio = bc.clone().multiply(new THREE.Color(1 / Math.max(0.05, from.r), 1 / Math.max(0.05, from.g), 1 / Math.max(0.05, from.b))); m.color.copy(to.multiply(ratio)); } }
+      this.animate(rec, st, τ, dt);
+    }
+    // ambient animations
+    for (const rec of this.actors.values()) { const ud = rec.g.userData; if (ud.flames) { ud.flames.forEach((f, i) => { f.scale.y = 1 + Math.sin(τ * 11 + i * 2) * 0.25; f.scale.x = f.scale.z = 1 + Math.sin(τ * 9 + i) * 0.15; }); if (ud.light) ud.light.intensity = 30 + Math.sin(τ * 13) * 6; } if (ud.puffs) ud.puffs.forEach((p, i) => { p.position.y = 0.8 + ((τ * 0.6 + i * 0.9) % 5.4); p.scale.setScalar(0.6 + ((τ * 0.6 + i * 0.9) % 5.4) * 0.25); }); if (ud.rotor) ud.rotor.rotation.y = τ * 25; if (ud.spinPart) ud.spinPart.rotation.y = τ * 1.2; if (ud.drift) rec.g.position.x += Math.sin(τ * 0.05) * 0.0; if (ud.canopy) ud.canopy.forEach(c => c.rotation.z = Math.sin(τ * 0.8) * 0.02); if (ud.trees) ud.trees.forEach((tr, i) => tr.rotation.z = Math.sin(τ * 0.7 + i) * 0.02); if (ud.pulse) rec.mats.forEach(m => { if (m.emissiveIntensity) m.emissiveIntensity = 0.8 + Math.sin(τ * 3) * 0.4; }); }
+    for (const o of [this.waterGround]) if (o.material.userData.sh) o.material.userData.sh.uniforms.uTime.value = τ; this.root.traverse(o => { if (o.isMesh && o.material.userData.sh) o.material.userData.sh.uniforms.uTime.value = τ; });
+    this.updateCamera(S.beats[bi], states, dt, snap || this.cam.snap); this.cam.snap = false;
+    this.updateWeather(dt, τ); this.updateEffects(dt);
+    this.r.render(this.three, this.camera); this.updateLabels(states);
+    if (this.onTime) this.onTime(t, false);
+  },
+  animate(rec, st, τ, dt) {
+    const g = rec.g, ud = g.userData, s = st.state, L = ud.limbs; const sp = st.moving > 2.5 ? 11 : 6; const kind = rec.a.kind;
+    if (L) { const { legs, arms, head, torso } = L; legs.forEach(l => l.rotation.set(0, 0, 0)); arms.forEach(a => a.rotation.set(0, 0, 0)); g.rotation.x = 0; g.rotation.z = 0; head.rotation.set(0, 0, 0);
+      if (s === 'walk' || s === 'run' || (s === 'crawl')) { const amp = s === 'run' ? 0.9 : 0.55; legs[0].rotation.x = Math.sin(τ * sp) * amp; legs[1].rotation.x = -Math.sin(τ * sp) * amp; arms[0].rotation.x = -Math.sin(τ * sp) * amp * 0.8; arms[1].rotation.x = Math.sin(τ * sp) * amp * 0.8; g.position.y += Math.abs(Math.sin(τ * sp)) * 0.04 * st.size; if (s === 'run') g.rotation.x = 0.2; if (s === 'crawl') { g.rotation.x = -1.3; g.position.y += 0.35 * st.size; } }
+      else if (s === 'fly') { g.rotation.x = 0.9; arms[0].rotation.z = 1.3; arms[1].rotation.z = -1.3; legs.forEach(l => l.rotation.x = 0.2); g.position.y += Math.sin(τ * 2) * 0.15 * st.size; }
+      else if (s === 'fall') { g.rotation.x = -0.6 + Math.sin(τ * 2) * 0.4; g.rotation.z = Math.sin(τ * 1.5) * 0.5; arms[0].rotation.x = -2.6; arms[1].rotation.x = -2.6; legs[0].rotation.x = 0.5; legs[1].rotation.x = -0.3; }
+      else if (s === 'float') { g.position.y += (0.4 + Math.sin(τ * 1.3) * 0.25) * st.size; g.rotation.y += Math.sin(τ * 0.5) * 0.3; arms[0].rotation.z = 0.5; arms[1].rotation.z = -0.5; }
+      else if (s === 'swim') { g.rotation.x = 1.45; g.position.y += 0.6 * st.size; arms[0].rotation.x = -2.8 + Math.sin(τ * 5) * 0.8; arms[1].rotation.x = -2.8 - Math.sin(τ * 5) * 0.8; legs[0].rotation.x = Math.sin(τ * 8) * 0.4; legs[1].rotation.x = -Math.sin(τ * 8) * 0.4; }
+      else if (s === 'sit') { legs.forEach(l => l.rotation.x = -1.5); g.position.y -= 0.42 * st.size; arms.forEach(a => a.rotation.x = -0.5); }
+      else if (s === 'lie') { g.rotation.x = -1.5; g.position.y += 0.2 * st.size; }
+      else if (s === 'collapse') { const p = st.window; g.rotation.x = -1.5 * easeInOut(p); g.position.y += 0.2 * p * st.size; legs.forEach(l => l.rotation.x = 0.6 * p); }
+      else if (s === 'shake') { g.position.x += (Math.random() - 0.5) * 0.08; g.position.z += (Math.random() - 0.5) * 0.08; head.rotation.z = Math.sin(τ * 30) * 0.15; }
+      else if (s === 'spin') { g.rotation.y += τ * 5; arms[0].rotation.z = 0.8; arms[1].rotation.z = -0.8; }
+      else if (s === 'dance') { g.position.y += Math.abs(Math.sin(τ * 6)) * 0.12 * st.size; arms[0].rotation.z = 2.4 + Math.sin(τ * 6) * 0.4; arms[1].rotation.z = -2.4 - Math.sin(τ * 6 + 1) * 0.4; g.rotation.y += Math.sin(τ * 3) * 0.3; }
+      else if (s === 'wave') { arms[1].rotation.z = -2.6; arms[1].rotation.x = Math.sin(τ * 8) * 0.4; }
+      else if (s === 'melt') { const p = st.window; g.scale.y *= Math.max(0.05, 1 - p); g.scale.x *= 1 + p * 0.5; g.scale.z *= 1 + p * 0.5; }
+      else if (s === 'grow') { g.scale.multiplyScalar(1 + st.window * 1.5); } else if (s === 'shrink') { g.scale.multiplyScalar(Math.max(0.1, 1 - st.window * 0.8)); }
+      else { torso.scale.y = 1 + Math.sin(τ * 1.5 + g.id) * 0.02; head.rotation.y = Math.sin(τ * 0.7 + g.id) * 0.2; }
+      if (ud.members) ud.members.forEach(m => { const ph = m.userData.phase; m.position.y = s === 'dance' ? Math.abs(Math.sin(τ * 6 + ph)) * 0.12 : 0; m.userData.limbs.arms[0].rotation.x = Math.sin(τ * 1.2 + ph) * 0.15; m.userData.limbs.head.rotation.y = Math.sin(τ * 0.6 + ph) * 0.4; if (s === 'walk' || s === 'run') { m.userData.limbs.legs[0].rotation.x = Math.sin(τ * sp + ph) * 0.5; m.userData.limbs.legs[1].rotation.x = -Math.sin(τ * sp + ph) * 0.5; } else m.userData.limbs.legs.forEach(l => l.rotation.x = 0); });
+      return; }
+    if (ud.members) { ud.members.forEach(m => { const ph = m.userData.phase, ML = m.userData.limbs; m.position.y = 0; ML.arms[0].rotation.x = Math.sin(τ * 1.2 + ph) * 0.15; ML.head.rotation.y = Math.sin(τ * 0.6 + ph) * 0.4; const mv = st.moving > 0.05 || s === 'walk' || s === 'run'; ML.legs[0].rotation.x = mv ? Math.sin(τ * sp + ph) * 0.5 : 0; ML.legs[1].rotation.x = mv ? -Math.sin(τ * sp + ph) * 0.5 : 0; if (s === 'dance') m.position.y = Math.abs(Math.sin(τ * 6 + ph)) * 0.12; if (s === 'shake') m.position.x += (Math.random() - 0.5) * 0.05; }); return; }
+    if (ud.legs) { const mv = st.moving > 0.05 || s === 'walk' || s === 'run'; ud.legs.forEach((l, i) => l.rotation.x = mv ? Math.sin(τ * sp + (i % 2) * Math.PI) * 0.6 : (kind === 'animal' && rec.a.detail.species === 'spider' ? Math.sin(τ * 6 + i) * 0.15 : 0)); if (s === 'lie') g.rotation.z = 1.5; if (s === 'shake') g.position.x += (Math.random() - 0.5) * 0.06; if (s === 'spin') g.rotation.y += τ * 5; if (s === 'fly' || s === 'float') g.position.y += (1 + Math.sin(τ * 2) * 0.3) * st.size; }
+    if (ud.wings) { const flap = (s === 'fly' || st.moving > 0.05 || s === 'idle') ? Math.sin(τ * 12) * 0.7 : 0; ud.wings[0].rotation.z = flap; ud.wings[1].rotation.z = -flap; g.position.y += Math.sin(τ * 2) * 0.1; }
+    if (ud.tail) ud.tail.rotation.y = Math.sin(τ * 6) * 0.5;
+    if (ud.segs) ud.segs.forEach((sg, i) => sg.position.x = Math.sin(τ * 4 - i * 0.7) * 0.15 * (st.moving > 0.05 || s !== 'idle' ? 1 : 0.3));
+    if (ud.wheels) { const spin = st.moving > 0.05 ? τ * 8 : 0; ud.wheels.forEach(w => w.rotation.x = spin); }
+    if (ud.bob) g.position.y += Math.sin(τ * 1.4 + g.id) * 0.12 * st.size;
+    if (ud.doorPivot) { const open = s === 'open' || rec.a.detail.open; const target = open ? -1.6 : 0; ud.doorPivot.rotation.y += (target - ud.doorPivot.rotation.y) * Math.min(1, dt * 4); }
+    if (s === 'shake') { g.position.x += (Math.random() - 0.5) * 0.06 * st.size; g.position.z += (Math.random() - 0.5) * 0.06 * st.size; }
+    if (s === 'spin') g.rotation.y += τ * 4; if (s === 'float' || s === 'fly') g.position.y += (0.6 + Math.sin(τ * 1.5) * 0.3) * st.size; if (s === 'fall') g.rotation.x = Math.sin(τ * 2) * 0.6;
+    if (s === 'collapse' || s === 'melt') { g.scale.y *= Math.max(0.05, 1 - st.window); } if (s === 'grow') g.scale.multiplyScalar(1 + st.window * 1.5); if (s === 'shrink') g.scale.multiplyScalar(Math.max(0.1, 1 - st.window * 0.8));
+  },
+  updateCamera(beat, states, dt, snap) {
+    const c = beat.camera, tg = states.get(c.target) || states.values().next().value; const T = new THREE.Vector3(tg.pos[0], tg.pos[1], tg.pos[2]); const rec = this.actors.get(c.target); const hgt = rec ? rec.g.userData.baseHeight * (tg.size / rec.a.size) : 1.8; const eye = T.clone().add(new THREE.Vector3(0, Math.min(hgt * 0.6, 1.6), 0));
+    let pos, look; const local = this.time - beat.start;
+    const dirAt = (deg, d, h) => new THREE.Vector3(Math.sin(deg * Math.PI / 180) * d, h, Math.cos(deg * Math.PI / 180) * d);
+    if (c.mode === 'fixed' && c.pos) { pos = new THREE.Vector3(...c.pos); look = Array.isArray(c.lookAt) ? new THREE.Vector3(...c.lookAt) : (typeof c.lookAt === 'string' && states.get(c.lookAt) ? new THREE.Vector3(...states.get(c.lookAt).pos).add(new THREE.Vector3(0, 1, 0)) : eye); }
+    else if (c.mode === 'pov') { pos = T.clone().add(new THREE.Vector3(0, Math.max(0.5, hgt * 0.88), 0)); look = pos.clone().add(dirAt(tg.yaw, 10, -0.5)); }
+    else if (c.mode === 'orbit') { const ang = c.angle + local * 18; pos = T.clone().add(dirAt(ang, c.distance, c.height)); look = eye; }
+    else if (c.mode === 'wide') { pos = T.clone().add(dirAt(c.angle, Math.max(c.distance, 24), Math.max(c.height, 8) + local * 0.2)); look = eye; }
+    else { const sm = this.smoothYaw === undefined ? tg.yaw : this.smoothYaw; const d = ((tg.yaw - sm + 540) % 360) - 180; this.smoothYaw = snap ? tg.yaw : sm + d * Math.min(1, dt * 1.5); pos = T.clone().add(dirAt(this.smoothYaw + c.angle, c.distance, c.height + local * 0.05)); look = eye; }
+    // keep camera above ground and out of the target
+    if (pos.y < 0.4) pos.y = 0.4;
+    if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < 0.3) pos.y = 0.3; }
+    if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3); const f = 1 - Math.exp(-dt * k); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f); }
+    if (this.quake > 0) { this.quake -= dt; const q = Math.min(1, this.quake) * 0.25; this.camera.position.copy(this.cam.pos).add(new THREE.Vector3((Math.random() - 0.5) * q, (Math.random() - 0.5) * q, (Math.random() - 0.5) * q)); } else this.camera.position.copy(this.cam.pos);
+    this.camera.lookAt(this.cam.look); this.sky.position.copy(this.camera.position); this.stars.position.copy(this.camera.position); this.ground.position.set(this.cam.look.x, 0, this.cam.look.z); this.waterGround.position.set(this.cam.look.x, 0, this.cam.look.z);
+  },
+  triggerEffect(k) { if (k === 'flash') this.fx.push({ k, t: 0.7 }); else if (k === 'blackout') { this.fx.push({ k, t: 1.4 }); this.cam.snap = true; } else if (k === 'quake') this.quake = 1.0; else if (k === 'blur') this.fx.push({ k, t: 1.6 }); else if (k === 'pulse') this.fx.push({ k, t: 2.4 }); },
+  updateEffects(dt) {
+    let white = 0, black = 0, blur = 0, pulse = 0; this.fx = this.fx.filter(f => (f.t -= dt) > 0); for (const f of this.fx) { if (f.k === 'flash') white = Math.max(white, f.t / 0.7); if (f.k === 'blackout') black = Math.max(black, Math.min(1, f.t / 1.0)); if (f.k === 'blur') blur = Math.max(blur, f.t / 1.6); if (f.k === 'pulse') pulse = Math.max(pulse, Math.sin(f.t * 8) * 0.5 + 0.5); }
+    this.fxEl.style.background = black > white ? '#000' : '#fff'; this.fxEl.style.opacity = Math.max(white, black).toFixed(3); this.canvas.style.filter = blur > 0.01 ? `blur(${(blur * 6).toFixed(1)}px)` : ''; if (pulse > 0) this.three.fog.density = this.worldNow.fogDensity * (1 + pulse * 2);
+  },
+  updateLabels(states) {
+    const W = this.canvas.clientWidth, H = this.canvas.clientHeight; const v = new THREE.Vector3(); const camPos = this.camera.position;
+    for (const [id, rec] of this.actors) { const st = states.get(id); const lbl = rec.lbl; const text = st.say ? `${rec.a.label || rec.a.kind}: “${st.say}”` : rec.a.label; if (!this.labelsOn || !text || st.op < 0.05) { lbl.hidden = true; continue; } const top = rec.g.userData.baseHeight * (st.size / rec.a.size) + 0.25; v.set(st.pos[0], st.pos[1] + Math.min(top, 12) + (rec.g.userData.far ? 0 : 0), st.pos[2]); const dist = v.distanceTo(camPos); v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || dist > 90) { lbl.hidden = true; continue; } lbl.hidden = false; lbl.textContent = text; lbl.style.left = ((v.x + 1) / 2 * W).toFixed(1) + 'px'; lbl.style.top = ((1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; }
+  },
+  /* metrics for the harness: which actors of the current beat are on screen */
+  metrics() {
+    if (!this.scene) return null; const bi = this.beatAt(this.time), b = this.scene.beats[bi]; const ids = new Set(b.actions.filter(x => x.actor).map(x => x.actor)); ids.add(b.camera.target); const v = new THREE.Vector3(); const res = [];
+    for (const id of ids) { const rec = this.actors.get(id), st = this.states.get(id); if (!rec || !st) continue; const top = rec.g.userData.baseHeight * (st.size / rec.a.size); v.set(st.pos[0], st.pos[1] + top / 2, st.pos[2]); const dist = v.distanceTo(this.camera.position); v.project(this.camera); res.push({ id, visible: st.op > 0.05, onScreen: st.op > 0.05 && v.z < 1 && Math.abs(v.x) < 1 && Math.abs(v.y) < 1, dist: +dist.toFixed(1), x: +v.x.toFixed(2), y: +v.y.toFixed(2) }); }
+    const ft = this.frameTimes.slice(-120); const avg = ft.length ? ft.reduce((a, b) => a + b, 0) / ft.length : 0; return { beat: bi, time: +this.time.toFixed(2), actors: res, frameMs: +avg.toFixed(1), tris: this.r.info.render.triangles, calls: this.r.info.render.calls };
+  }
+};

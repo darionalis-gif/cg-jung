@@ -1,0 +1,28 @@
+{"title":"Smoke: the angry man","mood":"uneasy, lamplit","world":{"sky":"night","ground":"road","groundColor":"#2a2a2e","weather":"rain","fogDensity":0.02},
+"actors":[
+ {"id":"me","kind":"person","label":"me","color":"#5a6fa8","pos":[0,0,0],"yaw":0},
+ {"id":"angry_man","kind":"person","label":"the angry man in a raincoat","color":"#8a7a4a","pos":[0,0,14],"yaw":180,"hidden":true,"detail":{"hair":"#222"}},
+ {"id":"shops","kind":"building","label":"shops","color":"#7a6a5a","pos":[-9,0,10],"detail":{"width":12,"depth":8,"height":9}},
+ {"id":"shop2","kind":"house","label":"","color":"#9a8a7a","pos":[9,0,6]},
+ {"id":"lamp1","kind":"lamp","label":"street lamp","color":"#ffd27a","pos":[-4,0,4]},
+ {"id":"lamp2","kind":"lamp","label":"","color":"#ffd27a","pos":[4,0,16]},
+ {"id":"street","kind":"road","label":"","color":"#2c2c31","pos":[0,0,20],"detail":{"depth":100}},
+ {"id":"watchers","kind":"crowd","label":"people watching","color":"#666","pos":[7,0,-6],"hidden":true,"detail":{"count":6,"radius":2}},
+ {"id":"dog","kind":"animal","label":"a dog","color":"#a0783c","pos":[-3,0,-2],"detail":{"species":"dog"}},
+ {"id":"bird","kind":"animal","label":"a bird","color":"#333","pos":[3,3,-3],"detail":{"species":"bird"}},
+ {"id":"car","kind":"car","label":"a car","color":"#b03a3a","pos":[6,0,30],"yaw":180},
+ {"id":"tree","kind":"tree","label":"","color":"#3f7a3a","pos":[-7,0,-8]},
+ {"id":"forest","kind":"forest","label":"woods","color":"#2f5f33","pos":[0,0,-60],"detail":{"count":30,"radius":25}},
+ {"id":"moon","kind":"moon","label":"","color":"#f2f0e0","pos":[30,0,-80]},
+ {"id":"fire","kind":"fire","label":"fire","color":"#ff7a2a","pos":[-5,0,10]},
+ {"id":"sign","kind":"sign","label":"","color":"#e8e0c0","pos":[5,0,9],"yaw":200,"detail":{"text":"BAKERY"}},
+ {"id":"door","kind":"door","label":"door","color":"#6d4a2c","pos":[9,0,2.6]},
+ {"id":"orb","kind":"thing","label":"something","color":"#b0a0d0","pos":[-2,0,3]}
+],
+"beats":[
+ {"dur":6,"text":"I'm on an almost-empty street in a small town. There are shops, etc., and street lamps.","camera":{"mode":"wide","target":"me","distance":26,"height":10,"angle":150},"actions":[{"actor":"me","move":[0,0,6],"state":"walk"}]},
+ {"dur":6,"text":"I'm walking down the street, about to turn a corner, and I'm confronted by a loud man in a raincoat","camera":{"mode":"follow","target":"me","distance":7,"height":2.5,"angle":170},"actions":[{"actor":"me","move":[0,0,10]},{"actor":"angry_man","appear":true,"move":[0,0,12],"state":"walk"},{"actor":"car","move":[6,0,-30]}]},
+ {"dur":6,"text":"he's really mad about something ... He just stands and yells at me, sometimes shoving with his elbow and shoulder","camera":{"mode":"orbit","target":"angry_man","distance":5,"height":2,"angle":90},"actions":[{"actor":"angry_man","state":"shake","say":"YOU!"},{"effect":"quake","at":0.3},{"actor":"bird","move":[-6,5,10],"state":"fly"}]},
+ {"dur":6,"text":"I retreat up the street a bit - there are some people out watching.","camera":{"mode":"follow","target":"me","distance":8,"height":3,"angle":20},"actions":[{"actor":"me","move":[1,0,-4],"state":"walk"},{"actor":"watchers","appear":true},{"actor":"angry_man","move":[0.5,0,-1],"state":"walk"},{"world":{"fogDensity":0.05,"skyColor":"#3a0a0a"}}]},
+ {"dur":6,"text":"He follows and keeps yelling at me","camera":{"mode":"pov","target":"me"},"actions":[{"actor":"angry_man","move":[1,0,-2],"say":"...","state":"shake"},{"effect":"blackout","at":0.9},{"actor":"me","state":"collapse","at":0.5}]}
+]}

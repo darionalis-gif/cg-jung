@@ -1,0 +1,26 @@
+# Somnium — a theatre for dreams
+
+A single-file web app that performs a dream as a 3D animation. You write the dream as you remember it; Claude, on your own subscription, turns the report into a *stage script* (a JSON scene: world, actors, beats with the dream's own sentences, camera); this page performs the script with three.js — low-poly figures with floating labels, a moving camera, subtitles from the report, a scrubber with one tick per beat. A director chat takes change requests ("make the street darker", "the man should be taller and closer", "add rain") and rewrites the staging.
+
+It was built in a loop of building and independent critique — a technical critic for the animation and a fidelity critic for the match to the dream text — over real dream reports from DreamBank.
+
+## How it runs
+
+- `index.html` is the whole app. The block between `<!-- ARTIFACT-START -->` and `<!-- ARTIFACT-END -->` is what gets published as a Claude artifact with the `sample` capability; the artifact host wraps it in its own document skeleton and grants the page the right to ask Claude on the viewer's account. Outside Claude (a plain browser) the page can still perform the dreams that ship staged inside it and any dream staged earlier in that browser, but cannot stage new ones.
+- three.js r160 (UMD) from cdnjs; Google Fonts (Fraunces, Atkinson Hyperlegible, JetBrains Mono). No build step for the viewer.
+- Dreams and their scripts are kept in `localStorage`.
+
+## The stage script
+
+Claude receives the vocabulary of the stage (`DSL_DOC` in `part_core.js`): ~85 kinds of actor the renderer can build from primitives (person, crowd, animal by species, house, building, room, forest, water, fire, car, helicopter, bed, mirror, tooth, portal…), 19 animation states (walk, run, fly, fall, float, swim, sit, lie, shake, spin, collapse, melt…), sky presets, grounds, weather, camera modes (follow, fixed, orbit, pov, wide) and effects (flash, quake, blackout, pulse, blur). It answers with a JSON script of 5–14 beats, each quoting the part of the report it performs. `normalizeScene` repairs whatever comes back (aliases, missing fields, unknown kinds, bad references) so the stage can always play it.
+
+## Sources
+
+- `part_core.js` — vocabulary, prompt, scene normaliser. `part_builders.js` — one procedural builder per kind. `part_stage.js` — renderer, world, timeline evaluation (deterministic for scrubbing), animation, camera, weather, labels. `part_ui.js` — dreams, Claude calls, script pane, transport, director chat, DreamBank examples.
+- `node build.mjs` assembles `index.html` from the parts and embeds `harness/examples.json` (real reports) plus `harness/staged.json` (their critic-approved scripts).
+
+## The harness and the critics
+
+`harness/run.mjs` serves the page with a mocked `claude.use('sample')` that routes every prompt to the real Claude through the `claude -p` CLI, drives the page in headless Chromium (Playwright, SwiftShader) over the DreamBank dreams, and records the script, a screenshot per beat, playing frames, a phone layout, frame times, on-screen metrics per actor, a motion measure per beat, console errors and a director-chat round trip. Two critic briefs live in `harness/critics/`; each round the reports were handed to an independent critic, and the fixes went into the prompt, the normaliser or the renderer until both were satisfied.
+
+The example dreams are anonymised reports from DreamBank (dreambank.net, UC Santa Cruz), used with attribution as test material.
