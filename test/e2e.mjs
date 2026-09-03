@@ -108,7 +108,7 @@ check(t?.includes('chosen'), 'inflation: the inflated passage is in the hour');
 // the Liber: memory import, the dossier as handed, the opus read
 await page.evaluate(() => { const T = window.__tertium; T.S.draft = null; T.setView({ name: 'liber' }); T.render(); });
 check(await page.locator('[data-mem="claude"]').count() === 1 && await page.locator('[data-mem="context"]').count() === 1, 'liber: the memory and context fields exist');
-await page.locator('[data-mem="context"]').fill('Also: I moved out of the shared office in August.');
+await page.locator('[data-mem="context"]').fill((await page.locator('[data-mem="context"]').inputValue()) + ' Also: I moved out of the shared office in August.');
 check(await page.evaluate(() => window.__tertium.S.memory.context.includes('August')), 'liber: typing into the context field saves it');
 check(await page.evaluate(() => window.__tertium.handedText().includes('August') && window.__tertium.handedText().includes('cello')), 'liber: the dossier as handed shows memory and context');
 await page.locator('[data-act="ask"][data-kind="opus"]').click();
@@ -132,7 +132,7 @@ t = await talk('talkTransference', F.talks.transference);
 check(t?.includes('### assistant') === false && t?.endsWith(F.talks.transference[0].text), 'talkTransference: a first message is one user turn after the lead');
 t = await talk('talkInterpretFirst', F.talks.interpretFirst);
 t = await talk('talkGerman', F.talks.german);
-check(t?.includes('answer in German') || t?.includes('language the person writes in'), 'talkGerman: language handled');
+check(t?.includes('answer in German'), 'talkGerman: the person\'s German message sets the language hint');
 t = await talk('talkInjection', F.talks.injection);
 t = await talk('talkOngoing', F.talks.ongoing);
 check(t?.includes('### assistant\nWhat did you say first?'), 'talkOngoing: earlier turns are kept as turns');

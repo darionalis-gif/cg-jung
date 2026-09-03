@@ -3,8 +3,11 @@
 //   node build.mjs          write index.html
 //   node build.mjs --check  exit 1 if index.html is out of date
 import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const ROOT = path.dirname(fileURLToPath(import.meta.url)), HTML = path.join(ROOT, 'index.html'), MOD = path.join(ROOT, 'analyst.js');
 const START = '<!-- ANALYST-MODULE-START -->', END = '<!-- ANALYST-MODULE-END -->';
-const html = readFileSync('index.html', 'utf8'), mod = readFileSync('analyst.js', 'utf8');
+const html = readFileSync(HTML, 'utf8'), mod = readFileSync(MOD, 'utf8');
 if (mod.includes('</script')) throw new Error('analyst.js must not contain "</script"');
 const a = html.indexOf(START), b = html.indexOf(END);
 if (a < 0 || b < 0 || b < a) throw new Error('index.html lacks the ANALYST-MODULE markers');
@@ -13,6 +16,6 @@ if (process.argv.includes('--check')) {
   if (built !== html) { console.error('index.html is out of date: run `node build.mjs`'); process.exit(1); }
   console.log('index.html is up to date');
 } else {
-  writeFileSync('index.html', built);
+  writeFileSync(HTML, built);
   console.log(`inlined analyst.js (${Buffer.byteLength(mod)} bytes) into index.html (${Buffer.byteLength(built)} bytes)`);
 }
