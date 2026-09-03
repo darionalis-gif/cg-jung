@@ -1,0 +1,14 @@
+{
+  "name": "tertium-datur",
+  "version": "2.0.0",
+  "private": true,
+  "description": "A phone app for Jungian self-work, with a standalone analyst module.",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check",
+    "test": "node --test test/analyst.test.mjs",
+    "e2e": "node test/e2e.mjs",
+    "critics": "node test/critics-bundle.mjs"
+  },
+  "license": "UNLICENSED"
+}
