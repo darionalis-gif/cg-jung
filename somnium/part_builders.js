@@ -55,12 +55,11 @@ function humanoid(a, o = {}) {
   const pelvis = mesh(G.cap(0.15 * S, 0.08, 10), pants, 0, 0.02, 0); pelvis.rotation.z = Math.PI / 2; pelvis.scale.set(1, 1.15, 0.8); hips.add(pelvis);
   const torso = new THREE.Group(); torso.position.y = 0.1; hips.add(torso);
   const chest = mesh(G.cap(0.17 * S, 0.3, 12), shirt, 0, 0.2, 0); chest.scale.set(1.05, 1, 0.72); torso.add(chest);
-  const neck = mesh(G.cyl(0.05, 0.06, 0.1, 8), skinM, 0, 0.43, 0); torso.add(neck);
+  if (!o.simple) { const neck = mesh(G.cyl(0.05, 0.06, 0.1, 8), skinM, 0, 0.43, 0); torso.add(neck); }
   const headG = new THREE.Group(); headG.position.set(0, 0.46, 0); torso.add(headG);
-  const head = mesh(G.sph(0.125, 16), skinM, 0, 0.12, 0); headG.add(head);
-  const hairM = mesh(G.sph(0.145, 16), mat(hair, opts), 0, 0.15, -0.02); hairM.scale.set(1, 0.72, 1); hairM.material = hairM.material.clone(); hairM.material.polygonOffset = true; hairM.material.polygonOffsetFactor = -1; headG.add(hairM);
-  for (const sx of [-1, 1]) { headG.add(mesh(G.sph(0.016, 8), mat(o.eye || '#1a1a1a'), sx * 0.045, 0.135, 0.112)); }
-  headG.add(mesh(G.sph(0.02, 8), skinM, 0, 0.1, 0.125));
+  const head = mesh(G.sph(0.125, o.simple ? 8 : 16), skinM, 0, 0.12, 0); headG.add(head);
+  const hairM = mesh(G.sph(0.145, o.simple ? 8 : 16), mat(hair, opts), 0, 0.15, -0.02); hairM.scale.set(1, 0.72, 1); hairM.material = hairM.material.clone(); hairM.material.polygonOffset = true; hairM.material.polygonOffsetFactor = -1; headG.add(hairM);
+  if (!o.simple) { for (const sx of [-1, 1]) headG.add(mesh(G.sph(0.016, 8), mat(o.eye || '#1a1a1a'), sx * 0.045, 0.135, 0.112)); headG.add(mesh(G.sph(0.02, 8), skinM, 0, 0.1, 0.125)); }
   const arms = [], fore = [], legs = [], shins = [], feet = [];
   for (const sx of [-1, 1]) {
     const up = new THREE.Group(); up.position.set(sx * 0.24 * S, 0.38, 0); torso.add(up); const ua = mesh(G.cap(0.055 * S, 0.22, 8), o.bare ? skinM : shirt, 0, -0.15, 0); up.add(ua);
@@ -79,8 +78,9 @@ B.person = a => humanoid(a);
 B.ghost = a => humanoid({ ...a, ghost: true, glow: true }, { skin: '#e8ecff', hair: '#d0d6ff', eye: '#334' });
 B.skeleton = a => humanoid({ ...a, color: '#eae6da' }, { skin: '#eae6da', hair: '#eae6da', thin: true, eye: '#000' });
 B.monster = a => { const g = humanoid({ ...a, size: a.size }, { skin: shade(a.color, 0.8), hair: shade(a.color, 0.5), eye: '#ff2020', spikes: true }); g.scale.setScalar(1.6); g.userData.height = 2.8; g.userData.eyeY = 2.5; g.userData.shadow = 0.8; return g; };
-B.crowd = a => { const g = new THREE.Group(); const n = a.detail.count || 12, r = a.detail.radius || Math.max(2, Math.sqrt(n) * 0.9), rnd = seeded(n * 7 + 3); g.userData.members = [];
-  for (let i = 0; i < n; i++) { const ang = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * r; const p = humanoid({ ...a, color: shade(a.color, 0.7 + rnd() * 0.6), detail: { second: rnd() < 0.5 ? shade(a.color, 0.4) : '#3a3a48' } }); p.position.set(Math.cos(ang) * d, 0, Math.sin(ang) * d); p.rotation.y = rnd() * 6.28; p.userData.phase = rnd() * 6.28; p.userData.baseYaw = p.rotation.y; g.add(p); g.userData.members.push(p); }
+B.crowd = a => { const g = new THREE.Group(); const n = Math.min(a.detail.count || 12, 26), r = a.detail.radius || Math.max(2, Math.sqrt(n) * 0.9), rnd = seeded(n * 7 + 3); g.userData.members = []; const taken = [];
+  for (let i = 0; i < n; i++) { let x = 0, z = 0; for (let k = 0; k < 14; k++) { const ang = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * r; x = Math.cos(ang) * d; z = Math.sin(ang) * d; if (!taken.some(t => (t[0] - x) * (t[0] - x) + (t[1] - z) * (t[1] - z) < 0.55)) break; } taken.push([x, z]);
+    const p = humanoid({ ...a, color: shade(a.color, 0.7 + rnd() * 0.6), detail: { second: rnd() < 0.5 ? shade(a.color, 0.4) : '#3a3a48' } }, { simple: true }); p.position.set(x, 0, z); p.rotation.y = rnd() * 6.28; p.userData.phase = rnd() * 6.28; p.userData.baseYaw = p.rotation.y; if (i > 6) p.traverse(o => { if (o.isMesh) o.castShadow = false; }); g.add(p); g.userData.members.push(p); }
   g.userData.height = 1.8; return g; };
 const SPECIES = { dog: [0.9, 0.5, 0.35, 0.35, 0.22], cat: [0.5, 0.3, 0.22, 0.2, 0.15], horse: [1.9, 1.3, 0.9, 0.7, 0.45], wolf: [1.1, 0.65, 0.45, 0.4, 0.26], bear: [1.8, 1.1, 0.5, 0.5, 0.5], deer: [1.3, 1.0, 0.7, 0.45, 0.3], cow: [2.0, 1.2, 0.6, 0.5, 0.6], lion: [1.6, 0.9, 0.55, 0.5, 0.42], rat: [0.3, 0.12, 0.06, 0.1, 0.1], rabbit: [0.4, 0.25, 0.15, 0.15, 0.15], chimp: [0.7, 0.8, 0.5, 0.35, 0.3], generic: [1.0, 0.6, 0.4, 0.35, 0.28] };
 B.animal = a => {
@@ -198,11 +198,14 @@ B.pyramid = a => { const g = new THREE.Group(); const h = a.detail.height || 3; 
 B.thing = a => { const g = new THREE.Group(); const t = mesh(G.dod(0.32), mat(a.color, { flat: true, emissive: a.color, ei: 0.15 }), 0, 0.3, 0); g.add(t); g.userData.height = 0.6; g.userData.spinPart = t; return g; };
 
 const SOFT = new Set(['person', 'crowd', 'monster', 'skeleton', 'ghost']);
+// flat ground cover has to be cut where a pit is, exactly as the ground plane is
+const GROUNDCOVER = new Set(['road', 'path', 'field', 'water', 'river']);
 const SOLID = new Set(['house', 'shop', 'building', 'tower', 'castle', 'church', 'wall', 'hill', 'mountain', 'rock', 'cliff', 'cave', 'tent', 'bus', 'train', 'truck']);
 function buildActor(a) {
   let g; try { g = (B[a.kind] || B.thing)(a); } catch (e) { console.warn('builder failed', a.kind, e); g = B.thing(a); }
   if (SOFT.has(a.kind)) g.traverse(o => { if (o.isMesh && o.geometry.type === 'CapsuleGeometry') { o.userData.solid = true; o.userData.soft = true; } });
   if (SOLID.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.material.side !== THREE.BackSide) o.userData.solid = true; });
+  if (GROUNDCOVER.has(a.kind)) g.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.stencilWrite = true; o.material.stencilFunc = THREE.NotEqualStencilFunc; o.material.stencilRef = 1; } });
   if (!g.userData.noScale) g.scale.setScalar(a.size); else g.scale.setScalar(1);
   g.userData.actor = a; g.userData.baseHeight = (g.userData.height || 1.8) * (g.userData.noScale ? 1 : a.size);
   g.traverse(o => { if (o.isMesh && a.ghost && !o.material.userData.water) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = Math.min(o.material.opacity, 0.45); o.castShadow = false; } });

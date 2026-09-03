@@ -7,7 +7,7 @@ const Stage = {
     const r = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     r.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.25; r.outputColorSpace = THREE.SRGBColorSpace;
     this.r = r; this.three = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(50, 1, 0.25, 1200);
-    this.sky = new THREE.Mesh(new THREE.SphereGeometry(500, 24, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { top: { value: new THREE.Color('#0b1030') }, hor: { value: new THREE.Color('#2a2f5c') }, fogc: { value: new THREE.Color('#171b3d') } }, vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform vec3 top; uniform vec3 hor; uniform vec3 fogc; varying vec3 vP; void main(){ float h = normalize(vP).y; vec3 low = mix(fogc, hor, smoothstep(0.0, 0.14, h)); float t = smoothstep(0.04, 0.5, h); gl_FragColor = vec4(mix(low, top, t), 1.0); }' }));
+    this.sky = new THREE.Mesh(new THREE.SphereGeometry(500, 24, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: true, uniforms: { top: { value: new THREE.Color('#0b1030') }, hor: { value: new THREE.Color('#2a2f5c') }, fogc: { value: new THREE.Color('#171b3d') } }, vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform vec3 top; uniform vec3 hor; uniform vec3 fogc; varying vec3 vP; #include <tonemapping_pars_fragment> #include <colorspace_pars_fragment> void main(){ float h = normalize(vP).y; vec3 low = mix(fogc, hor, smoothstep(0.0, 0.14, h)); float t = smoothstep(0.04, 0.5, h); gl_FragColor = vec4(mix(low, top, t), 1.0); #include <tonemapping_fragment> #include <colorspace_fragment> }' }));
     this.three.add(this.sky);
     const sg = new THREE.BufferGeometry(); const sp = []; const rnd = seeded(42); for (let i = 0; i < 1600; i++) { const th = rnd() * 6.283, ph = Math.acos(rnd() * 0.95); sp.push(Math.sin(ph) * Math.cos(th) * 460, Math.cos(ph) * 460, Math.sin(ph) * Math.sin(th) * 460); } sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
     this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: '#ffffff', size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.85, fog: false })); this.three.add(this.stars);
@@ -46,8 +46,8 @@ const Stage = {
   load(scene) {
     this.scene = scene; this.root.clear(); this.actors.clear(); this.labelsEl.innerHTML = ''; this.lastBeat = -1; this.fx = []; this.time = 0; this.cam.snap = true; this.user.on = false; $('#resetCam').classList.remove('primary');
     for (const a of scene.actors) { const g = buildActor(a); g.position.set(a.pos[0], a.pos[1], a.pos[2]); g.rotation.y = a.yaw * Math.PI / 180; this.root.add(g); const lbl = document.createElement('div'); lbl.className = 'lbl'; lbl.textContent = a.label; lbl.hidden = !a.label; this.labelsEl.appendChild(lbl); this.actors.set(a.id, { a, g, lbl, st: null, mats: null }); }
-    for (const rec of this.actors.values()) { if (rec.g.userData.shadow) { const r = rec.g.userData.shadow; const blob = new THREE.Mesh(new THREE.CircleGeometry(r, 20), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.renderOrder = 1; this.root.add(blob); rec.blob = blob; } const mats = []; rec.g.traverse(o => { if (o.isMesh && !o.material.userData.water) { o.material = o.material.clone(); o.material.userData.baseOpacity = o.material.opacity; o.material.userData.baseColor = o.material.color.clone(); o.material.userData.baseEmissive = o.material.emissive ? o.material.emissive.clone() : null; mats.push(o.material); } }); rec.mats = mats; }
-    this.solids = []; this.root.traverse(o => { if (o.userData.solid) this.solids.push(o); }); this.applyWorld(scene.world); this.setTime(0); this.playing = true;
+    for (const rec of this.actors.values()) { if (rec.g.userData.shadow) { const r = rec.g.userData.shadow; const blob = new THREE.Mesh(new THREE.CircleGeometry(r, 20), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.renderOrder = 1; this.root.add(blob); rec.blob = blob; } const mats = []; const seen = new Map(); rec.g.traverse(o => { if (o.isMesh && !o.material.userData.water) { let m = seen.get(o.material); if (!m) { m = o.material.clone(); m.userData = { ...o.material.userData, baseOpacity: o.material.opacity, baseColor: o.material.color.clone(), baseEmissive: o.material.emissive ? o.material.emissive.clone() : null }; seen.set(o.material, m); mats.push(m); } o.material = m; } }); rec.mats = mats; }
+    this.solids = []; this.waterMats = [this.waterGround.material]; this.root.traverse(o => { if (o.userData.solid) this.solids.push(o); if (o.isMesh && o.material && o.material.userData.water) this.waterMats.push(o.material); }); this.boxTick = 0; this._rooms = null; this.applyWorld(scene.world); this.setTime(0); this.playing = true;
   },
   setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
   beatAt(t) { const bs = this.scene.beats; for (let i = bs.length - 1; i >= 0; i--) if (t >= bs[i].start) return i; return 0; },
@@ -61,9 +61,20 @@ const Stage = {
         if (x.size !== undefined) st.size = lerp(st.size, x.size, e);
         if (x.color) { st.colorC = [st.color, x.color, e]; if (p >= 1) st.color = x.color; }
         if (x.appear) st.op = Math.max(st.op, p >= 1 ? 1 : Math.min(1, p * 2)); if (x.vanish) st.op = p >= 1 ? 0 : Math.min(st.op, 1 - Math.min(1, p * 2));
-        if (x.state === 'grow' || x.state === 'shrink') { st.size = lerp(st.size, st.size * (x.state === 'grow' ? 2.5 : 0.35), e); } else if (x.state) { const transient = ['walk', 'run', 'limp', 'push', 'shake', 'spin', 'collapse', 'wave', 'dance', 'fall', 'open', 'grow', 'shrink'].includes(x.state); if (!transient || p < 1) { st.state = x.state; st.window = p; } else if (x.state === 'collapse') st.state = 'lie'; else if (x.state === 'fall') st.state = 'lie'; else if (x.state === 'open') st.state = 'open'; else if (x.state === 'grow' || x.state === 'shrink') st.state = 'idle'; }
+        if (x.state === 'grow' || x.state === 'shrink') { const base = (S.actors.find(q => q.id === x.actor) || {}).size || st.size; const tgt = x.state === 'grow' ? Math.min(st.size * 2.5, base * 1.6) : Math.max(st.size * 0.35, base * 0.5); st.size = lerp(st.size, tgt, e); } else if (x.state) { const transient = ['walk', 'run', 'limp', 'push', 'shake', 'spin', 'collapse', 'wave', 'dance', 'fall', 'open', 'grow', 'shrink'].includes(x.state); if (!transient || p < 1) { st.state = x.state; st.window = p; } else if (x.state === 'collapse') st.state = 'lie'; else if (x.state === 'fall') st.state = 'lie'; else if (x.state === 'open') st.state = 'open'; else if (x.state === 'grow' || x.state === 'shrink') st.state = 'idle'; }
         if (x.say && p < 1) st.say = x.say; }
     }
+    // whoever shares a vehicle's destination in a beat travels in it, not behind it
+    for (const b of S.beats) { if (t < b.start || t > b.start + b.dur) continue;
+      const kindOf = id => (S.actors.find(q => q.id === id) || {}).kind;
+      const vehicles = b.actions.filter(x => x.actor && x.move && VEHICLE.has(kindOf(x.actor)));
+      if (!vehicles.length) continue;
+      for (const x of b.actions) { if (!x.actor || !x.move || VEHICLE.has(kindOf(x.actor))) continue;
+        const v = vehicles.find(q => Math.hypot(q.move[0] - x.move[0], q.move[2] - x.move[2]) < 3); if (!v) continue;
+        const rider = out.get(x.actor), car = out.get(v.actor); if (!rider || !car) continue;
+        const seat = SEAT[kindOf(v.actor)] || 1;
+        rider.pos = [car.pos[0] + 0.6, car.pos[1] + seat, car.pos[2]]; rider.yaw = car.yaw;
+        if (rider.state === 'idle' || rider.state === 'walk') rider.state = 'sit'; } }
     for (const st of out.values()) if (st.moving && st.state === 'idle') st.state = st.moving > 2.5 ? 'run' : 'walk';
     return out;
   },
@@ -74,7 +85,7 @@ const Stage = {
   },
   applyWorld(w) {
     this.sky.material.uniforms.top.value.set(w.skyColor); this.sky.material.uniforms.hor.value.set(w.horizonColor); this.sky.material.uniforms.fogc.value.set(w.fogColor); this.three.fog.color.set(w.fogColor); this.three.fog.density = w.fogDensity; this.r.setClearColor(w.fogColor);
-    const amb = new THREE.Color(w.ambient); const L = 0.2126 * amb.r + 0.7152 * amb.g + 0.0722 * amb.b; if (L < 0.4) amb.lerp(new THREE.Color('#9a9ec0'), (0.4 - L) / 0.4 * 0.85);
+    const amb = new THREE.Color(w.ambient); const L = 0.2126 * amb.r + 0.7152 * amb.g + 0.0722 * amb.b; if (L < 0.26) amb.lerp(new THREE.Color('#8f93b4'), (0.26 - L) / 0.26 * 0.7);
     this.ambient.color.copy(amb); this.ambient.groundColor.set(shade(w.groundColor, 0.6)); this.ambient.intensity = w.sky === 'day' ? 2.4 : (w.sky === 'void' ? 1.4 : 2.0);
     this.sun.color.set(w.sunColor); this.sun.intensity = Math.max(0.8, w.sunIntensity * 2.4);
     this.fill.position.copy(this.camera.position); this.fill.target.position.copy(this.cam.look); this.fill.intensity = w.sky === 'day' ? 0.4 : 0.9; const d = new THREE.Vector3(...w.sunDir).normalize().multiplyScalar(80); this.sun.position.copy(this.cam.look).add(d); this.sun.target.position.copy(this.cam.look);
@@ -99,9 +110,9 @@ const Stage = {
     }
     // ambient animations
     for (const rec of this.actors.values()) { const ud = rec.g.userData; if (ud.flames) { ud.flames.forEach((f, i) => { f.scale.y = 1 + Math.sin(τ * 11 + i * 2) * 0.25; f.scale.x = f.scale.z = 1 + Math.sin(τ * 9 + i) * 0.15; }); if (ud.light) ud.light.intensity = 30 + Math.sin(τ * 13) * 6; } if (ud.puffs) ud.puffs.forEach((p, i) => { p.position.y = 0.8 + ((τ * 0.6 + i * 0.9) % 5.4); p.scale.setScalar(0.6 + ((τ * 0.6 + i * 0.9) % 5.4) * 0.25); }); if (ud.rotor) ud.rotor.rotation.y = τ * 25; if (ud.spinPart) ud.spinPart.rotation.y = τ * 1.2; if (ud.drift) rec.g.position.x += Math.sin(τ * 0.05) * 0.0; if (ud.canopy) ud.canopy.forEach(c => c.rotation.z = Math.sin(τ * 0.8) * 0.02); if (ud.trees) ud.trees.forEach((tr, i) => tr.rotation.z = Math.sin(τ * 0.7 + i) * 0.02); if (ud.pulse) rec.mats.forEach(m => { if (m.emissiveIntensity) m.emissiveIntensity = 0.8 + Math.sin(τ * 3) * 0.4; }); }
-    for (const o of [this.waterGround]) if (o.material.userData.sh) o.material.userData.sh.uniforms.uTime.value = τ; this.root.traverse(o => { if (o.isMesh && o.material.userData.sh) o.material.userData.sh.uniforms.uTime.value = τ; });
+    for (const m of this.waterMats) if (m.userData.sh) m.userData.sh.uniforms.uTime.value = τ;
     this.solidsNow = this.solids ? this.solids.filter(o => { let p = o; while (p) { if (p.visible === false) return false; p = p.parent; } return true; }) : [];
-    this.solidBoxes = []; for (const o of this.solidsNow) { if (o.material && o.material.side === THREE.BackSide) continue; if (o.geometry.type === 'CapsuleGeometry') continue; const bx = new THREE.Box3().setFromObject(o); if (bx.max.x - bx.min.x > 1.5 && bx.max.z - bx.min.z > 1.5) { bx.expandByScalar(0.4); this.solidBoxes.push(bx); } }
+    if ((this.boxTick = (this.boxTick || 0) + 1) % 12 === 1 || !this.solidBoxes) { this.solidBoxes = []; for (const o of this.solidsNow) { if (o.material && o.material.side === THREE.BackSide) continue; if (o.geometry.type === 'CapsuleGeometry') continue; const bx = new THREE.Box3().setFromObject(o); if (bx.max.x - bx.min.x > 1.5 && bx.max.z - bx.min.z > 1.5) { bx.expandByScalar(0.4); this.solidBoxes.push(bx); } } }
     this.updateCamera(S.beats[bi], states, dt, snap || this.cam.snap); this.cam.snap = false;
     this.updateWeather(dt, τ); this.updateEffects(dt);
     this.r.render(this.three, this.camera); this.updateLabels(states);
@@ -180,18 +191,29 @@ const Stage = {
     const c = beat.camera, tg = states.get(c.target) || states.values().next().value; const T = new THREE.Vector3(tg.pos[0], tg.pos[1], tg.pos[2]); const rec = this.actors.get(c.target); const hgt = rec ? rec.g.userData.baseHeight * (tg.size / rec.a.size) : 1.8; const eye = T.clone().add(new THREE.Vector3(0, Math.min(hgt * 0.6, 1.6), 0));
     let pos, look; const local = this.time - beat.start;
     // frame the whole group that acts in this beat, not only the target
-    let groupC = null, groupR = 0; { const active = beat.actions.filter(x => x.actor && (x.move || x.say || x.appear || (x.state && x.state !== 'idle'))).map(x => x.actor); const ids = [...new Set(active.concat([c.target]))]; const pts = []; for (const id of ids) { const st = states.get(id); const r2 = this.actors.get(id); if (!st || st.op < 0.3 || !r2 || r2.g.userData.big || r2.g.userData.flat) continue; pts.push(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])); } if (pts.length > 1) { groupC = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(pts.length); for (const p of pts) groupR = Math.max(groupR, p.distanceTo(groupC)); if (groupR > 7 || groupR < 1.2) { groupC = null; groupR = 0; } } }
+    let groupC = null, groupR = 0; { const active = beat.actions.filter(x => x.actor && (x.move || x.say || x.appear || (x.state && x.state !== 'idle'))).map(x => x.actor); const ids = [...new Set(active.concat([c.target]))]; const pts = []; for (const id of ids) { const st = states.get(id); const r2 = this.actors.get(id); if (!st || st.op < 0.3 || !r2 || r2.g.userData.big || r2.g.userData.flat) continue; if (Math.abs(st.pos[1] - T.y) > 3) continue; pts.push(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])); } if (pts.length > 1) { groupC = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(pts.length); for (const p of pts) groupR = Math.max(groupR, Math.hypot(p.x - groupC.x, p.z - groupC.z)); if (groupR > 7 || groupR < 1.2) { groupC = null; groupR = 0; } } }
     const dirAt = (deg, d, h) => new THREE.Vector3(Math.sin(deg * Math.PI / 180) * d, h, Math.cos(deg * Math.PI / 180) * d);
     if (c.mode === 'fixed' && c.pos) { pos = new THREE.Vector3(...c.pos); look = Array.isArray(c.lookAt) ? new THREE.Vector3(...c.lookAt) : (typeof c.lookAt === 'string' && states.get(c.lookAt) ? new THREE.Vector3(...states.get(c.lookAt).pos).add(new THREE.Vector3(0, 1, 0)) : eye); }
     else if (c.mode === 'pov') { pos = T.clone().add(new THREE.Vector3(0, Math.max(0.5, hgt * 0.88), 0)); look = pos.clone().add(dirAt(tg.yaw, 10, -0.5)); }
     else if (c.mode === 'orbit') { const ang = c.angle + tg.yaw + local * 18; const dist = groupC ? Math.min(c.distance * 1.8, Math.max(c.distance, groupR * 1.8 + 3)) : c.distance; const ctr = groupC ? T.clone().lerp(groupC, 0.6) : T; pos = ctr.clone().add(dirAt(ang, dist, c.height + (dist - c.distance) * 0.2)); look = groupC ? new THREE.Vector3(ctr.x, eye.y, ctr.z) : eye; }
-    else if (c.mode === 'wide') { pos = T.clone().add(dirAt(c.angle, Math.max(c.distance, 24), Math.max(c.height, 8) + local * 0.2)); look = eye; }
+    else if (c.mode === 'wide') { const extent = Math.max(groupR * 2, (rec ? rec.g.userData.baseHeight : 1.8) * 2); const floorD = clamp(extent * 3.2, 12, 26); pos = T.clone().add(dirAt(c.angle, Math.max(c.distance, floorD), Math.max(c.height, floorD * 0.32) + local * 0.2)); look = groupC ? new THREE.Vector3(groupC.x, eye.y, groupC.z) : eye; }
     else { const sm = this.smoothYaw === undefined ? tg.yaw : this.smoothYaw; const d = ((tg.yaw - sm + 540) % 360) - 180; this.smoothYaw = snap ? tg.yaw : sm + d * Math.min(1, dt * 1.5); const dist = groupC ? Math.min(c.distance * 1.8, Math.max(c.distance, groupR * 1.6 + 3)) : c.distance; pos = T.clone().add(dirAt(this.smoothYaw + c.angle, dist, c.height + local * 0.05 + (dist - c.distance) * 0.25)); look = groupC ? new THREE.Vector3(lerp(T.x, groupC.x, 0.5), eye.y, lerp(T.z, groupC.z, 0.5)) : eye; }
+    // the subject is inside a room: keep the camera in there with them rather than outside a shell whose front faces are culled
+    { const room = this.roomAround(look); if (room) { const b = room.box; const pad = 0.45;
+        if (pos.x < b.min.x + pad || pos.x > b.max.x - pad || pos.z < b.min.z + pad || pos.z > b.max.z - pad || pos.y > b.max.y - 0.3) {
+          const d = pos.clone().sub(look); const dl = d.length() || 1; d.divideScalar(dl);
+          let t = dl; for (const [lo, hi, o, dd] of [[b.min.x + pad, b.max.x - pad, look.x, d.x], [b.min.z + pad, b.max.z - pad, look.z, d.z], [-1e6, b.max.y - 0.3, look.y, d.y]]) { if (Math.abs(dd) < 1e-4) continue; const t1 = (hi - o) / dd, t2 = (lo - o) / dd; for (const tt of [t1, t2]) if (tt > 0.2 && tt < t) t = tt; }
+          pos = look.clone().add(d.multiplyScalar(Math.max(1.2, t - 0.15)));
+        } } }
+    // part of the beat is happening below the ground: look down into the hole instead of across it
+    { const low = [], high = []; for (const x of beat.actions) { if (!x.actor) continue; const st = states.get(x.actor); const r2 = this.actors.get(x.actor); if (!st || st.op < 0.3 || !r2 || r2.g.userData.flat || r2.g.userData.big) continue; (st.pos[1] < -1 ? low : high).push(st); }
+      if (low.length && high.length) { const c0 = low.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(low.length);
+        look = new THREE.Vector3(c0.x, c0.y + 1.2, c0.z); const h = Math.hypot(pos.x - look.x, pos.z - look.z); pos.y = Math.max(pos.y, look.y + Math.max(h * 1.15, 4)); } }
     // keep camera above ground and out of the target
     const minY = Math.min(0.4, T.y + 0.5); if (pos.y < minY) pos.y = minY;
     const lookRec = typeof c.lookAt === 'string' ? this.actors.get(c.lookAt) : null;
     const selfs = [rec && rec.g, lookRec && lookRec.g].filter(Boolean);
-    if (c.mode !== 'pov') pos = this.unblock(look, pos, selfs.length ? selfs : null);
+    pos = this.unblock(look, pos, selfs.length ? selfs : null);
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f); }
     const hh = this.user.on ? 0 : 0.035; const drift = new THREE.Vector3(Math.sin(this.time * 0.7) * hh + Math.sin(this.time * 1.9) * hh * 0.4, Math.sin(this.time * 0.9 + 1) * hh * 0.7, Math.cos(this.time * 0.5) * hh);
@@ -209,6 +231,11 @@ const Stage = {
     this._ray = this._ray || new THREE.Raycaster(); const r = this._ray; r.set(look, dir); r.near = 0.3; r.far = len; const hits = r.intersectObjects(this.solidsNow || [], false);
     for (const h of hits) { if (self && this.isOwn(h.object, self)) continue; if (h.object.userData.soft && len - h.distance > Math.max(1.2, len * 0.4)) continue; return h.distance; }
     return Infinity;
+  },
+  roomAround(p) {
+    if (!this._rooms) { this._rooms = []; for (const rec of this.actors.values()) { if (rec.a.kind !== 'room' && rec.a.kind !== 'corridor') continue; const box = new THREE.Box3().setFromObject(rec.g); this._rooms.push({ rec, box }); } }
+    for (const r of this._rooms) { if (!r.rec.g.visible) continue; const b = r.box; if (p.x > b.min.x && p.x < b.max.x && p.z > b.min.z && p.z < b.max.z && p.y < b.max.y) return r; }
+    return null;
   },
   unblock(look, pos, self) {
     const sol = this.solidsNow; if (!sol || !sol.length) return pos;
@@ -251,9 +278,13 @@ const Stage = {
   updateLabels(states) {
     const W = this.canvas.clientWidth, H = this.canvas.clientHeight; const v = new THREE.Vector3(); const camPos = this.camera.position;
     const curBeat = this.scene.beats[this.lastBeat]; const povId = curBeat && curBeat.camera.mode === 'pov' && !this.user.on ? curBeat.camera.target : null; const curTarget = curBeat ? curBeat.camera.target : null;
+    const acting = new Set(curBeat ? curBeat.actions.filter(x => x.actor).map(x => x.actor) : []);
     const placed = [];
-    for (const [id, rec] of this.actors) { const st = states.get(id); const lbl = rec.lbl; const text = st.say ? `${rec.a.label || rec.a.kind}: “${st.say}”` : rec.a.label; if (!this.labelsOn || !text || st.op < 0.05 || id === povId) { lbl.hidden = true; continue; } const top = rec.g.userData.centered ? rec.g.userData.baseHeight * (st.size / rec.a.size) + 1 : rec.g.userData.baseHeight * (st.size / rec.a.size) + 0.25; v.set(st.pos[0], st.pos[1] + Math.min(top, 12), st.pos[2]); const dist = v.distanceTo(camPos); const isTarget = id === curTarget; if (!rec.g.userData.far && !st.say && !isTarget && dist > 38) { lbl.hidden = true; continue; } if (!rec.g.userData.far && this.occluded(camPos, v, rec.g)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.86); lbl.hidden = false; lbl.textContent = text; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = ((1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; placed.push({ lbl, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist }); }
-    placed.sort((a, b) => a.dist - b.dist); const rects = [];
+    for (const [id, rec] of this.actors) { const st = states.get(id); const lbl = rec.lbl; const text = st.say ? `${rec.a.label || rec.a.kind}: “${st.say}”` : rec.a.label; if (!this.labelsOn || !text || st.op < 0.05 || id === povId) { lbl.hidden = true; continue; } const top = rec.g.userData.centered ? rec.g.userData.baseHeight * (st.size / rec.a.size) + 1 : rec.g.userData.baseHeight * (st.size / rec.a.size) + 0.25; const under = st.pos[1] < -0.5; v.set(st.pos[0], st.pos[1] + (under ? Math.min(top, 12) * 0.45 : Math.min(top, 12)), st.pos[2]); const dist = v.distanceTo(camPos); const isTarget = id === curTarget; if (!rec.g.userData.far && !st.say && !isTarget && dist > 38) { lbl.hidden = true; continue; } if (!rec.g.userData.far && this.occluded(camPos, v, rec.g)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } if (v.y < -0.72 || v.y > 0.94) { lbl.hidden = true; continue; } v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.86); lbl.hidden = false; lbl.textContent = text; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = ((1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; placed.push({ lbl, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank: st.say ? 0 : (id === curTarget ? 1 : (acting.has(id) ? 2 : 3)) }); }
+    // a crowded frame keeps the labels of whoever is acting; the scenery gives up its name
+    placed.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
+    const cap = 6; if (placed.length > cap) { for (const p of placed.slice(cap)) p.lbl.hidden = true; placed.length = cap; }
+    const rects = [];
     for (const p of placed) { const w = p.lbl.offsetWidth || 60, h = p.lbl.offsetHeight || 20; let y = p.y, tries = 0; const overlaps = yy => rects.some(r => Math.abs(r.x - p.x) < (r.w + w) / 2 + 4 && Math.abs(r.y - yy) < h + 2); while (overlaps(y) && tries++ < 6) y -= h + 3; if (y !== p.y) p.lbl.style.top = y.toFixed(1) + 'px'; rects.push({ x: p.x, y, w, h }); }
   },
   /* metrics for the harness: which actors of the current beat are on screen */

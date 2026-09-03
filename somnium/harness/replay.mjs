@@ -17,6 +17,7 @@ const page = await b.newPage({ viewport: { width: 1280, height: 800 } }); const 
 page.on('pageerror', e => errs.push('PAGEERROR ' + e.message));
 await page.route('**/*', r => { const u = r.request().url(); if (u.includes('cdnjs.cloudflare.com') && u.endsWith('three.min.js')) return r.fulfill({ path: path.join(HERE, 'vendor', 'three.min.js'), contentType: 'application/javascript' }); if (u.includes('fonts.g')) return r.abort(); return r.continue(); });
 await page.goto(`http://127.0.0.1:${port}/`); await page.waitForFunction(() => window.__somnium && window.__somnium.Stage.ready, null, { timeout: 20000 });
+if (args.nolabels) await page.evaluate(() => { window.__somnium.Stage.labelsOn = false; });
 const ids = args.ids ? String(args.ids).split(',') : JSON.parse(readFileSync(path.join(round, 'summary.json'), 'utf8')).filter(r => r.ok).map(r => r.id);
 for (const id of ids) {
   const f = path.join(round, id, 'scene.json'); if (!existsSync(f)) continue;
@@ -26,18 +27,19 @@ for (const id of ids) {
   for (let i = 0; i < scene.beats.length; i++) {
     const mid = scene.beats.slice(0, i).reduce((a, x) => a + x.dur, 0) + scene.beats[i].dur * 0.5;
     await page.evaluate(t => { window.__somnium.Stage.setTime(t); window.__somnium.Stage.playing = false; }, mid);
+    if (args.nolabels) await page.evaluate(() => { window.__somnium.Stage.labelsOn = false; });
     await page.waitForTimeout(160);
     const m = await page.evaluate(() => window.__somnium.Stage.metrics());
     const want = scene.beats[i].camera.mode === 'fixed' && scene.beats[i].camera.pos
       ? null : (scene.beats[i].camera.distance || null);
     const got = Math.hypot(m.camera.pos[0] - m.camera.look[0], m.camera.pos[1] - m.camera.look[1], m.camera.pos[2] - m.camera.look[2]);
     const off = m.actors.filter(a => a.visible && !a.onScreen).map(a => a.id);
-    rows.push({ beat: i + 1, mode: m.camera.mode, want, got: +got.toFixed(1), off, near: got < 3 });
+    rows.push({ beat: i + 1, mode: m.camera.mode, want, got: +got.toFixed(1), off, near: got < 3, ms: m.frameMs, calls: m.calls, tris: m.tris });
     if (shots.has(`${id}:${i + 1}`) || args.all) await page.screenshot({ path: path.join(outDir, `${id}-b${String(i + 1).padStart(2, '0')}.png`) });
   }
   const bad = rows.filter(r => r.near || r.off.length);
   console.log(`\n== ${id} (${scene.beats.length} beats)`);
-  for (const r of rows) console.log(`  b${String(r.beat).padStart(2, '0')} ${r.mode.padEnd(6)} want ${r.want === null ? 'fixed' : String(r.want).padStart(4)}  got ${String(r.got).padStart(5)}${r.near ? '  << UNDER 3 m' : ''}${r.off.length ? '  offscreen: ' + r.off.join(',') : ''}`);
+  for (const r of rows) console.log(`  b${String(r.beat).padStart(2, '0')} ${r.mode.padEnd(6)} want ${r.want === null ? 'fixed' : String(r.want).padStart(4)}  got ${String(r.got).padStart(5)}  ${String(r.ms).padStart(5)}ms ${String(r.calls).padStart(4)}calls${r.near ? '  << UNDER 3 m' : ''}${r.off.length ? '  offscreen: ' + r.off.join(',') : ''}`);
   console.log(`  ${bad.length} beat(s) with a problem`);
 }
 console.log('\nerrors:', errs); await b.close(); server.close();

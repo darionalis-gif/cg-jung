@@ -21,6 +21,8 @@ const KIND_INFO = {
 };
 const KINDS = Object.keys(KIND_INFO);
 const STATES = ['idle','walk','run','fly','fall','float','swim','sit','kneel','lie','shake','spin','grow','shrink','open','collapse','dance','wave','crawl','limp','push','melt','fold'];
+const VEHICLE = new Set(['car', 'bus', 'truck', 'train', 'plane', 'helicopter', 'boat', 'bike']);
+const SEAT = { car: 0.9, bus: 1.2, truck: 1.4, train: 1.3, plane: 2.6, helicopter: 1.7, boat: 0.9, bike: 0.8 };
 const SKIES = ['night','dusk','dawn','day','overcast','void','underwater','storm'];
 const GROUNDS = ['grass','sand','water','stone','road','floor','snow','soil','cloud','mud','none'];
 const WEATHER = ['none','rain','snow','ash','fireflies','bubbles','leaves','sparks'];
@@ -79,6 +81,12 @@ Rules that matter:
 const HEX = /^#[0-9a-f]{6}$/i;
 function hex(v, d) { if (typeof v === 'string') { let s = v.trim(); if (/^#[0-9a-f]{3}$/i.test(s)) s = '#' + s[1] + s[1] + s[2] + s[2] + s[3] + s[3]; if (HEX.test(s)) return s.toLowerCase(); const c = CSS_COLORS[s.toLowerCase()]; if (c) return c; } return d; }
 const CSS_COLORS = { red:'#c0392b', blue:'#2e5cb8', green:'#3c8d4a', yellow:'#e6c84a', white:'#f2f2f2', black:'#111111', grey:'#888888', gray:'#888888', brown:'#7a4a2b', orange:'#e07a2f', purple:'#7d4fb0', pink:'#e59ab3', gold:'#d4af37', silver:'#c0c0c0' };
+function aimSky(scene) {
+  const b = scene.beats[0]; if (!b) return null; const c = b.camera;
+  if (c.mode === 'fixed' && c.pos) { const l = Array.isArray(c.lookAt) ? c.lookAt : (scene.actors.find(a => a.id === (typeof c.lookAt === 'string' ? c.lookAt : c.target)) || {}).pos; if (!l) return null; const d = [l[0] - c.pos[0], l[2] - c.pos[2]]; const n = Math.hypot(d[0], d[1]); return n > 0.1 ? [d[0] / n, d[1] / n] : null; }
+  const t = scene.actors.find(a => a.id === c.target); if (!t) return null;
+  const r = (t.yaw + (c.mode === 'follow' ? 0 : 180)) * Math.PI / 180; return [Math.sin(r), Math.cos(r)];
+}
 function skyPos(p) { let [x, y, z] = p; let h = Math.hypot(x, z); if (h < 60) { const k = 60 / Math.max(0.001, h); x *= k; z *= k; h = 60; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } return [x, clamp(y, 10, h * 0.42), z]; }
 function opt(v, a, b) { v = +v; return Number.isFinite(v) && v > 0 ? clamp(v, a, b) : 0; }
 function num(v, d, a = -1e6, b = 1e6) { v = +v; return Number.isFinite(v) ? clamp(v, a, b) : d; }
@@ -132,6 +140,8 @@ function normalizeScene(raw, dreamText) {
     }).filter(Boolean);
     return { dur: num(b.dur, 6, 2, 30), text: typeof b.text === 'string' ? b.text.trim() : '', camera, actions };
   });
+  // put any moon or sun in the half of the sky the opening shot faces, so what the page says is there can be seen
+  { const view = aimSky({ beats, actors, world }); if (view) for (const a of actors) { if (a.kind !== 'moon' && a.kind !== 'sun') continue; const h = Math.hypot(a.pos[0], a.pos[2]) || 90; if ((a.pos[0] / h) * view[0] + (a.pos[2] / h) * view[1] < 0.2) a.pos = [view[0] * h, a.pos[1], view[1] * h]; } }
   if (!beats.length) beats = [{ dur: 8, text: dreamText ? dreamText.slice(0, 200) : '', camera: { mode: 'orbit', target: firstId, pos: null, lookAt: null, distance: 10, height: 3, angle: 160 }, actions: [] }];
   let t = 0; for (const b of beats) { b.start = t; t += b.dur; }
   return { title: typeof s.title === 'string' && s.title.trim() ? s.title.trim().slice(0, 80) : 'Untitled dream', mood: typeof s.mood === 'string' ? s.mood.slice(0, 200) : '', world, actors, beats, total: t };
