@@ -239,6 +239,7 @@ const KIND_INFO = {
 };
 const KINDS = Object.keys(KIND_INFO);
 const STATES = ['idle','walk','run','fly','fall','float','swim','sit','kneel','lie','shake','spin','grow','shrink','open','collapse','dance','wave','crawl','limp','push','melt','fold'];
+const FACED = new Set(['person', 'crowd', 'animal', 'monster', 'ghost', 'skeleton']);
 const VEHICLE = new Set(['car', 'bus', 'truck', 'train', 'plane', 'helicopter', 'boat', 'bike']);
 const SEAT = { car: 0.9, bus: 1.2, truck: 1.4, train: 1.3, plane: 2.6, helicopter: 1.7, boat: 0.9, bike: 0.8 };
 const SKIES = ['night','dusk','dawn','day','overcast','void','underwater','storm'];
@@ -265,7 +266,7 @@ STAGE SCRIPT FORMAT (all keys shown; hex colours like "#a1b2c3"; y is up; units 
  "actors": [
    { "id": "unique_snake_case", "kind": one of KINDS, "label": "what the dreamer would call it (empty string for scenery that needs no label)",
      "color": hex, "size": 0.05-40 (scale multiplier on the kind's base size given in the KINDS list; 1 = that base size), "pos": [x,y,z] (where the actor touches the ground: y is 0 for anything standing on the ground and the builder adds its own height; a window, a sign board, a moon are placed at their pos), "yaw": degrees (0 faces +z),
-     "hidden": true|false (start invisible, appear later), "glow": true|false, "ghost": true|false (translucent),
+     "hidden": true|false (start invisible, appear later), "glow": true|false, "ghost": true|false (translucent), "carriedBy": actorId (a thing held or carried: it rides in that person's hand and needs no move of its own),
      "detail": { optional, by kind: "species" for animal (dog,cat,horse,bird,fish,snake,wolf,bear,deer,cow,lion,spider,rat,chimp,rabbit,generic), "text" for sign, "count" for crowd (4-30) and forest/city/flower/field (5-60), "radius" for forest/city/crowd/water/pit/field, "width"/"depth"/"height" for room/wall/building/corridor/bridge/road/river, "open" true for door, "second": hex for a second colour, "skin": hex for person skin, "hair": hex }
    }
  ],
@@ -290,7 +291,7 @@ Rules that matter:
 1. Fidelity first. Every place, person, creature and thing the dream names is an actor with a recognisable label. Events happen in the order the dream tells them; nothing is invented that contradicts the text; where the dream is vague, choose the plainest reading. Emotions are staged through colour, light, fog, weather, camera distance and effect, not left out. "say" carries only words the report quotes or reports; when the report says someone yelled without saying what, use the state shake and no invented words.
 2. Cover the whole dream: 5 to 14 beats, each carrying a verbatim excerpt of the report in "text" (fix nothing, quote in order; the excerpts joined should reproduce the report). One clear event per beat, and the thing the sentence is about must be on screen and legible in that beat.
 3. The dreamer is an actor with id "me" (kind person, label "me") whenever the dream is in the first person; the camera usually follows "me" (mode follow, distance 6-10, height 2-4) and cuts to fixed or wide shots for big scenery, and to orbit for a moment to be looked at. Keep whoever acts in the beat inside the frame: look at them or follow them. A fixed camera position must be outside every building, room, hill and wall and at least 3 m from any person or crowd; never look at a scene through a wall. States: melt flattens a whole figure, fold crumples only the head and face, collapse drops a figure to the ground, kneel and sit need no seat.
-4. Space is real: put the actors of a beat within a few metres of each other; a person who walks moves 1.4 m per second, a run 4 m/s; scenery is around, not under, the people. Buildings are at least 6 m apart and never straddle the road. A small town, a village, a suburb or a slum is made of house and shop actors, not building or city. Interiors: put a "room" actor around the people (width/depth/height) and set ground "floor"; when the people leave a room, vanish the room in that beat or cut to a camera outside. Underground (a cave, a hold, a cellar): keep ground "soil" or "stone" at y 0 with the people on it, sky "void", a cave actor around them, and a lamp, candle or fire for light; do not put people below y 0 except at the bottom of a pit. People stand on sand or grass next to water, never inside a water disc unless they swim. Something a person carries stays with them: give it the same move in the same beat and a y of about 1.1 so it sits at hand height. Anything the report dwells on is its own labelled actor, not a word inside another actor's label: the big lens on the camera, the dishes, the money, the teeth. Use the base sizes: a sand castle is castle at size 0.3, a tooth is tooth at size 1-3, a puddle is water at size 0.1, a lens or a camera is box at size 0.2 with a label. People riding in a vehicle move with it: give them the same move in the same beat, with y about 1 for a car and 1.2 for a helicopter, and state sit.
+4. Space is real: put the actors of a beat within a few metres of each other; a person who walks moves 1.4 m per second, a run 4 m/s; scenery is around, not under, the people. Buildings are at least 6 m apart and never straddle the road. A small town, a village, a suburb or a slum is made of house and shop actors, not building or city. Interiors: put a "room" actor around the people (width/depth/height) and set ground "floor"; when the people leave a room, vanish the room in that beat or cut to a camera outside. Underground (a cave, a hold, a cellar): keep ground "soil" or "stone" at y 0 with the people on it, sky "void", a cave actor around them, and a lamp, candle or fire for light; do not put people below y 0 except at the bottom of a pit. People stand on sand or grass next to water, never inside a water disc unless they swim. Something a person carries is given carriedBy: that person's id, and then never needs a pos or a move of its own; it stays in their hand wherever they go. Anything the report dwells on is its own labelled actor, not a word inside another actor's label: the big lens on the camera, the dishes, the money, the teeth. Use the base sizes: a sand castle is castle at size 0.3, a tooth is tooth at size 1-3, a puddle is water at size 0.1, a lens or a camera is box at size 0.2 with a label. People riding in a vehicle move with it: give them the same move in the same beat, with y about 1 for a car and 1.2 for a helicopter, and state sit.
 5. The audience must always be able to see the actors, even in a night or underground scene: keep ambient at or above a dim grey-blue like #3a4060, sunIntensity at or above 0.4, fogDensity at or below 0.03 unless the sentence is about not being able to see, and never below-black skies. Darkness is a mood, not a blindfold.
 6. Stage transitions of place as a beat with a "blackout" effect at 0 plus "world" changes and moves, or by having the old scenery vanish and the new appear. Actors that are not yet in the story start hidden and get "appear"; actors that leave get "vanish" (both happen within about a quarter of the beat unless you give "for"). Hidden actors still need a pos. Things a person carries or wears (money, a bag, a hat, a camera) are not separate actors unless the dream makes them act: name them in the person's label instead ("me, with my money"). A moon or sun is a disc at exactly its pos: put it 60-150 m away, only 15-40 m up so it hangs low over the horizon, and on the side the camera of the beats that show it will be facing (for a follow camera that is behind the actor, so a moon the dreamer walks toward goes in front of them).
 7. Output ONLY the JSON object, no commentary, no markdown fences.`;
@@ -307,7 +308,7 @@ function aimSky(scene) {
   if (c.mode === 'pov') { const r = t.yaw * Math.PI / 180; return [Math.sin(r), Math.cos(r)]; }
   const r = (t.yaw + c.angle) * Math.PI / 180; return [-Math.sin(r), -Math.cos(r)];
 }
-function skyPos(p) { let [x, y, z] = p; let h = Math.hypot(x, z); if (h < 60) { const k = 60 / Math.max(0.001, h); x *= k; z *= k; h = 60; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } return [x, clamp(y, 8, h * 0.13), z]; }
+function skyPos(p) { let [x, y, z] = p; let h = Math.hypot(x, z); if (h < 25) { const k = 25 / Math.max(0.001, h); x *= k; z *= k; h = 25; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } return [x, clamp(y, 8, h * 0.13), z]; }
 function opt(v, a, b) { v = +v; return Number.isFinite(v) && v > 0 ? clamp(v, a, b) : 0; }
 function num(v, d, a = -1e6, b = 1e6) { v = +v; return Number.isFinite(v) ? clamp(v, a, b) : d; }
 function vec(v, d) { return Array.isArray(v) && v.length >= 3 && v.slice(0, 3).every(x => Number.isFinite(+x)) ? v.slice(0, 3).map(x => clamp(+x, -500, 500)) : d.slice(); }
@@ -328,10 +329,11 @@ function normalizeScene(raw, dreamText) {
     return {
       id, kind, label: typeof a.label === 'string' ? a.label.slice(0, 60) : (kind === 'thing' ? id : ''),
       color: hex(a.color, DEFAULT_COLOR[kind] || '#9a9ab0'), size: num(a.size, 1, 0.05, 80), pos: vec(a.pos, [0, 0, 0]), yaw: num(a.yaw, 0),
-      hidden: !!a.hidden, glow: !!a.glow, ghost: !!a.ghost, ...((kind === 'moon' || kind === 'sun') ? { pos: skyPos(vec(a.pos, [0, 30, -110])) } : {}),
+      hidden: !!a.hidden, glow: !!a.glow, ghost: !!a.ghost, carriedBy: typeof a.carriedBy === 'string' ? a.carriedBy.toLowerCase().replace(/[^a-z0-9_]+/g, '_') : '', ...((kind === 'moon' || kind === 'sun') ? { pos: skyPos(vec(a.pos, [0, 30, -110])) } : {}),
       detail: { species: String(d.species || d.animal || '').toLowerCase(), text: typeof d.text === 'string' ? d.text.slice(0, 40) : '', count: opt(d.count, 1, 40), radius: opt(d.radius, 0.5, 300), width: opt(d.width, 0.3, 300), depth: opt(d.depth, 0.3, 300), height: opt(d.height, 0.3, 300), open: !!d.open, second: hex(d.second, null), skin: hex(d.skin, null), hair: hex(d.hair, null) }
     };
   });
+  for (const a of actors) { if (a.carriedBy && (a.carriedBy === a.id || !actors.some(q => q.id === a.carriedBy))) a.carriedBy = ''; }
   if (!actors.length) actors.push({ id: 'me', kind: 'person', label: 'me', color: '#6b7ba8', size: 1, pos: [0, 0, 0], yaw: 0, hidden: false, glow: false, ghost: false, detail: {} });
   let beats = Array.isArray(s.beats) ? s.beats.filter(b => b && typeof b === 'object') : [];
   const firstId = actors.find(a => a.id === 'me')?.id || actors[0].id;
@@ -696,7 +698,7 @@ const Stage = {
             const cx = (bx.min.x + bx.max.x) / 2, cz = (bx.min.z + bx.max.z) / 2; const dx = wx - cx, dz = wz - cz;
             const outX = (bx.max.x - bx.min.x) / 2 + 0.55, outZ = (bx.max.z - bx.min.z) / 2 + 0.55;
             const sx = rec.g.scale.x || 1; if (Math.abs(dx) / outX > Math.abs(dz) / outZ) { const d = Math.sign(dx || 1) * outX - dx; if (Math.abs(d) < 2.5) m.position.x += d / sx; } else { const d = Math.sign(dz || 1) * outZ - dz; if (Math.abs(d) < 2.5) m.position.z += d / sx; }
-            break; } } } } this.applyWorld(scene.world); this.setTime(0); this.playing = true;
+            break; } } } } this.applyWorld(scene.world); const mid0 = scene.beats[0] ? scene.beats[0].dur * 0.5 : 0; this.setTime(mid0); this.aimSkyLive(); this.setTime(0); this.playing = true;
   },
   setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
   beatAt(t) { const bs = this.scene.beats; for (let i = bs.length - 1; i >= 0; i--) if (t >= bs[i].start) return i; return 0; },
@@ -724,6 +726,10 @@ const Stage = {
         const seat = SEAT[kindOf(v.actor)] || 1;
         rider.pos = [car.pos[0] + 0.6, car.pos[1] + seat, car.pos[2]]; rider.yaw = car.yaw;
         if (rider.state === 'idle' || rider.state === 'walk') rider.state = 'sit'; } }
+    for (const a of S.actors) { if (!a.carriedBy) continue; const it = out.get(a.id), by = out.get(a.carriedBy); if (!it || !by) continue;
+      const r = by.yaw * Math.PI / 180, side = 0.34 * (a.id.length % 2 ? 1 : -1);
+      it.pos = [by.pos[0] + Math.cos(r) * side + Math.sin(r) * 0.18, by.pos[1] + 0.95 * (by.size || 1), by.pos[2] - Math.sin(r) * side + Math.cos(r) * 0.18];
+      it.yaw = by.yaw; it.op = Math.min(it.op, by.op) > 0.02 ? Math.max(it.op, by.op * 0.999) : it.op; }
     for (const st of out.values()) if (st.moving && st.state === 'idle') st.state = st.moving > 2.5 ? 'run' : 'walk';
     return out;
   },
@@ -839,6 +845,7 @@ const Stage = {
     if (s === 'collapse' || s === 'melt') { g.scale.y *= Math.max(0.05, 1 - st.window); }
   },
   updateCamera(beat, states, dt, snap) {
+    const f_isTarget = (id, cc) => id === cc.target;
     const c = beat.camera, tg = states.get(c.target) || states.values().next().value; const T = new THREE.Vector3(tg.pos[0], tg.pos[1], tg.pos[2]); const rec = this.actors.get(c.target); const hgt = rec ? rec.g.userData.baseHeight * (tg.size / rec.a.size) : 1.8; const eye = T.clone().add(new THREE.Vector3(0, Math.min(hgt * 0.6, 1.6), 0));
     let pos, look; const local = this.time - beat.start;
     // frame the whole group that acts in this beat, not only the target
@@ -876,7 +883,7 @@ const Stage = {
     // frame the actors the sentence names, not only the camera's target: try the shot, then a few wider or turned variants
     const framed = [];
     const cut = beat.actions.some(x => x.effect === 'blackout');
-    for (const x of beat.actions) { if (!x.actor) continue; if (cut && !x.appear && !x.say && !x.move) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; const weight = (x.say || x.move || (x.state && x.state !== 'idle')) ? 1 : 0.35; const prev = framed.find(q => q.id === x.actor); if (prev) { prev.w = Math.max(prev.w, weight); continue; } framed.push({ id: x.actor, g: r2.g, w: weight, h: r2.g.userData.baseHeight * (st2.size / r2.a.size), p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
+    for (const x of beat.actions) { if (!x.actor) continue; if (cut && !x.appear && !x.say && !x.move) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; const weight = (x.say || x.move || (x.state && x.state !== 'idle')) ? 1 : 0.35; const prev = framed.find(q => q.id === x.actor); if (prev) { prev.w = Math.max(prev.w, weight); continue; } framed.push({ id: x.actor, g: r2.g, w: weight, faced: FACED.has(r2.a.kind) && (x.say || x.state || f_isTarget(x.actor, c)), h: r2.g.userData.baseHeight * (st2.size / r2.a.size), p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
     const authored = c.mode === 'fixed' && !!c.pos;
     if (!authored && (snap || !this.framePick || this.framePick.beat !== this.lastBeat)) {
       let best = { az: 0, mul: 1, score: -1 };
@@ -889,7 +896,8 @@ const Stage = {
             if (f.w >= 1) { const apparent = (f.h || 1.8) / Math.max(1, f.p.distanceTo(out.pos)); if (apparent < 0.045) tooSmall = true; } }
           n += scenery; if (tooSmall) n -= 1.5;
           const toCam = out.pos.clone().sub(T); const facing = dirAt(tg.yaw, 1, 0); const front = (toCam.x * facing.x + toCam.z * facing.z) / (Math.hypot(toCam.x, toCam.z) || 1);
-          const cost = Math.abs(az) / 900 + (mul - 1) * 0.9 + this.lensCrowding(out.pos, selfs) * 0.7 + (tgtSeen ? (1 - front) * 0.75 : 0);
+          let faceCost = 0; for (const f of framed) { if (!f.faced) continue; if (!this.inShot(out.pos, out.look, f.p, f.g)) continue; const st3 = states.get(f.id); const fc = dirAt(st3.yaw, 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost = Math.max(faceCost, (1 - fr) * 0.5); }
+          const cost = Math.abs(az) / 900 + (mul - 1) * 0.9 + this.lensCrowding(out.pos, selfs) * 0.7 + Math.min(0.55, faceCost);
           const score = n - cost; if (score > best.score) best = { az, mul, score, n };
           if (n === framed.length && az === 0 && mul === 1 && this.lensCrowding(out.pos, selfs) === 0) break;
         }
@@ -989,11 +997,30 @@ const Stage = {
     let white = 0, black = 0, blur = 0, pulse = 0; this.fx = this.fx.filter(f => (f.t -= dt) > 0); for (const f of this.fx) { if (f.k === 'flash') white = Math.max(white, f.t / 0.7); if (f.k === 'blackout') black = Math.max(black, Math.min(1, f.t / 1.0)); if (f.k === 'blur') blur = Math.max(blur, f.t / 1.6); if (f.k === 'pulse') pulse = Math.max(pulse, Math.sin(f.t * 8) * 0.5 + 0.5); }
     this.fxEl.style.background = black > white ? '#000' : '#fff'; this.fxEl.style.opacity = Math.max(white, black).toFixed(3); this.canvas.style.filter = blur > 0.01 ? `blur(${(blur * 6).toFixed(1)}px)` : ''; if (pulse > 0) this.three.fog.density = this.worldNow.fogDensity * (1 + pulse * 2);
   },
+  aimSkyLive() {
+    if (!this.scene) return; const sky = [...this.actors.values()].filter(r => r.g.userData.far && r.g.userData.centered); if (!sky.length) return;
+    const cam = this.camera; cam.updateMatrixWorld(true);
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
+    const vhalf = cam.fov * Math.PI / 360; const rise = Math.tan(vhalf) * 0.2;
+    for (const rec of sky) {
+      const a = rec.a; const D = Math.max(70, Math.hypot(a.pos[0], a.pos[2]));
+      const dir = fwd.clone().add(up.clone().multiplyScalar(rise)).normalize();
+      const p = cam.position.clone().add(dir.multiplyScalar(D));
+      if (p.y < 8) p.y = 8;
+      // settle it into the upper third of the frame rather than on its edge
+      for (let k = 0; k < 12; k++) { const ndc = p.clone().project(cam); if (ndc.y <= 0.55) break; p.y -= Math.max(1, (ndc.y - 0.5) * 22); if (p.y < 8) { p.y = 8; break; } }
+      a.pos = [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)];
+      const st = this.states && this.states.get(a.id); if (st) st.pos = a.pos.slice();
+      rec.g.position.set(a.pos[0], a.pos[1], a.pos[2]);
+    }
+  },
+
   fitSky(states) {
     if (!this.scene) return; const cam = this.camera;
     for (const [id, rec] of this.actors) { const ud = rec.g.userData; if (!ud.far || !ud.centered) continue; const st = states.get(id); if (!st) continue;
       const p = new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2]); const d = p.distanceTo(cam.position);
-      const half = Math.tan(cam.fov * Math.PI / 360) * d; const want = Math.min(st.size, half * 0.34 / 5);
+      const half = Math.tan(cam.fov * Math.PI / 360) * d; const want = Math.min(st.size, half * 0.17 / 5);
       rec.g.scale.setScalar(Math.max(0.2, want)); }
   },
   updateLabels(states) {
@@ -1007,9 +1034,17 @@ const Stage = {
     const cap = 6; if (placed.length > cap) { for (const p of placed.slice(cap)) p.lbl.hidden = true; placed.length = cap; }
     const rects = [];
     for (const p of placed) { const w = p.lbl.offsetWidth || 60, h = p.lbl.offsetHeight || 20; let y = p.y, tries = 0;
-      const overlaps = yy => rects.some(r => Math.abs(r.x - p.x) < (r.w + w) / 2 + 4 && Math.abs(r.y - yy) < h + 2)
-        || pts.some(q => q.id !== p.id && Math.abs(q.x - p.x) < w / 2 + 10 && q.y > yy - h && q.y < yy + h * 1.6);
-      while (overlaps(y) && tries++ < 8) y -= h + 3; if (y !== p.y) p.lbl.style.top = y.toFixed(1) + 'px'; rects.push({ x: p.x, y, w, h }); }
+      const clash = (xx, yy) => rects.some(r => Math.abs(r.x - xx) < (r.w + w) / 2 + 4 && Math.abs(r.y - yy) < h + 2)
+        || pts.some(q => Math.abs(q.x - xx) < w / 2 + 12 && q.y > yy - h && q.y < yy + h * 1.7);
+      let x = p.x, placedOk = !clash(x, y);
+      for (const [dx, dy] of [[0, -1], [0, -2], [1, 0], [-1, 0], [1, -1], [-1, -1], [1, -2], [-1, -2], [0, -3], [1.6, 0], [-1.6, 0]]) {
+        if (placedOk) break; const nx = p.x + dx * (w / 2 + 16), ny = p.y + dy * (h + 4);
+        if (nx < w / 2 + 6 || nx > W - w / 2 - 6 || ny < 30) continue;
+        if (!clash(nx, ny)) { x = nx; y = ny; placedOk = true; }
+      }
+      if (!placedOk) { p.lbl.hidden = true; continue; }
+      if (x !== p.x) p.lbl.style.left = x.toFixed(1) + 'px';
+      p.x = x; if (y !== p.y) p.lbl.style.top = y.toFixed(1) + 'px'; rects.push({ x: p.x, y, w, h }); }
   },
   /* metrics for the harness: which actors of the current beat are on screen */
   metrics() {
@@ -1043,8 +1078,8 @@ const App = {
   useText(text, src) { $('#dreamText').value = text; this.pendingSrc = src || null; this.tab('write'); $('#dreamText').focus(); $('#writeErr').hidden = true; },
   /* ---- Claude ---- */
   genPrompt(text) { return DSL_DOC + '\n\nTHE DREAM REPORT:\n<<<\n' + text + '\n>>>\n\nWrite the stage script for this dream. JSON only.'; },
-  editPrompt(d, request) { const hist = d.chat.slice(-8).map(m => (m.role === 'user' ? 'DREAMER: ' : 'DIRECTOR: ') + m.text).join('\n'); return DSL_DOC + '\n\nTHE DREAM REPORT:\n<<<\n' + d.text + '\n>>>\n\nTHE CURRENT STAGE SCRIPT (JSON):\n' + JSON.stringify(this.exportScene(d.scene)) + (hist ? '\n\nCONVERSATION SO FAR:\n' + hist : '') + '\n\nTHE DREAMER NOW ASKS:\n' + request + '\n\nRevise the stage script to honour the request. Change only what the request needs: keep every id, every beat and its text, every colour, size and position you were not asked to touch exactly as they are (the dreamer will compare before and after). If the dream is staged indoors (a room around the people, ground floor), a change to the sky, the fog or a moon will not be seen at all: change the light in the room, its colours and what is in it instead, and say so plainly. Anything you add must actually be visible from the cameras of the beats it appears in (a moon within 150 m and inside the fog range, a figure inside the frame). Answer with one JSON object and nothing else: {"reply": "one or two sentences to the dreamer, in plain words, on what changed and where it can be seen; claim nothing that is not on screen", "scene": <the complete revised stage script>}.'; },
-  exportScene(s) { const cleanDetail = d => { const o = {}; for (const k of Object.keys(d || {})) { const v = d[k]; if (v === 0 || v === '' || v === null || v === false || v === undefined) continue; o[k] = v; } return o; }; const cleanCam = c => { const o = { mode: c.mode, target: c.target }; if (c.pos) o.pos = c.pos; if (c.lookAt) o.lookAt = c.lookAt; if (c.mode !== 'fixed' && c.mode !== 'pov') { o.distance = c.distance; o.height = c.height; o.angle = c.angle; } return o; }; const cleanWorld = w => { const o = {}; for (const k of Object.keys(w)) if (w[k] !== undefined) o[k] = w[k]; return o; }; return { title: s.title, mood: s.mood, world: cleanWorld(s.world), actors: s.actors.map(a => { const o = { id: a.id, kind: a.kind, label: a.label, color: a.color, size: a.size, pos: a.pos, yaw: a.yaw }; if (a.hidden) o.hidden = true; if (a.glow) o.glow = true; if (a.ghost) o.ghost = true; const d = cleanDetail(a.detail); if (Object.keys(d).length) o.detail = d; return o; }), beats: s.beats.map(b => ({ dur: b.dur, text: b.text, camera: cleanCam(b.camera), actions: b.actions.map(x => { const o = {}; for (const k of Object.keys(x)) { if (k === 'world') o.world = cleanWorld(x.world); else if (k === 'at' && x.at === 0) continue; else if (k === 'for' && x.for === 1) continue; else o[k] = x[k]; } return o; }) })) }; },
+  editPrompt(d, request) { const hist = d.chat.slice(-8).map(m => (m.role === 'user' ? 'DREAMER: ' : 'DIRECTOR: ') + m.text).join('\n'); return DSL_DOC + '\n\nTHE DREAM REPORT:\n<<<\n' + d.text + '\n>>>\n\nTHE CURRENT STAGE SCRIPT (JSON):\n' + JSON.stringify(this.exportScene(d.scene)) + (hist ? '\n\nCONVERSATION SO FAR:\n' + hist : '') + '\n\nTHE DREAMER NOW ASKS:\n' + request + '\n\nRevise the stage script to honour the request. Change only what the request needs: keep every id, every beat and its text, every colour, size and position you were not asked to touch exactly as they are (the dreamer will compare before and after). If the dream is staged indoors (a room around the people, ground floor), a change to the sky, the fog or a moon will not be seen at all: change the light in the room, its colours and what is in it instead, and say so plainly. A moon or sun you add is placed by the stage into the opening shot, so say it can be seen there and do not claim it is in every beat. Anything else you add must actually be visible from the cameras of the beats it appears in (a moon within 150 m and inside the fog range, a figure inside the frame). Answer with one JSON object and nothing else: {"reply": "one or two sentences to the dreamer, in plain words, on what changed and where it can be seen; claim nothing that is not on screen", "scene": <the complete revised stage script>}.'; },
+  exportScene(s) { const cleanDetail = d => { const o = {}; for (const k of Object.keys(d || {})) { const v = d[k]; if (v === 0 || v === '' || v === null || v === false || v === undefined) continue; o[k] = v; } return o; }; const cleanCam = c => { const o = { mode: c.mode, target: c.target }; if (c.pos) o.pos = c.pos; if (c.lookAt) o.lookAt = c.lookAt; if (c.mode !== 'fixed' && c.mode !== 'pov') { o.distance = c.distance; o.height = c.height; o.angle = c.angle; } return o; }; const cleanWorld = w => { const o = {}; for (const k of Object.keys(w)) if (w[k] !== undefined) o[k] = w[k]; return o; }; return { title: s.title, mood: s.mood, world: cleanWorld(s.world), actors: s.actors.map(a => { const o = { id: a.id, kind: a.kind, label: a.label, color: a.color, size: a.size, pos: a.pos, yaw: a.yaw }; if (a.carriedBy) o.carriedBy = a.carriedBy; if (a.hidden) o.hidden = true; if (a.glow) o.glow = true; if (a.ghost) o.ghost = true; const d = cleanDetail(a.detail); if (Object.keys(d).length) o.detail = d; return o; }), beats: s.beats.map(b => ({ dur: b.dur, text: b.text, camera: cleanCam(b.camera), actions: b.actions.map(x => { const o = {}; for (const k of Object.keys(x)) { if (k === 'world') o.world = cleanWorld(x.world); else if (k === 'at' && x.at === 0) continue; else if (k === 'for' && x.for === 1) continue; else o[k] = x[k]; } return o; }) })) }; },
   async ask(prompt, tier) {
     if (!this.sample) throw { code: 'not_granted', message: 'Claude is not available here.' };
     const opts = { modelTier: tier || $('#tier').value, cache: false };

@@ -58,7 +58,7 @@ const Stage = {
             const cx = (bx.min.x + bx.max.x) / 2, cz = (bx.min.z + bx.max.z) / 2; const dx = wx - cx, dz = wz - cz;
             const outX = (bx.max.x - bx.min.x) / 2 + 0.55, outZ = (bx.max.z - bx.min.z) / 2 + 0.55;
             const sx = rec.g.scale.x || 1; if (Math.abs(dx) / outX > Math.abs(dz) / outZ) { const d = Math.sign(dx || 1) * outX - dx; if (Math.abs(d) < 2.5) m.position.x += d / sx; } else { const d = Math.sign(dz || 1) * outZ - dz; if (Math.abs(d) < 2.5) m.position.z += d / sx; }
-            break; } } } } this.applyWorld(scene.world); this.setTime(0); this.playing = true;
+            break; } } } } this.applyWorld(scene.world); const mid0 = scene.beats[0] ? scene.beats[0].dur * 0.5 : 0; this.setTime(mid0); this.aimSkyLive(); this.setTime(0); this.playing = true;
   },
   setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
   beatAt(t) { const bs = this.scene.beats; for (let i = bs.length - 1; i >= 0; i--) if (t >= bs[i].start) return i; return 0; },
@@ -86,6 +86,10 @@ const Stage = {
         const seat = SEAT[kindOf(v.actor)] || 1;
         rider.pos = [car.pos[0] + 0.6, car.pos[1] + seat, car.pos[2]]; rider.yaw = car.yaw;
         if (rider.state === 'idle' || rider.state === 'walk') rider.state = 'sit'; } }
+    for (const a of S.actors) { if (!a.carriedBy) continue; const it = out.get(a.id), by = out.get(a.carriedBy); if (!it || !by) continue;
+      const r = by.yaw * Math.PI / 180, side = 0.34 * (a.id.length % 2 ? 1 : -1);
+      it.pos = [by.pos[0] + Math.cos(r) * side + Math.sin(r) * 0.18, by.pos[1] + 0.95 * (by.size || 1), by.pos[2] - Math.sin(r) * side + Math.cos(r) * 0.18];
+      it.yaw = by.yaw; it.op = Math.min(it.op, by.op) > 0.02 ? Math.max(it.op, by.op * 0.999) : it.op; }
     for (const st of out.values()) if (st.moving && st.state === 'idle') st.state = st.moving > 2.5 ? 'run' : 'walk';
     return out;
   },
@@ -201,6 +205,7 @@ const Stage = {
     if (s === 'collapse' || s === 'melt') { g.scale.y *= Math.max(0.05, 1 - st.window); }
   },
   updateCamera(beat, states, dt, snap) {
+    const f_isTarget = (id, cc) => id === cc.target;
     const c = beat.camera, tg = states.get(c.target) || states.values().next().value; const T = new THREE.Vector3(tg.pos[0], tg.pos[1], tg.pos[2]); const rec = this.actors.get(c.target); const hgt = rec ? rec.g.userData.baseHeight * (tg.size / rec.a.size) : 1.8; const eye = T.clone().add(new THREE.Vector3(0, Math.min(hgt * 0.6, 1.6), 0));
     let pos, look; const local = this.time - beat.start;
     // frame the whole group that acts in this beat, not only the target
@@ -238,7 +243,7 @@ const Stage = {
     // frame the actors the sentence names, not only the camera's target: try the shot, then a few wider or turned variants
     const framed = [];
     const cut = beat.actions.some(x => x.effect === 'blackout');
-    for (const x of beat.actions) { if (!x.actor) continue; if (cut && !x.appear && !x.say && !x.move) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; const weight = (x.say || x.move || (x.state && x.state !== 'idle')) ? 1 : 0.35; const prev = framed.find(q => q.id === x.actor); if (prev) { prev.w = Math.max(prev.w, weight); continue; } framed.push({ id: x.actor, g: r2.g, w: weight, h: r2.g.userData.baseHeight * (st2.size / r2.a.size), p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
+    for (const x of beat.actions) { if (!x.actor) continue; if (cut && !x.appear && !x.say && !x.move) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; const weight = (x.say || x.move || (x.state && x.state !== 'idle')) ? 1 : 0.35; const prev = framed.find(q => q.id === x.actor); if (prev) { prev.w = Math.max(prev.w, weight); continue; } framed.push({ id: x.actor, g: r2.g, w: weight, faced: FACED.has(r2.a.kind) && (x.say || x.state || f_isTarget(x.actor, c)), h: r2.g.userData.baseHeight * (st2.size / r2.a.size), p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
     const authored = c.mode === 'fixed' && !!c.pos;
     if (!authored && (snap || !this.framePick || this.framePick.beat !== this.lastBeat)) {
       let best = { az: 0, mul: 1, score: -1 };
@@ -251,7 +256,8 @@ const Stage = {
             if (f.w >= 1) { const apparent = (f.h || 1.8) / Math.max(1, f.p.distanceTo(out.pos)); if (apparent < 0.045) tooSmall = true; } }
           n += scenery; if (tooSmall) n -= 1.5;
           const toCam = out.pos.clone().sub(T); const facing = dirAt(tg.yaw, 1, 0); const front = (toCam.x * facing.x + toCam.z * facing.z) / (Math.hypot(toCam.x, toCam.z) || 1);
-          const cost = Math.abs(az) / 900 + (mul - 1) * 0.9 + this.lensCrowding(out.pos, selfs) * 0.7 + (tgtSeen ? (1 - front) * 0.75 : 0);
+          let faceCost = 0; for (const f of framed) { if (!f.faced) continue; if (!this.inShot(out.pos, out.look, f.p, f.g)) continue; const st3 = states.get(f.id); const fc = dirAt(st3.yaw, 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost = Math.max(faceCost, (1 - fr) * 0.5); }
+          const cost = Math.abs(az) / 900 + (mul - 1) * 0.9 + this.lensCrowding(out.pos, selfs) * 0.7 + Math.min(0.55, faceCost);
           const score = n - cost; if (score > best.score) best = { az, mul, score, n };
           if (n === framed.length && az === 0 && mul === 1 && this.lensCrowding(out.pos, selfs) === 0) break;
         }
@@ -351,11 +357,30 @@ const Stage = {
     let white = 0, black = 0, blur = 0, pulse = 0; this.fx = this.fx.filter(f => (f.t -= dt) > 0); for (const f of this.fx) { if (f.k === 'flash') white = Math.max(white, f.t / 0.7); if (f.k === 'blackout') black = Math.max(black, Math.min(1, f.t / 1.0)); if (f.k === 'blur') blur = Math.max(blur, f.t / 1.6); if (f.k === 'pulse') pulse = Math.max(pulse, Math.sin(f.t * 8) * 0.5 + 0.5); }
     this.fxEl.style.background = black > white ? '#000' : '#fff'; this.fxEl.style.opacity = Math.max(white, black).toFixed(3); this.canvas.style.filter = blur > 0.01 ? `blur(${(blur * 6).toFixed(1)}px)` : ''; if (pulse > 0) this.three.fog.density = this.worldNow.fogDensity * (1 + pulse * 2);
   },
+  aimSkyLive() {
+    if (!this.scene) return; const sky = [...this.actors.values()].filter(r => r.g.userData.far && r.g.userData.centered); if (!sky.length) return;
+    const cam = this.camera; cam.updateMatrixWorld(true);
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
+    const vhalf = cam.fov * Math.PI / 360; const rise = Math.tan(vhalf) * 0.2;
+    for (const rec of sky) {
+      const a = rec.a; const D = Math.max(70, Math.hypot(a.pos[0], a.pos[2]));
+      const dir = fwd.clone().add(up.clone().multiplyScalar(rise)).normalize();
+      const p = cam.position.clone().add(dir.multiplyScalar(D));
+      if (p.y < 8) p.y = 8;
+      // settle it into the upper third of the frame rather than on its edge
+      for (let k = 0; k < 12; k++) { const ndc = p.clone().project(cam); if (ndc.y <= 0.55) break; p.y -= Math.max(1, (ndc.y - 0.5) * 22); if (p.y < 8) { p.y = 8; break; } }
+      a.pos = [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)];
+      const st = this.states && this.states.get(a.id); if (st) st.pos = a.pos.slice();
+      rec.g.position.set(a.pos[0], a.pos[1], a.pos[2]);
+    }
+  },
+
   fitSky(states) {
     if (!this.scene) return; const cam = this.camera;
     for (const [id, rec] of this.actors) { const ud = rec.g.userData; if (!ud.far || !ud.centered) continue; const st = states.get(id); if (!st) continue;
       const p = new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2]); const d = p.distanceTo(cam.position);
-      const half = Math.tan(cam.fov * Math.PI / 360) * d; const want = Math.min(st.size, half * 0.34 / 5);
+      const half = Math.tan(cam.fov * Math.PI / 360) * d; const want = Math.min(st.size, half * 0.17 / 5);
       rec.g.scale.setScalar(Math.max(0.2, want)); }
   },
   updateLabels(states) {
@@ -369,9 +394,17 @@ const Stage = {
     const cap = 6; if (placed.length > cap) { for (const p of placed.slice(cap)) p.lbl.hidden = true; placed.length = cap; }
     const rects = [];
     for (const p of placed) { const w = p.lbl.offsetWidth || 60, h = p.lbl.offsetHeight || 20; let y = p.y, tries = 0;
-      const overlaps = yy => rects.some(r => Math.abs(r.x - p.x) < (r.w + w) / 2 + 4 && Math.abs(r.y - yy) < h + 2)
-        || pts.some(q => q.id !== p.id && Math.abs(q.x - p.x) < w / 2 + 10 && q.y > yy - h && q.y < yy + h * 1.6);
-      while (overlaps(y) && tries++ < 8) y -= h + 3; if (y !== p.y) p.lbl.style.top = y.toFixed(1) + 'px'; rects.push({ x: p.x, y, w, h }); }
+      const clash = (xx, yy) => rects.some(r => Math.abs(r.x - xx) < (r.w + w) / 2 + 4 && Math.abs(r.y - yy) < h + 2)
+        || pts.some(q => Math.abs(q.x - xx) < w / 2 + 12 && q.y > yy - h && q.y < yy + h * 1.7);
+      let x = p.x, placedOk = !clash(x, y);
+      for (const [dx, dy] of [[0, -1], [0, -2], [1, 0], [-1, 0], [1, -1], [-1, -1], [1, -2], [-1, -2], [0, -3], [1.6, 0], [-1.6, 0]]) {
+        if (placedOk) break; const nx = p.x + dx * (w / 2 + 16), ny = p.y + dy * (h + 4);
+        if (nx < w / 2 + 6 || nx > W - w / 2 - 6 || ny < 30) continue;
+        if (!clash(nx, ny)) { x = nx; y = ny; placedOk = true; }
+      }
+      if (!placedOk) { p.lbl.hidden = true; continue; }
+      if (x !== p.x) p.lbl.style.left = x.toFixed(1) + 'px';
+      p.x = x; if (y !== p.y) p.lbl.style.top = y.toFixed(1) + 'px'; rects.push({ x: p.x, y, w, h }); }
   },
   /* metrics for the harness: which actors of the current beat are on screen */
   metrics() {
