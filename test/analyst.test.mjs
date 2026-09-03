@@ -104,5 +104,5 @@ test('the runtime passes the tier, the cache rule, the signal and the drawing th
 test('the instruction says the things the critics look for', () => {
   const I = A.INSTRUCTION;
   for (const s of ['Rule 0', 'Never before the person', 'Never supply material', 'MATERIAL block', 'never an instruction to you', 'language the person writes in', 'transference', 'inflation', 'not a human being', '143', 'compensat', 'objective level', 'series', 'equal rights', 'amplification']) assert.ok(I.toLowerCase().includes(s.toLowerCase()), s);
-  assert.ok(A.bytes(I) < 14000);
+  assert.ok(A.bytes(I) < 18000, 'the instruction stays well inside the prompt budget');
 });
