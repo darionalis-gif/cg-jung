@@ -150,7 +150,7 @@ function normalizeScene(raw, dreamText) {
     for (const p of pits) { const r = (p.detail.radius || 1.5) * p.size;
       for (const a of actors) { if (a === p || a.pos[1] < -0.5) continue; if (a.kind === 'pit') continue;
         const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
-        if (d < r + 0.4) { const n = d > 0.01 ? [dx / d, dz / d] : [1, 0]; a.pos = [p.pos[0] + n[0] * (r + 1.1), a.pos[1], p.pos[2] + n[1] * (r + 1.1)]; } } } }
+        const own = (a.detail.radius || 0) * a.size; if (d < r + own + 0.4) { const n = d > 0.01 ? [dx / d, dz / d] : [1, 0]; const out = r + own + 1.1; a.pos = [p.pos[0] + n[0] * out, a.pos[1], p.pos[2] + n[1] * out]; } } } }
   // a beat that arrives somewhere should show the place, not spend itself on the journey
   const PLACE = new Set(['room', 'corridor', 'house', 'shop', 'building', 'church', 'cave', 'city', 'tower']);
   { const cur = new Map(actors.map(a => [a.id, a.pos.slice()]));
