@@ -2,13 +2,17 @@
 
 A single-file web app that performs a dream as a 3D animation. You write the dream as you remember it; Claude, on your own subscription, turns the report into a *stage script* (a JSON scene: world, actors, beats with the dream's own sentences, camera); this page performs the script with three.js — low-poly figures with floating labels, a moving camera, subtitles from the report, a scrubber with one tick per beat. A director chat takes change requests ("make the street darker", "the man should be taller and closer", "add rain") and rewrites the staging.
 
-It was built in a loop of building and independent critique — a technical critic for the animation and a fidelity critic for the match to the dream text — over real dream reports from DreamBank.
+It was built in a loop of building and independent critique — a technical critic for the animation and a fidelity critic for the match to the dream text — over real dream reports from DreamBank. Each round runs the whole pipeline against live Claude, screenshots every beat, and hands the evidence to two critics who do not fix anything; their blocking findings become the next round's work.
 
 ## How it runs
 
 - `index.html` is the whole app. The block between `<!-- ARTIFACT-START -->` and `<!-- ARTIFACT-END -->` is what gets published as a Claude artifact with the `sample` capability; the artifact host wraps it in its own document skeleton and grants the page the right to ask Claude on the viewer's account. Outside Claude (a plain browser) the page can still perform the dreams that ship staged inside it and any dream staged earlier in that browser, but cannot stage new ones.
 - three.js r160 (UMD) from cdnjs; Google Fonts (Fraunces, Atkinson Hyperlegible, JetBrains Mono). No build step for the viewer.
 - Dreams and their scripts are kept in `localStorage`.
+
+## Trying it
+
+The published page is at https://claude.ai/code/artifact/c07ffd71-83a0-4c71-8203-d1ee3dc5628a — open it inside Claude so it can stage new dreams on the viewer's own subscription. Six DreamBank reports ship already staged, so the page performs a real dream on load even in a plain browser.
 
 ## The stage script
 
