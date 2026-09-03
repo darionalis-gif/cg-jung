@@ -41,32 +41,46 @@ function windowTexture(color, lit) {
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; _textures[key] = t; return t;
 }
 function softSprite() { if (_textures.soft) return _textures.soft; const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'); const gr = x.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.6)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 32, 32); const t = new THREE.CanvasTexture(c); _textures.soft = t; return t; }
+function blobTexture() { if (_textures.blob) return _textures.blob; const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); const gr = x.createRadialGradient(32, 32, 4, 32, 32, 32); gr.addColorStop(0, 'rgba(0,0,0,0.55)'); gr.addColorStop(0.6, 'rgba(0,0,0,0.25)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); const t = new THREE.CanvasTexture(c); _textures.blob = t; return t; }
 function seeded(seed) { let s = seed || 1; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
 
 /* ---------------- actor builders: each returns a THREE.Group with userData.anim hooks ---------------- */
 const B = {};
 function humanoid(a, o = {}) {
-  const g = new THREE.Group(); const col = a.color, skin = a.detail.skin || o.skin || '#e2b797', hair = a.detail.hair || o.hair || shade(col, 0.4);
-  const body = mat(col, { transparent: a.ghost, opacity: a.ghost ? 0.45 : 1, emissive: o.emissive || (a.glow ? col : '#000'), ei: a.glow ? 0.6 : 1 });
-  const skinM = mat(skin, { transparent: a.ghost, opacity: a.ghost ? 0.45 : 1 });
-  const torso = mesh(G.cap(0.2, 0.5, 8), body, 0, 1.05, 0); torso.scale.set(1, 1, o.thin ? 0.6 : 0.8);
-  const head = mesh(G.sph(0.14, 14), skinM, 0, 1.55, 0); const hairM = mesh(G.sph(0.162, 14), mat(hair), 0, 1.585, -0.02); hairM.scale.set(1, 0.72, 1); hairM.material = hairM.material.clone(); hairM.material.polygonOffset = true; hairM.material.polygonOffsetFactor = -1;
-  const legs = [], arms = [];
+  const g = new THREE.Group(); const col = a.color, skin = a.detail.skin || o.skin || '#e2b797', hair = a.detail.hair || o.hair || shade(col, 0.4), trousers = a.detail.second || o.trousers || shade(col, 0.55);
+  const opts = { transparent: a.ghost, opacity: a.ghost ? 0.45 : 1, emissive: o.emissive || (a.glow ? col : '#000'), ei: a.glow ? 0.6 : 1, rough: 0.7 };
+  const shirt = mat(col, opts), pants = mat(trousers, opts), skinM = mat(skin, { transparent: a.ghost, opacity: a.ghost ? 0.45 : 1, rough: 0.6 }), shoe = mat(shade(trousers, 0.5), opts);
+  const S = o.thin ? 0.7 : 1;
+  const hips = new THREE.Group(); hips.position.y = 0.96; g.add(hips);
+  const pelvis = mesh(G.cap(0.15 * S, 0.08, 10), pants, 0, 0.02, 0); pelvis.rotation.z = Math.PI / 2; pelvis.scale.set(1, 1.15, 0.8); hips.add(pelvis);
+  const torso = new THREE.Group(); torso.position.y = 0.1; hips.add(torso);
+  const chest = mesh(G.cap(0.17 * S, 0.3, 12), shirt, 0, 0.2, 0); chest.scale.set(1.05, 1, 0.72); torso.add(chest);
+  const neck = mesh(G.cyl(0.05, 0.06, 0.1, 8), skinM, 0, 0.43, 0); torso.add(neck);
+  const headG = new THREE.Group(); headG.position.set(0, 0.46, 0); torso.add(headG);
+  const head = mesh(G.sph(0.125, 16), skinM, 0, 0.12, 0); headG.add(head);
+  const hairM = mesh(G.sph(0.145, 16), mat(hair, opts), 0, 0.15, -0.02); hairM.scale.set(1, 0.72, 1); hairM.material = hairM.material.clone(); hairM.material.polygonOffset = true; hairM.material.polygonOffsetFactor = -1; headG.add(hairM);
+  for (const sx of [-1, 1]) { headG.add(mesh(G.sph(0.016, 8), mat(o.eye || '#1a1a1a'), sx * 0.045, 0.135, 0.112)); }
+  headG.add(mesh(G.sph(0.02, 8), skinM, 0, 0.1, 0.125));
+  const arms = [], fore = [], legs = [], shins = [], feet = [];
   for (const sx of [-1, 1]) {
-    const leg = new THREE.Group(); leg.position.set(sx * 0.1, 0.78, 0); leg.add(mesh(G.cap(0.075, 0.55, 6), mat(shade(col, 0.7)), 0, -0.36, 0)); g.add(leg); legs.push(leg);
-    const arm = new THREE.Group(); arm.position.set(sx * 0.29, 1.32, 0); arm.add(mesh(G.cap(0.06, 0.5, 6), o.bare ? skinM : body, 0, -0.3, 0)); g.add(arm); arms.push(arm);
+    const up = new THREE.Group(); up.position.set(sx * 0.24 * S, 0.38, 0); torso.add(up); const ua = mesh(G.cap(0.055 * S, 0.22, 8), o.bare ? skinM : shirt, 0, -0.15, 0); up.add(ua);
+    const lo = new THREE.Group(); lo.position.set(0, -0.3, 0); up.add(lo); lo.add(mesh(G.cap(0.045 * S, 0.2, 8), o.bare || o.shortSleeves ? skinM : shirt, 0, -0.13, 0)); lo.add(mesh(G.sph(0.05, 8), skinM, 0, -0.29, 0.01));
+    arms.push(up); fore.push(lo);
+    const th = new THREE.Group(); th.position.set(sx * 0.1, 0, 0); hips.add(th); th.add(mesh(G.cap(0.075 * S, 0.3, 8), pants, 0, -0.22, 0));
+    const sh = new THREE.Group(); sh.position.set(0, -0.44, 0); th.add(sh); sh.add(mesh(G.cap(0.06 * S, 0.3, 8), pants, 0, -0.2, 0));
+    const ft = mesh(G.box(0.1, 0.06, 0.24), shoe, 0, -0.44, 0.06); sh.add(ft);
+    legs.push(th); shins.push(sh); feet.push(ft);
   }
-  const eyes = new THREE.Group(); for (const sx of [-1, 1]) eyes.add(mesh(G.sph(0.02, 6), mat(o.eye || '#111'), sx * 0.05, 1.57, 0.125)); g.add(eyes);
-  if (o.spikes) { for (let i = 0; i < 5; i++) g.add(mesh(G.cone(0.05, 0.25, 5), mat(shade(col, 0.6)), 0, 1.45 - i * 0.16, -0.2).rotateX(-1.2)); }
-  g.add(torso, head, hairM); g.userData.limbs = { legs, arms, head, torso }; g.userData.height = 1.75; g.userData.eyeY = 1.55;
+  if (o.spikes) for (let i = 0; i < 5; i++) torso.add(mesh(G.cone(0.05, 0.25, 5), mat(shade(col, 0.6)), 0, 0.4 - i * 0.12, -0.18).rotateX(-1.2));
+  g.userData.limbs = { hips, torso, head: headG, arms, fore, legs, shins, feet }; g.userData.height = 1.75; g.userData.eyeY = 1.6; g.userData.shadow = 0.45;
   return g;
 }
 B.person = a => humanoid(a);
 B.ghost = a => humanoid({ ...a, ghost: true, glow: true }, { skin: '#e8ecff', hair: '#d0d6ff', eye: '#334' });
 B.skeleton = a => humanoid({ ...a, color: '#eae6da' }, { skin: '#eae6da', hair: '#eae6da', thin: true, eye: '#000' });
-B.monster = a => { const g = humanoid({ ...a, size: a.size }, { skin: shade(a.color, 0.8), hair: shade(a.color, 0.5), eye: '#ff2020', spikes: true }); g.scale.setScalar(1.6); g.userData.height = 2.8; g.userData.eyeY = 2.5; return g; };
+B.monster = a => { const g = humanoid({ ...a, size: a.size }, { skin: shade(a.color, 0.8), hair: shade(a.color, 0.5), eye: '#ff2020', spikes: true }); g.scale.setScalar(1.6); g.userData.height = 2.8; g.userData.eyeY = 2.5; g.userData.shadow = 0.8; return g; };
 B.crowd = a => { const g = new THREE.Group(); const n = a.detail.count || 12, r = a.detail.radius || Math.max(2, Math.sqrt(n) * 0.9), rnd = seeded(n * 7 + 3); g.userData.members = [];
-  for (let i = 0; i < n; i++) { const ang = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * r; const p = humanoid({ ...a, color: shade(a.color, 0.7 + rnd() * 0.6), detail: {} }); p.position.set(Math.cos(ang) * d, 0, Math.sin(ang) * d); p.rotation.y = rnd() * 6.28; p.userData.phase = rnd() * 6.28; g.add(p); g.userData.members.push(p); }
+  for (let i = 0; i < n; i++) { const ang = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * r; const p = humanoid({ ...a, color: shade(a.color, 0.7 + rnd() * 0.6), detail: { second: rnd() < 0.5 ? shade(a.color, 0.4) : '#3a3a48' } }); p.position.set(Math.cos(ang) * d, 0, Math.sin(ang) * d); p.rotation.y = rnd() * 6.28; p.userData.phase = rnd() * 6.28; p.userData.baseYaw = p.rotation.y; g.add(p); g.userData.members.push(p); }
   g.userData.height = 1.8; return g; };
 const SPECIES = { dog: [0.9, 0.5, 0.35, 0.35, 0.22], cat: [0.5, 0.3, 0.22, 0.2, 0.15], horse: [1.9, 1.3, 0.9, 0.7, 0.45], wolf: [1.1, 0.65, 0.45, 0.4, 0.26], bear: [1.8, 1.1, 0.5, 0.5, 0.5], deer: [1.3, 1.0, 0.7, 0.45, 0.3], cow: [2.0, 1.2, 0.6, 0.5, 0.6], lion: [1.6, 0.9, 0.55, 0.5, 0.42], rat: [0.3, 0.12, 0.06, 0.1, 0.1], rabbit: [0.4, 0.25, 0.15, 0.15, 0.15], chimp: [0.7, 0.8, 0.5, 0.35, 0.3], generic: [1.0, 0.6, 0.4, 0.35, 0.28] };
 B.animal = a => {
@@ -84,7 +98,7 @@ B.animal = a => {
   const legs = []; for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const l = new THREE.Group(); l.position.set(sx * bodyR * 0.7, h - bodyR * 0.5, sz * (len / 2 - bodyR * 0.9)); l.add(mesh(G.cyl(bodyR * 0.25, bodyR * 0.2, legLen + bodyR * 0.5, 6), m, 0, -(legLen + bodyR * 0.5) / 2, 0)); g.add(l); legs.push(l); }
   const tail = mesh(G.cyl(0.03, bodyR * 0.3, len * 0.5, 5), m, 0, h + bodyR * 0.3, -len / 2 - len * 0.2); tail.rotation.x = 1.2;
   for (const sx of [-1, 1]) g.add(mesh(G.sph(headR * 0.12, 5), mat('#111'), sx * headR * 0.45, h + headR * 1.3, len / 2 + headR * 1.5));
-  g.add(body, neck, head, tail); g.userData.legs = legs; g.userData.height = h + headR * 2; return g;
+  g.add(body, neck, head, tail); g.userData.legs = legs; g.userData.height = h + headR * 2; g.userData.shadow = len * 0.6; return g;
 };
 B.hand = a => { const g = new THREE.Group(); const m = mat(a.color); g.add(mesh(G.box(0.9, 0.25, 1.0), m, 0, 0.6, 0)); for (let i = 0; i < 4; i++) g.add(mesh(G.cap(0.09, 0.6, 6), m, -0.33 + i * 0.22, 0.6, 0.85).rotateX(1.57)); g.add(mesh(G.cap(0.1, 0.45, 6), m, 0.6, 0.6, 0.2).rotateZ(-1.2)); g.userData.height = 1.2; return g; };
 B.eye = a => { const g = new THREE.Group(); g.add(mesh(G.sph(0.5, 16), mat('#f4f4f4'), 0, 1.5, 0)); g.add(mesh(G.sph(0.22, 12), mat(a.color === '#f4f4f4' ? '#3a6ab0' : a.color), 0, 1.5, 0.38)); g.add(mesh(G.sph(0.1, 8), mat('#050505'), 0, 1.5, 0.52)); g.userData.height = 2; return g; };

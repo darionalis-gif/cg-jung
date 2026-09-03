@@ -46,7 +46,7 @@ STAGE SCRIPT FORMAT (all keys shown; hex colours like "#a1b2c3"; y is up; units 
    { "id": "unique_snake_case", "kind": one of KINDS, "label": "what the dreamer would call it (empty string for scenery that needs no label)",
      "color": hex, "size": 0.05-40 (scale multiplier on the kind's base size given in the KINDS list; 1 = that base size), "pos": [x,y,z] (where the actor touches the ground: y is 0 for anything standing on the ground and the builder adds its own height; a window, a sign board, a moon are placed at their pos), "yaw": degrees (0 faces +z),
      "hidden": true|false (start invisible, appear later), "glow": true|false, "ghost": true|false (translucent),
-     "detail": { optional, by kind: "species" for animal (dog,cat,horse,bird,fish,snake,wolf,bear,deer,cow,lion,spider,rat,chimp,rabbit,generic), "text" for sign, "count" for crowd/forest/city/flower/field (5-60), "radius" for forest/city/crowd/water/pit/field, "width"/"depth"/"height" for room/wall/building/corridor/bridge/road/river, "open" true for door, "second": hex for a second colour, "skin": hex for person skin, "hair": hex }
+     "detail": { optional, by kind: "species" for animal (dog,cat,horse,bird,fish,snake,wolf,bear,deer,cow,lion,spider,rat,chimp,rabbit,generic), "text" for sign, "count" for crowd (4-30) and forest/city/flower/field (5-60), "radius" for forest/city/crowd/water/pit/field, "width"/"depth"/"height" for room/wall/building/corridor/bridge/road/river, "open" true for door, "second": hex for a second colour, "skin": hex for person skin, "hair": hex }
    }
  ],
  "beats": [
@@ -100,7 +100,7 @@ function normalizeScene(raw, dreamText) {
       id, kind, label: typeof a.label === 'string' ? a.label.slice(0, 60) : (kind === 'thing' ? id : ''),
       color: hex(a.color, DEFAULT_COLOR[kind] || '#9a9ab0'), size: num(a.size, 1, 0.05, 80), pos: vec(a.pos, [0, 0, 0]), yaw: num(a.yaw, 0),
       hidden: !!a.hidden, glow: !!a.glow, ghost: !!a.ghost, ...((kind === 'moon' || kind === 'sun') ? { pos: (p => [p[0], Math.max(p[1], 20), p[2]])(vec(a.pos, [0, 40, -100])) } : {}),
-      detail: { species: String(d.species || d.animal || '').toLowerCase(), text: typeof d.text === 'string' ? d.text.slice(0, 40) : '', count: opt(d.count, 1, 80), radius: opt(d.radius, 0.5, 300), width: opt(d.width, 0.3, 300), depth: opt(d.depth, 0.3, 300), height: opt(d.height, 0.3, 300), open: !!d.open, second: hex(d.second, null), skin: hex(d.skin, null), hair: hex(d.hair, null) }
+      detail: { species: String(d.species || d.animal || '').toLowerCase(), text: typeof d.text === 'string' ? d.text.slice(0, 40) : '', count: opt(d.count, 1, 40), radius: opt(d.radius, 0.5, 300), width: opt(d.width, 0.3, 300), depth: opt(d.depth, 0.3, 300), height: opt(d.height, 0.3, 300), open: !!d.open, second: hex(d.second, null), skin: hex(d.skin, null), hair: hex(d.hair, null) }
     };
   });
   if (!actors.length) actors.push({ id: 'me', kind: 'person', label: 'me', color: '#6b7ba8', size: 1, pos: [0, 0, 0], yaw: 0, hidden: false, glow: false, ghost: false, detail: {} });

@@ -1,14 +1,12 @@
-{"title":"Smoke 4","mood":"probe","world":{"sky":"dusk","ground":"grass","fogDensity":0.01},
+{"title":"Smoke 5: motion","mood":"probe","world":{"sky":"day","ground":"grass","fogDensity":0.006},
 "actors":[
  {"id":"me","kind":"person","label":"me","color":"#5a6fa8","pos":[0,0,0],"yaw":180},
- {"id":"man","kind":"person","label":"the man","color":"#8a4a4a","pos":[0,0,4],"yaw":0},
- {"id":"house2","kind":"house","label":"a house","color":"#c9b59a","pos":[-7,0,-6],"yaw":270},
- {"id":"crowd","kind":"crowd","label":"the guests","color":"#7c7f96","pos":[0,0,0],"detail":{"count":20,"radius":4}},
- {"id":"ward","kind":"room","label":"the ward","color":"#c9c0b0","pos":[0,0,-80],"detail":{"width":8,"depth":6,"height":3}},
- {"id":"friend","kind":"person","label":"our friend","color":"#8a7a4a","pos":[0,0,-80],"hidden":true}
+ {"id":"man","kind":"person","label":"the man","color":"#8a4a4a","pos":[0,0,4],"yaw":180,"detail":{"second":"#333"}},
+ {"id":"crowd","kind":"crowd","label":"the guests","color":"#7c7f96","pos":[-6,0,-4],"detail":{"count":8,"radius":2.5}},
+ {"id":"dog","kind":"animal","label":"a dog","color":"#a0783c","pos":[3,0,-2],"detail":{"species":"dog"}}
 ],
 "beats":[
- {"dur":6,"text":"Follow near a rotated house.","camera":{"mode":"follow","target":"me","distance":8,"height":3,"angle":180},"actions":[{"actor":"me","move":[-3,0,-4],"state":"walk"}]},
- {"dur":6,"text":"Orbit inside a crowd.","camera":{"mode":"orbit","target":"me","distance":4,"height":2,"angle":0},"actions":[{"actor":"me","state":"fold"}]},
- {"dur":6,"text":"Fixed shot from outside a small ward, target inside.","camera":{"mode":"fixed","target":"friend","pos":[0,3,-70],"lookAt":"friend"},"actions":[{"actor":"friend","appear":true,"state":"lie"},{"actor":"me","move":[2,0,-79]}]}
+ {"dur":6,"text":"Walking toward the man.","camera":{"mode":"follow","target":"me","distance":6,"height":2,"angle":140},"actions":[{"actor":"me","move":[0,0,2.5],"state":"walk"},{"actor":"man","state":"idle"}]},
+ {"dur":6,"text":"Talking; the man shakes, then pushes.","camera":{"mode":"orbit","target":"man","distance":4,"height":1.8,"angle":30},"actions":[{"actor":"man","state":"shake"},{"actor":"man","state":"push","at":0.6},{"actor":"crowd","state":"walk","move":[-2,0,-4]}]},
+ {"dur":6,"text":"Running away; sitting; the dog runs.","camera":{"mode":"follow","target":"me","distance":7,"height":2.5,"angle":200},"actions":[{"actor":"me","move":[-8,0,-6],"state":"run"},{"actor":"dog","move":[-6,0,-8]},{"actor":"man","state":"kneel"}]}
 ]}
