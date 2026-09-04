@@ -1456,7 +1456,10 @@ const Stage = {
   },
 
   occluded(from, to, self) {
-    { const rm = this.roomAround(to); if (rm && !this.roomAround(from)) return true; }
+    { const rm = this.roomAround(to);
+      if (rm) { const b = rm.box, pad = 1.2;
+        const out = from.x < b.min.x - pad || from.x > b.max.x + pad || from.z < b.min.z - pad || from.z > b.max.z + pad;
+        if (out) return true; } }
     // a figure below the ground can only be seen down a hole: if the line of sight crosses
     // ground level outside every pit mouth, the earth (which is no collider) is in the way
     if (to.y < -0.3 && from.y > 0.15 && this.pits && this.pits.length) {
