@@ -52,7 +52,7 @@ STAGE SCRIPT FORMAT (all keys shown; hex colours like "#a1b2c3"; y is up; units 
    { "id": "unique_snake_case", "kind": one of KINDS, "label": "what the dreamer would call it (empty string for scenery that needs no label)",
      "color": hex, "size": 0.05-40 (scale multiplier on the kind's base size given in the KINDS list; 1 = that base size), "pos": [x,y,z] (where the actor touches the ground: y is 0 for anything standing on the ground and the builder adds its own height; a window, a sign board, a moon are placed at their pos), "yaw": degrees (0 faces +z),
      "detail": {"wear": "coat"|"raincoat"|"jacket"|"uniform"|"cloak"|"dress"|"skirt"|"hat"|"cap", "wearColor": "#rrggbb"} on a person the report describes by their clothes, "hidden": true|false (start invisible, appear later), "glow": true|false, "ghost": true|false (translucent), "carriedBy": actorId (a thing held or carried: it rides in that person's hand and needs no move of its own),
-     "detail": { optional, by kind: "species" for animal (dog,cat,horse,bird,fish,snake,wolf,bear,deer,cow,lion,spider,rat,chimp,rabbit,generic), "text" for sign, "count" for crowd (4-30; obey the report's own scale word: "some people" or "a few" is 3-5, "many" or "a crowd" is 12-30, and an "almost-empty" street holds 3 at most) and forest/city/flower/field (5-60), "radius" for forest/city/crowd/water/pit/field, "width"/"depth"/"height" for room/wall/building/corridor/bridge/road/river, "open" true for door, "second": hex for a second colour, "skin": hex for person skin, "hair": hex }. Whatever the report says a person looks like must be built, not only written in the label: skin and hair for colouring, size for a child (0.6-0.8) or a big man (1.15), wear for what they have on. A "middle-aged black medic" needs a dark skin and a uniform, not a default body with a long label.
+     "detail": { optional, by kind: "species" for animal (dog,cat,horse,bird,fish,snake,wolf,bear,deer,cow,lion,spider,rat,chimp,rabbit,generic), "text" for sign, "count" for crowd (4-30; obey the report's own scale word: "some people" or "a few" is 3-5, "many" or "a crowd" is 12-30, and an "almost-empty" street holds 3 at most) and forest/city/flower/field (5-60), "radius" for forest/city/crowd/water/pit/field, "width"/"depth"/"height" for room/wall/building/corridor/bridge/road/river, "open" true for door, "second": hex for a second colour, "skin": hex for person skin, "hair": hex }. A child is smaller AND stands no nearer the camera than the adults in the same beat, or the child reads as the biggest figure in the frame and the one fact the sentence gives is inverted. Whatever the report says a person looks like must be built, not only written in the label: skin and hair for colouring, size for a child (0.6-0.8) or a big man (1.15), wear for what they have on. A "middle-aged black medic" needs a dark skin and a uniform, not a default body with a long label.
    }
  ],
  "beats": [
@@ -127,12 +127,16 @@ function normalizeScene(raw, dreamText) {
     };
   });
   // open water covers the half-plane ahead of its waterline: nobody stands out at sea unless they swim
+  // whatever these passes shove sideways, the beats that walk that actor somewhere have to follow it,
+  // or the scene is staged fifty metres from where it is played
+  const shifted = new Map();
+  const shove = (a, ox, oz) => { a.pos[0] += ox; a.pos[2] += oz; const d = shifted.get(a.id) || [0, 0]; shifted.set(a.id, [d[0] + ox, d[1] + oz]); };
   for (const w of actors) { if (w.kind !== 'water' || !w.detail.open) continue;
     const r = w.yaw * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r);
     for (const a of actors) { if (a === w || a.kind === 'water' || a.kind === 'river' || a.kind === 'boat' || a.kind === 'moon' || a.kind === 'sun' || a.kind === 'cloud' || a.kind === 'star') continue;
       const dx = a.pos[0] - w.pos[0], dz = a.pos[2] - w.pos[2];
       const fwd = dx * sn + dz * cs; if (fwd <= 1.5) continue;
-      a.pos[0] -= sn * (fwd + 1.5); a.pos[2] -= cs * (fwd + 1.5); } }
+      shove(a, -sn * (fwd + 1.5), -cs * (fwd + 1.5)); } }
   // a person written just outside the room the scene is happening in stands behind its wall and is
   // in no shot of it: pull anyone within reach of a room back inside, off the walls
   for (const rm of actors) { if (rm.kind !== 'room' && rm.kind !== 'corridor') continue;
@@ -145,8 +149,8 @@ function normalizeScene(raw, dreamText) {
       const ox = Math.abs(dx) - hw, oz = Math.abs(dz) - hd; if (ox < 0 && oz < 0) continue;
       if (ox > 4 || oz > 4) continue; // properly elsewhere, not a wall's width out
       const pad = 0.7;
-      if (ox >= 0) a.pos[0] = rm.pos[0] + Math.sign(dx || 1) * Math.max(0, hw - pad);
-      if (oz >= 0) a.pos[2] = rm.pos[2] + Math.sign(dz || 1) * Math.max(0, hd - pad); } }
+      if (ox >= 0) shove(a, rm.pos[0] + Math.sign(dx || 1) * Math.max(0, hw - pad) - a.pos[0], 0);
+      if (oz >= 0) shove(a, 0, rm.pos[2] + Math.sign(dz || 1) * Math.max(0, hd - pad) - a.pos[2]); } }
   // someone at the bottom of a pit has to be inside its mouth: outside it they are in solid ground
   for (const p of actors) { if (p.kind !== 'pit') continue; const R = (p.detail.radius || 1.5) * p.size;
     for (const a of actors) { if (a === p || a.pos[1] > -0.5) continue;
@@ -202,6 +206,16 @@ function normalizeScene(raw, dreamText) {
   // put any moon or sun in the half of the sky the opening shot faces, so what the page says is there can be seen
   { const view = aimSky({ beats, actors, world }); if (view) for (const a of actors) { if (a.kind !== 'moon' && a.kind !== 'sun') continue; const h = Math.hypot(a.pos[0], a.pos[2]) || 90; if ((a.pos[0] / h) * view[0] + (a.pos[2] / h) * view[1] < -0.1) a.pos = [view[0] * h, a.pos[1], view[1] * h]; } }
   if (!beats.length) beats = [{ dur: 8, text: dreamText ? dreamText.slice(0, 200) : '', camera: { mode: 'orbit', target: firstId, pos: null, lookAt: null, distance: 10, height: 3, angle: 160 }, actions: [] }];
+  // an actor that had to be shoved ashore or back into its room takes its own moves with it
+  if (shifted.size) for (const b of beats) for (const x of b.actions) { const d = x.actor && shifted.get(x.actor); if (!d || !x.move) continue; x.move = [x.move[0] + d[0], x.move[1], x.move[2] + d[1]]; }
+  // and no move may walk anyone but a swimmer out past the waterline
+  for (const w of actors) { if (w.kind !== 'water' || !w.detail.open) continue;
+    const r = w.yaw * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r);
+    for (const b of beats) for (const x of b.actions) { if (!x.move) continue; const ac = actors.find(q => q.id === x.actor);
+      if (!ac || ['water', 'river', 'boat', 'moon', 'sun', 'cloud', 'star', 'plane', 'helicopter'].includes(ac.kind)) continue;
+      if (x.state === 'swim' || x.state === 'fly' || x.state === 'float') continue;
+      const fwd = (x.move[0] - w.pos[0]) * sn + (x.move[2] - w.pos[2]) * cs; if (fwd <= 1.5) continue;
+      x.move = [x.move[0] - sn * (fwd + 1.5), x.move[1], x.move[2] - cs * (fwd + 1.5)]; } }
   // nothing that stands on the ground belongs across the mouth of a hole
   { const pits = actors.filter(a => a.kind === 'pit');
     for (const p of pits) { const r = (p.detail.radius || 1.5) * p.size;
