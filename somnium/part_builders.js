@@ -41,6 +41,7 @@ function windowTexture(color, lit) {
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; _textures[key] = t; return t;
 }
 function softSprite() { if (_textures.soft) return _textures.soft; const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'); const gr = x.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.6)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 32, 32); const t = new THREE.CanvasTexture(c); _textures.soft = t; return t; }
+function puffTexture() { if (_textures.puff) return _textures.puff; const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); const gr = x.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); const t = new THREE.CanvasTexture(c); _textures.puff = t; return t; }
 function blobTexture() { if (_textures.blob) return _textures.blob; const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); const gr = x.createRadialGradient(32, 32, 4, 32, 32, 32); gr.addColorStop(0, 'rgba(0,0,0,0.55)'); gr.addColorStop(0.6, 'rgba(0,0,0,0.25)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); const t = new THREE.CanvasTexture(c); _textures.blob = t; return t; }
 function seeded(seed) { let s = seed || 1; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
 
@@ -79,8 +80,10 @@ function humanoid(a, o = {}) {
   // so a coated figure hangs its sleeves outside the shell and thickens them to match
   const coated = ['coat', 'raincoat', 'jacket', 'cloak', 'uniform'].includes(wear);
   const sleeveM = coated ? wearM : (o.bare ? skinM : shirt), cuffM = coated ? wearM : (o.bare || o.shortSleeves ? skinM : shirt);
-  const upR = (coated ? 0.072 : 0.055) * S, loR = (coated ? 0.058 : 0.045) * S, pivotX = (coated ? 0.263 : 0.24) * S;
+  const upR = (coated ? 0.072 : 0.062) * S, loR = (coated ? 0.058 : 0.048) * S, pivotX = (coated ? 0.258 : 0.222) * S;
   for (const sx of [-1, 1]) {
+    // a deltoid on the body itself, so the shoulder is filled whatever the arm does
+    { const del = mesh(G.sph(upR * 1.45, 10), sleeveM, sx * pivotX * 0.94, 0.375, 0); del.scale.set(1, 0.92, 0.95); torso.add(del); }
     const up = new THREE.Group(); up.position.set(sx * pivotX, 0.38, 0); torso.add(up); const ua = mesh(G.cap(upR, 0.22, 8), sleeveM, 0, -0.15, 0); up.add(ua);
     // a ball on the pivot itself: whatever the arm swings to, the joint cannot open onto a gap
     up.add(mesh(G.sph(upR * 1.24, 10), sleeveM, 0, 0, 0));
@@ -99,8 +102,15 @@ B.person = a => humanoid(a);
 B.ghost = a => humanoid({ ...a, ghost: true, glow: true }, { skin: '#e8ecff', hair: '#d0d6ff', eye: '#334' });
 B.skeleton = a => humanoid({ ...a, color: '#eae6da' }, { skin: '#eae6da', hair: '#eae6da', thin: true, eye: '#000' });
 B.monster = a => { const g = humanoid({ ...a, size: a.size }, { skin: shade(a.color, 0.8), hair: shade(a.color, 0.5), eye: '#ff2020', spikes: true }); g.scale.setScalar(1.6); g.userData.height = 2.8; g.userData.eyeY = 2.5; g.userData.shadow = 0.8; return g; };
-B.crowd = a => { const g = new THREE.Group(); const n = Math.min(a.detail.count || 12, 26), r = a.detail.radius || Math.max(2, Math.sqrt(n) * 0.9), rnd = seeded(n * 7 + 3); g.userData.members = []; const taken = [];
-  for (let i = 0; i < n; i++) { let x = 0, z = 0; for (let k = 0; k < 14; k++) { const ang = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * r; x = Math.cos(ang) * d; z = Math.sin(ang) * d; if (!taken.some(t => (t[0] - x) * (t[0] - x) + (t[1] - z) * (t[1] - z) < 0.55)) break; } taken.push([x, z]);
+B.crowd = a => { const g = new THREE.Group(); const n = Math.min(a.detail.count || 12, 26), rnd = seeded(n * 7 + 3); g.userData.members = []; const taken = [];
+  // people 0.74 m apart are inside each other once their arms swing, and fourteen tries then
+  // giving up guaranteed a pile: hold a metre between them, and widen the ring if the count
+  // will not fit the radius the script asked for
+  const GAP = 1.0, r = a.detail.radius || Math.max(2, Math.sqrt(n) * 0.9);
+  for (let i = 0; i < n; i++) { let x = 0, z = 0, ok = false;
+    for (let k = 0; k < 60; k++) { const ang = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * r; x = Math.cos(ang) * d; z = Math.sin(ang) * d; if (!taken.some(t => (t[0] - x) * (t[0] - x) + (t[1] - z) * (t[1] - z) < GAP * GAP)) { ok = true; break; } }
+    if (!ok) { const ang = (i / n) * Math.PI * 2, d = r + GAP * 0.75; x = Math.cos(ang) * d; z = Math.sin(ang) * d; }
+    taken.push([x, z]);
     const p = humanoid({ ...a, color: shade(a.color, 0.7 + rnd() * 0.6), detail: { second: rnd() < 0.5 ? shade(a.color, 0.4) : '#3a3a48' } }, { simple: true }); p.position.set(x, 0, z); p.rotation.y = rnd() * 6.28; p.userData.phase = rnd() * 6.28; p.userData.baseYaw = p.rotation.y; if (i > 6) p.traverse(o => { if (o.isMesh) o.castShadow = false; }); g.add(p); g.userData.members.push(p); }
   g.userData.height = 1.8; return g; };
 const SPECIES = { dog: [0.9, 0.5, 0.35, 0.35, 0.22], cat: [0.5, 0.3, 0.22, 0.2, 0.15], horse: [1.9, 1.3, 0.9, 0.7, 0.45], wolf: [1.1, 0.65, 0.45, 0.4, 0.26], bear: [1.8, 1.1, 0.5, 0.5, 0.5], deer: [1.3, 1.0, 0.7, 0.45, 0.3], cow: [2.0, 1.2, 0.6, 0.5, 0.6], lion: [1.6, 0.9, 0.55, 0.5, 0.42], rat: [0.3, 0.12, 0.06, 0.1, 0.1], rabbit: [0.4, 0.25, 0.15, 0.15, 0.15], chimp: [0.7, 0.8, 0.5, 0.35, 0.3], generic: [1.0, 0.6, 0.4, 0.35, 0.28] };
@@ -184,12 +194,13 @@ B.pit = a => { const g = new THREE.Group(); const r = a.detail.radius || 1.5; co
 const WATER_UNIFORMS = { uTime: { value: 0 } };
 // the open sea is tessellated at 5-6 m, so a pond's 11 m wave is sampled below its own period and
 // comes out as blotches: out there the swell has to be long and tall instead
-function waterMaterial(color, open) { const k = open ? [0.24, 0.33, 0.13] : [0.55, 0.78, 0.31], amp = open ? 0.45 : 0.2; const m = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.25, metalness: 0.3, transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); m.customProgramCacheKey = () => 'somnium-water-' + (open ? 'sea' : 'pond');
+function waterMaterial(color, open, halfD) { const k = open ? [0.24, 0.33, 0.13] : [0.55, 0.78, 0.31], amp = open ? 0.45 : 0.2; const m = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.25, metalness: 0.3, transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); m.customProgramCacheKey = () => 'somnium-water-' + (open ? 'sea' : 'pond');
   m.onBeforeCompile = sh => { sh.uniforms.uTime = WATER_UNIFORMS.uTime; m.userData.sh = sh;
-    sh.vertexShader = 'uniform float uTime;\nvarying float vWave;\n' + sh.vertexShader.replace('#include <begin_vertex>',
-      '#include <begin_vertex>\n float w1 = sin(position.x * ' + k[0].toFixed(3) + ' - uTime * 1.9);\n float w2 = sin(position.y * ' + k[1].toFixed(3) + ' + uTime * 1.35);\n float w3 = sin((position.x + position.y) * ' + k[2].toFixed(3) + ' - uTime * 0.8);\n vWave = w1 * 0.5 + w2 * 0.35 + w3 * 0.4;\n transformed.z += max(vWave, 0.0) * ' + amp.toFixed(3) + ';');
-    sh.fragmentShader = 'varying float vWave;\n' + sh.fragmentShader.replace('#include <color_fragment>',
-      '#include <color_fragment>\n diffuseColor.rgb *= 1.0 + vWave * 0.3;\n diffuseColor.rgb += vec3(0.10, 0.13, 0.15) * smoothstep(0.55, 1.15, vWave);'); }; m.userData.water = true; return m; }
+    sh.vertexShader = 'uniform float uTime;\nvarying float vWave;\nvarying float vNear;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\n vNear = position.y + ' + (halfD || 0).toFixed(1) + ';\n float w1 = sin(position.x * ' + k[0].toFixed(3) + ' - uTime * 1.9);\n float w2 = sin(position.y * ' + k[1].toFixed(3) + ' + uTime * 1.35);\n float w3 = sin((position.x + position.y) * ' + k[2].toFixed(3) + ' - uTime * 0.8);\n vWave = w1 * 0.5 + w2 * 0.35 + w3 * 0.4;\n transformed.z += max(vWave, 0.0) * ' + amp.toFixed(3) + ';');
+    sh.fragmentShader = 'varying float vWave;\nvarying float vNear;\n' + sh.fragmentShader.replace('#include <color_fragment>',
+      '#include <color_fragment>\n diffuseColor.rgb *= 1.0 + vWave * 0.3;\n diffuseColor.rgb += vec3(0.10, 0.13, 0.15) * smoothstep(0.55, 1.15, vWave);'
+      + (open ? '\n diffuseColor.a *= smoothstep(0.0, 2.5, vNear);' : '')); }; m.userData.water = true; return m; }
 const FLAME_UNIFORMS = { uTime: { value: 0 } };
 // a cone with a hard rim is a party hat; the flame needs to end in nothing at the tip and at the
 // edges, and to lick rather than only inflate
@@ -235,7 +246,7 @@ function moonGlowMaterial(color) { return new THREE.ShaderMaterial({
 // foam breaks, scrolls and fades at both of its edges
 function foamMaterial(color) { const u = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uColor: { value: new THREE.Color(color) } }]); u.uTime = WATER_UNIFORMS.uTime; return new THREE.ShaderMaterial({
   uniforms: u,
-  transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: true,
+  transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: true, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -8,
   vertexShader: 'varying vec2 vUv;\n#include <fog_pars_vertex>\nvoid main() { vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0);\n#ifdef USE_FOG\n vFogDepth = -mv.z;\n#endif\n gl_Position = projectionMatrix * mv; }',
   fragmentShader: [
     'uniform float uTime; uniform vec3 uColor; varying vec2 vUv;',
@@ -245,15 +256,15 @@ function foamMaterial(color) { const u = THREE.UniformsUtils.merge([THREE.Unifor
     '  float b = sin(x * 0.9 - uTime * 1.7) * 0.5 + sin(x * 0.31 + uTime * 0.9) * 0.35 + sin(x * 2.3 - uTime * 2.6) * 0.2;',
     '  float band = smoothstep(0.0, 0.34, vUv.y) * smoothstep(1.0, 0.62, vUv.y);',
     '  float crest = smoothstep(-0.25, 0.65, b);',
-    '  float a = band * (0.16 + 0.74 * crest);',
+    '  float a = band * (0.05 + 0.48 * crest);',
     '  gl_FragColor = vec4(uColor, a);',
     '#include <fog_fragment>',
     '}'].join('\n') }); }
 B.water = a => { const g = new THREE.Group(); const R = a.detail.radius || 15;
-  if (a.detail.open || R >= 30) { const w = Math.max(2 * R, 320), d = 520, m0 = waterMaterial(a.color, true);
+  if (a.detail.open || R >= 30) { const w = Math.max(2 * R, 320), d = 520, m0 = waterMaterial(a.color, true, d / 2);
     const p0 = mesh(new THREE.PlaneGeometry(w, d, Math.round(w / 5), Math.round(d / 5)), m0, 0, 0.09, d / 2); p0.rotation.x = -Math.PI / 2; p0.castShadow = false; g.add(p0);
-    const foam = mesh(new THREE.PlaneGeometry(w, 7, Math.round(w / 4), 1), foamMaterial('#eef4f6'), 0, 0.115, 2.6);
-    foam.rotation.x = -Math.PI / 2; foam.castShadow = false; foam.receiveShadow = false; foam.renderOrder = 2; g.add(foam);
+    const foam = mesh(new THREE.PlaneGeometry(w, 5, Math.round(w / 4), 1), foamMaterial('#eef4f6'), 0, 0.14, 2.0);
+    foam.rotation.x = -Math.PI / 2; foam.castShadow = false; foam.receiveShadow = false; foam.renderOrder = 4; g.add(foam);
     g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; g.userData.foam = foam; return g; }
   const p = mesh(new THREE.RingGeometry(0.001, R, 64, Math.min(64, Math.max(10, Math.round(R / 0.8)))), waterMaterial(a.color), 0, 0.09, 0); p.rotation.x = -Math.PI / 2; p.castShadow = false; g.add(p); g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; return g; };
 B.river = a => { const g = new THREE.Group(); const w = a.detail.width || 8, d = a.detail.depth || 120; const p = mesh(new THREE.PlaneGeometry(w, d, 8, 60), waterMaterial(a.color), 0, 0.09, 0); p.rotation.x = -Math.PI / 2; p.castShadow = false; g.add(p); g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; return g; };
@@ -271,7 +282,7 @@ B.lens = a => { const g = new THREE.Group(); const body = mat(a.color, { metal: 
 B.orb = a => { const g = new THREE.Group(); g.add(mesh(G.sph(0.5, 16), mat(a.color, { emissive: a.color, ei: 0.55, transparent: true, opacity: 0.9 }), 0, 1.4, 0)); const l = new THREE.PointLight(a.color, 6, 12, 1.8); l.position.y = 1.4; g.add(l); g.userData.height = 2; g.userData.airborne = true; g.userData.pulse = true; return g; };
 B.portal = a => { const g = new THREE.Group(); g.add(mesh(G.torus(1.4, 0.15), mat(a.color, { emissive: a.color, ei: 1.2 }), 0, 1.6, 0)); g.add(mesh(new THREE.CircleGeometry(1.3, 24), mat(shade(a.color, 0.4), { emissive: a.color, ei: 0.5, transparent: true, opacity: 0.7, side: THREE.DoubleSide }), 0, 1.6, 0)); const l = new THREE.PointLight(a.color, 15, 12, 1.8); l.position.y = 1.6; g.add(l); g.userData.height = 3.2; g.userData.spinPart = g.children[0]; return g; };
 B.fire = a => { const g = new THREE.Group(); const flames = []; for (let i = 0; i < 5; i++) { const f = mesh(G.cone(0.34 - i * 0.045, 0.95 + i * 0.19, 8), flameMaterial(a.color, i * 1.7), (i - 2) * 0.15, 0.48 + i * 0.1, (i % 2 ? 0.09 : -0.07)); f.castShadow = false; f.renderOrder = 6; g.add(f); f.userData.home = f.position.clone(); flames.push(f); } for (let i = 0; i < 3; i++) g.add(mesh(G.cyl(0.06, 0.06, 0.9, 5), mat('#3a2a1a'), 0, 0.06, 0).rotateZ(1.57).rotateX(i * 1.05)); const l = new THREE.PointLight('#ff9040', 30, 18, 1.6); l.position.y = 0.8; g.add(l); g.userData.flames = flames; g.userData.light = l; g.userData.height = 1.6; return g; };
-B.smoke = a => { const g = new THREE.Group(); const puffs = []; for (let i = 0; i < 7; i++) { const pm = new THREE.MeshBasicMaterial({ color: new THREE.Color(shade(a.color, 1.1)), map: blobTexture(), transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide }); const p = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), pm); p.position.set((i % 2 ? 0.35 : -0.35) * (i / 3), 0.8 + i * 0.7, 0); p.castShadow = false; p.userData.billboard = true; g.add(p); puffs.push(p); } g.userData.puffs = puffs; g.userData.height = 6; return g; };
+B.smoke = a => { const g = new THREE.Group(); const puffs = []; for (let i = 0; i < 7; i++) { const pm = new THREE.MeshBasicMaterial({ color: new THREE.Color(shade(a.color, 1.1)), map: puffTexture(), transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide, fog: true }); const p = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), pm); p.position.set((i % 2 ? 0.35 : -0.35) * (i / 3), 0.8 + i * 0.7, 0); p.castShadow = false; p.userData.billboard = true; g.add(p); puffs.push(p); } g.userData.puffs = puffs; g.userData.height = 6; return g; };
 B.lamp = a => { const g = new THREE.Group(); const h = a.detail.height || 4; g.add(mesh(G.cyl(0.06, 0.09, h, 6), mat('#3a3a40'), 0, h / 2, 0)); g.add(mesh(G.box(0.5, 0.1, 0.5), mat('#3a3a40'), 0, h, 0)); g.add(mesh(G.sph(0.22, 10), mat(a.color, { emissive: a.color, ei: 1.5 }), 0, h - 0.2, 0)); const l = new THREE.PointLight(a.color, 25, 16, 1.5); l.position.set(0, h - 0.3, 0); l.castShadow = false; g.add(l); g.userData.height = h; return g; };
 B.candle = a => { const g = new THREE.Group(); g.add(mesh(G.cyl(0.05, 0.05, 0.3, 8), mat('#f4ecd8'), 0, 0.9, 0)); const f = mesh(G.cone(0.03, 0.12, 6), mat('#ffcc60', { emissive: '#ffb030', ei: 2 }), 0, 1.11, 0); g.add(f); const l = new THREE.PointLight('#ffb060', 6, 6, 1.8); l.position.y = 1.1; g.add(l); g.userData.flames = [f]; g.userData.height = 1.2; return g; };
 function wheels(g, m, pts, r) { const ws = []; for (const [x, z] of pts) { const w = mesh(G.cyl(r, r, 0.3, 12), m, x, r, z); w.rotation.z = Math.PI / 2; g.add(w); ws.push(w); } g.userData.wheels = ws; }

@@ -159,13 +159,20 @@ function normalizeScene(raw, dreamText) {
       const k = lim / d; a.pos[0] = p.pos[0] + dx * k; a.pos[2] = p.pos[2] + dz * k; } }
   // a named person standing inside a crowd of their own colour cannot be found in the frame
   { const hex2 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    // the ring has to be wide enough to hold its own count without the members inside each other,
+    // and the radius has to be written down, or the builder and everything that reasons about the
+    // crowd disagree about where it reaches
+    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const n0 = Math.min(cw.detail.count || 12, 26);
+      cw.detail.radius = Math.round(Math.max(cw.detail.radius || 0, 2, Math.sqrt(n0) * 0.9, Math.sqrt(n0 / 2.2)) * 100) / 100; }
     for (const cw of actors) { if (cw.kind !== 'crowd') continue; const R = (cw.detail.radius || 5) * cw.size;
       for (const a of actors) { if (a.kind !== 'person') continue;
         const dx = a.pos[0] - cw.pos[0], dz = a.pos[2] - cw.pos[2]; const d = Math.hypot(dx, dz);
         if (d > R + 0.5) continue;
+        // a named person inside the ring is behind somebody from most bearings whatever colour
+        // they are; only the outermost metre of a big crowd is a place to stand
         const A = hex2(a.color), B = hex2(cw.color);
         const near = Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) < 90;
-        if (!near) continue;
+        if (!near && d > R - 0.9) continue;
         const k = (R + 2.2) / Math.max(0.001, d);
         a.pos[0] = cw.pos[0] + (d < 0.05 ? R + 2.2 : dx * k); a.pos[2] = cw.pos[2] + (d < 0.05 ? 0 : dz * k);
         // and give them a colour a viewer can actually tell apart
