@@ -72,7 +72,32 @@ const Stage = {
             if (d < 1e-3) { const ang = (i * 2.399 + j); dx = Math.cos(ang); dz = Math.sin(ang); d = 1; }
             const push = (MIN - d) / 2 / d;
             a1.x -= dx * push; a1.z -= dz * push; b1.x += dx * push; b1.z += dz * push; moved = true; }
-          if (!moved) break; } } } this.applyWorld(scene.world); const mid0 = scene.beats[0] ? scene.beats[0].dur * 0.5 : 0; this.setTime(mid0); this.aimSkyLive(); this.setTime(0); this.playing = true;
+          if (!moved) break; } }
+      // standalone figures need the same room from each other and from the furniture
+      { const solo = [];
+        for (const [id, r2] of this.actors) { if (r2.g.userData.members || !['person', 'monster', 'skeleton', 'ghost'].includes(r2.a.kind)) continue; solo.push(r2); }
+        for (let pass = 0; pass < 5; pass++) { let moved = false;
+          for (let i = 0; i < solo.length; i++) for (let j = i + 1; j < solo.length; j++) {
+            const A = solo[i], B = solo[j]; if (Math.abs(A.a.pos[1] - B.a.pos[1]) > 1.2) continue;
+            let dx = B.a.pos[0] - A.a.pos[0], dz = B.a.pos[2] - A.a.pos[2]; let d = Math.hypot(dx, dz);
+            const MIN = 0.95 * Math.max(A.a.size, B.a.size); if (d >= MIN) continue;
+            if (d < 1e-3) { const ang = i * 2.399 + j; dx = Math.cos(ang); dz = Math.sin(ang); d = 1; }
+            const push = (MIN - d) / 2 / d;
+            A.a.pos[0] -= dx * push; A.a.pos[2] -= dz * push; B.a.pos[0] += dx * push; B.a.pos[2] += dz * push; moved = true; }
+          for (const A of solo) { if (A.a.pos[1] < -0.5) continue;
+            for (const bx of boxes) { if (bx.max.y < 0.25) continue;
+              const wx = A.a.pos[0], wz = A.a.pos[2];
+              if (wx < bx.min.x - 0.25 || wx > bx.max.x + 0.25 || wz < bx.min.z - 0.25 || wz > bx.max.z + 0.25) continue;
+              const cx = (bx.min.x + bx.max.x) / 2, cz = (bx.min.z + bx.max.z) / 2;
+              const dx2 = wx - cx, dz2 = wz - cz;
+              const nx = Math.sign(dx2 || 1) * ((bx.max.x - bx.min.x) / 2 + 0.5) - dx2;
+              const nz = Math.sign(dz2 || 1) * ((bx.max.z - bx.min.z) / 2 + 0.5) - dz2;
+              if (Math.min(Math.abs(nx), Math.abs(nz)) > 5) break;
+              if (Math.abs(nx) <= Math.abs(nz)) A.a.pos[0] += nx; else A.a.pos[2] += nz;
+              moved = true; break; } }
+          if (!moved) break; }
+        for (const r2 of solo) r2.g.position.set(r2.a.pos[0], r2.a.pos[1], r2.a.pos[2]); }
+      } this.applyWorld(scene.world); const mid0 = scene.beats[0] ? scene.beats[0].dur * 0.5 : 0; this.setTime(mid0); this.aimSkyLive(); this.setTime(0); this.playing = true;
   },
   setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
   beatAt(t) { const bs = this.scene.beats; for (let i = bs.length - 1; i >= 0; i--) if (t >= bs[i].start) return i; return 0; },
@@ -104,8 +129,10 @@ const Stage = {
     for (const [id, rec] of this.actors) { const ai = rec.g.userData.aimed; if (!ai) continue; const st0 = out.get(id); if (st0) st0.pos = ai.slice(); }
     for (const a of S.actors) { if (!a.carriedBy) continue; const it = out.get(a.id), by = out.get(a.carriedBy); if (!it || !by) continue;
       const slot = (held.get(a.carriedBy) || []).indexOf(a.id);
+      const POSE_DROP = { kneel: 0.35, sit: 0.44, lie: 0.62, crawl: 0.55, throw: 0.05 };
+      const drop = POSE_DROP[by.state] || 0;
       const r = by.yaw * Math.PI / 180, side = [0.25, -0.25, 0.05, -0.05][slot % 4], fwd = [0.1, 0.1, 0.36, 0.36][slot % 4];
-      it.pos = [by.pos[0] + Math.cos(r) * side + Math.sin(r) * fwd, by.pos[1] + (0.92 + (slot > 1 ? 0.22 : 0)) * (by.size || 1), by.pos[2] - Math.sin(r) * side + Math.cos(r) * fwd];
+      it.pos = [by.pos[0] + Math.cos(r) * side + Math.sin(r) * fwd, by.pos[1] + (0.92 - drop + (slot > 1 ? 0.22 : 0)) * (by.size || 1), by.pos[2] - Math.sin(r) * side + Math.cos(r) * fwd];
       it.yaw = by.yaw; it.op = Math.min(it.op, by.op) > 0.02 ? Math.max(it.op, by.op * 0.999) : it.op; } }
     // a person lying where a bed stands lies on it, not on the floor under it
     for (const a of S.actors) { const st = out.get(a.id); if (!st || st.state !== 'lie' || a.kind !== 'person') continue;
@@ -243,7 +270,13 @@ const Stage = {
     // apply
     for (let i = 0; i < 2; i++) { L.legs[i].rotation.x = P.legs[i]; L.shins[i].rotation.x = P.shins[i]; L.arms[i].rotation.x = P.armsX[i]; L.arms[i].rotation.z = P.armsZ[i]; L.fore[i].rotation.x = P.fore[i]; }
     g.userData.armSwing = [P.armsX[0], P.armsX[1]];
-    L.head.rotation.set(P.headX, P.headY, P.headZ); L.head.scale.set(1 + (1 - P.headS) * 0.35, P.headS, 1 + (1 - P.headS) * 0.2);
+    L.head.rotation.set(P.headX, P.headY, P.headZ); { const sq = P.headS, wx = 1 + (1 - sq) * 0.35, wz = 1 + (1 - sq) * 0.2;
+      if (L.skull) { L.skull.scale.set(wx, sq, wz);
+        if (L.hair) { L.hair.scale.set(wx, sq * 0.72 / 0.72, wz); L.hair.position.y = 0.15 * sq; }
+        if (L.face) for (const f of L.face) { const b = f.userData.base || (f.userData.base = f.position.clone());
+          f.position.set(b.x * wx, 0.12 + (b.y - 0.12) * sq, b.z * wz); f.scale.set(1, Math.max(0.5, sq), 1); }
+        L.head.scale.set(1, 1, 1);
+      } else L.head.scale.set(wx, sq, wz); }
     L.torso.scale.set(1 + (1 - P.torsoS) * 0.5, P.torsoS, 1 + (1 - P.torsoS) * 0.5); L.hips.rotation.set(P.bodyX, 0, P.bodyZ + P.hipsZ); L.hips.position.y = 0.96 + P.y;
     if (s === 'shake') { // a tremor the blend cannot swallow: arms, head and hips out of step
       const q = t * 19, jitter = Math.sin(q) * 0.42, roll = Math.sin(q * 0.62 + 1.1) * 0.1;
@@ -362,6 +395,7 @@ const Stage = {
       for (const f of framed) { const ok = f.w < 1 ? this.inShot(out0.pos, out0.look, f.p, f.g) : this.seenWell(out0.pos, out0.look, f);
         if (ok) seen++;
         if (!ok && (f.id === c.target || mustSee.has(f.id))) fails = true;
+        if (ok && f.w >= 1 && f.faced && (f.h || 0) > 1 && (f.h / Math.max(1, f.p.distanceTo(out0.pos))) < 0.06) fails = true;
         if (ok && f.speaks && FACED.has(((this.actors.get(f.id) || {}).a || {}).kind)) {
           const sA = states.get(f.id); const fcA = dirAt(this.faceYaw(f.id, sA), 1, 0);
           const vA = out0.pos.clone().sub(new THREE.Vector3(sA.pos[0], sA.pos[1], sA.pos[2]));
@@ -450,7 +484,7 @@ const Stage = {
           let faceCost = 0; if (facesMatter) { const tf = framed.find(f => f.id === c.target); if (tf && tf.seen) faceCost = (1 - front) * 0.9;
             for (const f of framed) { if (!f.speaks || f.id === c.target || !f.seen) continue; const st3 = states.get(f.id); const fc = dirAt(this.faceYaw(f.id, st3), 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.6; } }
           const crowd = this.lensCrowding(out.pos, selfs);
-          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * 0.9 + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(3.2, hog * 2.4) + Math.min(1.0, tiny * 12) + against * 0.8 + Math.min(1.6, stacked * 0.9) + lostNamed * 0.9;
+          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * 0.9 + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(3.2, hog * 2.4) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(1.6, stacked * 0.9) + lostNamed * 0.9;
           const score = n - cost; if (this.debugFrames) this.frameScan.push({ az, mul, lift, n: +n.toFixed(2), backToLens, lostTarget, faceCost: +faceCost.toFixed(2), crowd, score: +score.toFixed(2) });
           const cand2 = { az, mul, lift, score, n, has: true };
           if (!backToLens && !lostTarget && score > tiers[0].score) tiers[0] = cand2;

@@ -59,7 +59,9 @@ function humanoid(a, o = {}) {
   const headG = new THREE.Group(); headG.position.set(0, 0.46, 0); torso.add(headG);
   const head = mesh(G.sph(0.125, o.simple ? 8 : 16), skinM, 0, 0.12, 0); headG.add(head);
   const hairM = mesh(G.sph(0.145, o.simple ? 8 : 16), mat(hair, opts), 0, 0.15, -0.02); hairM.scale.set(1, 0.72, 1); hairM.material = hairM.material.clone(); hairM.material.polygonOffset = true; hairM.material.polygonOffsetFactor = -1; headG.add(hairM);
-  if (!o.simple) { for (const sx of [-1, 1]) headG.add(mesh(G.sph(0.016, 8), mat(o.eye || '#1a1a1a'), sx * 0.045, 0.135, 0.112)); headG.add(mesh(G.sph(0.02, 8), skinM, 0, 0.1, 0.125)); }
+  const face = [];
+  if (!o.simple) { for (const sx of [-1, 1]) { const e = mesh(G.sph(0.016, 8), mat(o.eye || '#1a1a1a'), sx * 0.045, 0.135, 0.112); headG.add(e); face.push(e); }
+    const mo = mesh(G.sph(0.02, 8), skinM, 0, 0.1, 0.125); headG.add(mo); face.push(mo); }
   const wear = (a.detail.wear || '').toLowerCase(); const wearM = mat(a.detail.wearColor || shade(col, 0.7), opts);
   if (wear === 'coat' || wear === 'raincoat' || wear === 'jacket' || wear === 'cloak' || wear === 'uniform') {
     const body = mesh(G.cap(0.185 * S, 0.34, 12), wearM, 0, 0.19, 0); body.scale.set(1.08, 1, 0.78); torso.add(body);
@@ -84,7 +86,7 @@ function humanoid(a, o = {}) {
     legs.push(th); shins.push(sh); feet.push(ft);
   }
   if (o.spikes) for (let i = 0; i < 5; i++) torso.add(mesh(G.cone(0.05, 0.25, 5), mat(shade(col, 0.6)), 0, 0.4 - i * 0.12, -0.18).rotateX(-1.2));
-  g.userData.limbs = { hips, torso, head: headG, arms, fore, legs, shins, feet }; g.userData.height = 1.75; g.userData.eyeY = 1.6; g.userData.shadow = 0.45;
+  g.userData.limbs = { hips, torso, head: headG, skull: head, hair: hairM, face, arms, fore, legs, shins, feet }; g.userData.height = 1.75; g.userData.eyeY = 1.6; g.userData.shadow = 0.45;
   return g;
 }
 B.person = a => humanoid(a);
