@@ -163,6 +163,7 @@ const Stage = {
     // a figure in a ground state stands on what is under it, not in the air above it
     for (const a of S.actors) { const st = out.get(a.id); if (!st || a.kind !== 'person') continue;
       if (AIRBORNE_STATES.has(st.state) || st.pos[1] < -0.5 || st.pos[1] <= 0.06) continue;
+      { const rr2 = this.actors.get(a.id); if (rr2 && rr2.g.userData.ridesIn) continue; }
       let floor = 0;
       for (const f of S.actors) { if (!['bed', 'sofa', 'table', 'stairs', 'bridge'].includes(f.kind)) continue;
         const fs = out.get(f.id); if (!fs || fs.op < 0.3) continue;
@@ -389,7 +390,7 @@ const Stage = {
         const need = Math.atan2(depth, Math.max(0.35, clear));
         // past 80 degrees the hole cannot be looked into at all: frame the rim instead
         if (need > Math.PI / 180 * 80 && high.length) { const h1 = high[0]; look2.set(h1.pos[0], h1.pos[1] + 1.1, h1.pos[2]); }
-        const pitch = clamp(need + 0.12, Math.PI / 180 * 58, Math.PI / 180 * 80); p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
+        const pitch = clamp(need + 0.12, Math.PI / 180 * 50, Math.PI / 180 * (need <= Math.PI / 180 * 62 ? 64 : 80)); p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
     // a beat flying over something must show what it flies over, not empty sky
     { if (look2.y > 12) { let ground = false;
         for (const x of beat.actions) { if (!x.actor) continue; const r3 = this.actors.get(x.actor); const s4 = states.get(x.actor);
@@ -531,7 +532,7 @@ const Stage = {
           let faceCost = 0; if (facesMatter) { const tf = framed.find(f => f.id === c.target); if (tf && tf.seen) faceCost = (1 - front) * 0.9;
             for (const f of framed) { if (!f.speaks || f.id === c.target || !f.seen) continue; const st3 = states.get(f.id); const fc = dirAt(this.faceYaw(f.id, st3), 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.6; } }
           const crowd = this.lensCrowding(out.pos, selfs);
-          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * 0.9 + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(12, hog * 2.4) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(1.6, stacked * 0.9) + lostNamed * 0.9;
+          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(12, hog * 2.4) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(1.6, stacked * 0.9) + lostNamed * 0.9;
           const score = n - cost; if (this.debugFrames) this.frameScan.push({ az, mul, lift, n: +n.toFixed(2), backToLens, lostTarget, faceCost: +faceCost.toFixed(2), crowd, score: +score.toFixed(2) });
           const cand2 = { az, mul, lift, score, n, has: true };
           if (!backToLens && !lostTarget && score > tiers[0].score) tiers[0] = cand2;
@@ -689,10 +690,9 @@ const Stage = {
   },
 
   occluded(from, to, self) {
-    { const rm = this.roomAround(to);
-      if (rm) { const b = rm.box, pad = 1.2;
-        const out = from.x < b.min.x - pad || from.x > b.max.x + pad || from.z < b.min.z - pad || from.z > b.max.z + pad;
-        if (out) return true; } }
+    { const outOf = (p, r) => { const b = r.box, pad = 1.2; return p.x < b.min.x - pad || p.x > b.max.x + pad || p.z < b.min.z - pad || p.z > b.max.z + pad; };
+      const rt = this.roomAround(to); if (rt && outOf(from, rt)) return true;
+      const rf = this.roomAround(from); if (rf && outOf(to, rf)) return true; }
     // a figure below the ground can only be seen down a hole: if the line of sight crosses
     // ground level outside every pit mouth, the earth (which is no collider) is in the way
     if (to.y < -0.3 && from.y > 0.15 && this.pits && this.pits.length) {
@@ -758,7 +758,8 @@ const Stage = {
     const acting = new Set(curBeat ? curBeat.actions.filter(x => x.actor).map(x => x.actor) : []);
     const placed = [], pts = [];
     for (const [id, rec] of this.actors) { const st = states.get(id); const lbl = rec.lbl; const text = st.say ? `${rec.a.label || rec.a.kind}: “${st.say}”` : rec.a.label; if (!this.labelsOn || !text || st.op < 0.05 || id === povId) { lbl.hidden = true; continue; } const top = rec.a.carriedBy ? 0.45 : (rec.g.userData.centered ? rec.g.userData.baseHeight * (st.size / rec.a.size) + 1 : rec.g.userData.baseHeight * (st.size / rec.a.size) + 0.25); const under = st.pos[1] < -0.5; v.set(st.pos[0], st.pos[1] + (under ? Math.min(top, 12) * 0.45 : Math.min(top, 12)), st.pos[2]); const dist = v.distanceTo(camPos); const isTarget = id === curTarget; const rank = st.say ? 0 : (isTarget ? 1 : (acting.has(id) ? 2 : 3));
-      if (!rec.g.userData.far && rank > 2 && dist > 38) { lbl.hidden = true; continue; } if (!rec.g.userData.far && rank > 2 && this.occluded(camPos, v, rec.g)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } if (v.y < -0.72 || v.y > 0.9) { lbl.hidden = true; continue; } const vx0 = v.x, vy0 = v.y; v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.78); if (rank > 1 && (Math.abs(v.x - vx0) > 0.07 || Math.abs(v.y - vy0) > 0.07)) { lbl.hidden = true; continue; } lbl.hidden = false; lbl.textContent = text; lbl.style.maxWidth = Math.min(340, W * 0.42).toFixed(0) + 'px'; lbl.style.whiteSpace = text.length > 46 ? 'normal' : 'nowrap'; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = Math.max(44 + Math.max(lbl.offsetHeight, 22) / 2, (1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; pts.push({ id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H }); placed.push({ lbl, id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank }); }
+      if (!rec.g.userData.far && rank > 2 && dist > 38) { lbl.hidden = true; continue; }
+      if (!rec.g.userData.far && this.occluded(camPos, v.clone(), rec.g)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } if (v.y < -0.72 || v.y > 0.9) { lbl.hidden = true; continue; } const vx0 = v.x, vy0 = v.y; v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.78); if (rank > 1 && (Math.abs(v.x - vx0) > 0.07 || Math.abs(v.y - vy0) > 0.07)) { lbl.hidden = true; continue; } lbl.hidden = false; lbl.textContent = text; lbl.style.maxWidth = Math.min(340, W * 0.42).toFixed(0) + 'px'; lbl.style.whiteSpace = text.length > 46 ? 'normal' : 'nowrap'; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = Math.max(44 + Math.max(lbl.offsetHeight, 22) / 2, (1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; pts.push({ id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H }); placed.push({ lbl, id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank }); }
     // a crowded frame keeps the labels of whoever is acting; the scenery gives up its name
     placed.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
     const cap = 6; if (placed.length > cap) { let keep = cap; while (keep < placed.length && placed[keep].rank <= 2) keep++; for (const p of placed.slice(keep)) p.lbl.hidden = true; placed.length = keep; }

@@ -221,6 +221,13 @@ function normalizeScene(raw, dreamText) {
       const reach = Math.max(...named.map(g => (g.detail.radius || 25) * g.size)) * 0.7;
       for (const x of air) { const d = Math.hypot(x.move[0] - cx, x.move[2] - cz); if (d <= reach) continue;
         const k = reach / d; x.move[0] = cx + (x.move[0] - cx) * k; x.move[2] = cz + (x.move[2] - cz) * k; } } }
+  // someone the script lays down belongs on the bed it wrote for them
+  { const beds = actors.filter(a => a.kind === 'bed');
+    if (beds.length) for (const b of beats) for (const x of b.actions) {
+      if (x.state !== 'lie' || !x.actor) continue; const a = actors.find(q => q.id === x.actor); if (!a || a.kind !== 'person') continue;
+      let best = null, bd = 1e9;
+      for (const bed of beds) { const d = Math.hypot(a.pos[0] - bed.pos[0], a.pos[2] - bed.pos[2]); if (d < bd) { bd = d; best = bed; } }
+      if (best && bd > 0.8 * best.size) { a.pos[0] = best.pos[0]; a.pos[2] = best.pos[2]; a.pos[1] = Math.max(a.pos[1], best.pos[1] + 0.62 * best.size); a.yaw = best.yaw; } } }
   // an aircraft above about 22 m cannot share a frame with the ground it flies over
   { const low = actors.some(a => ['forest', 'field', 'water', 'city', 'hill', 'road', 'river'].includes(a.kind) && a.pos[1] < 6);
     if (low) { const CAP = 22;
