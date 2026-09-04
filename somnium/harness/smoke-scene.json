@@ -1,12 +1,19 @@
-{"title":"Smoke 5: motion","mood":"probe","world":{"sky":"day","ground":"grass","fogDensity":0.006},
+{"title":"Probe: smoke, arc walk, candle, bed","mood":"probe","world":{"sky":"day","ground":"grass","fogDensity":0.004},
 "actors":[
- {"id":"me","kind":"person","label":"me","color":"#5a6fa8","pos":[0,0,0],"yaw":180},
- {"id":"man","kind":"person","label":"the man","color":"#8a4a4a","pos":[0,0,4],"yaw":180,"detail":{"second":"#333"}},
- {"id":"crowd","kind":"crowd","label":"the guests","color":"#7c7f96","pos":[-6,0,-4],"detail":{"count":8,"radius":2.5}},
- {"id":"dog","kind":"animal","label":"a dog","color":"#a0783c","pos":[3,0,-2],"detail":{"species":"dog"}}
+ {"id":"me","kind":"person","label":"me","color":"#5a6fa8","pos":[-6,0,10],"yaw":0},
+ {"id":"fire","kind":"fire","label":"the fire","color":"#ff7a2a","pos":[2,0,0],"size":1},
+ {"id":"plume","kind":"smoke","label":"the smoke","color":"#9a9aa0","pos":[2,0,0],"size":1},
+ {"id":"tbl","kind":"table","label":"the table","color":"#8a6a4a","pos":[-6,0,0],"detail":{"width":3,"depth":1.2}},
+ {"id":"cand","kind":"candle","label":"the candle","color":"#ffe6b0","pos":[-6,0.75,0],"glow":true},
+ {"id":"bed","kind":"bed","label":"the bed","color":"#7a4a8a","pos":[8,0,0]},
+ {"id":"sleeper","kind":"person","label":"the sleeper","color":"#c06a6a","pos":[8,0,0],"yaw":90},
+ {"id":"shaker","kind":"person","label":"the shaker","color":"#4a8a4a","pos":[-1,0,4],"yaw":180}
 ],
 "beats":[
- {"dur":6,"text":"Walking toward the man.","camera":{"mode":"follow","target":"me","distance":6,"height":2,"angle":140},"actions":[{"actor":"me","move":[0,0,2.5],"state":"walk"},{"actor":"man","state":"idle"}]},
- {"dur":6,"text":"Talking; the man shakes, then pushes.","camera":{"mode":"orbit","target":"man","distance":4,"height":1.8,"angle":30},"actions":[{"actor":"man","state":"shake"},{"actor":"man","state":"push","at":0.6},{"actor":"crowd","state":"walk","move":[-2,0,-4]}]},
- {"dur":6,"text":"Running away; sitting; the dog runs.","camera":{"mode":"follow","target":"me","distance":7,"height":2.5,"angle":200},"actions":[{"actor":"me","move":[-8,0,-6],"state":"run"},{"actor":"dog","move":[-6,0,-8]},{"actor":"man","state":"kneel"}]}
+ {"dur":8,"text":"He walks in an arc past the fire.","camera":{"mode":"follow","target":"me","distance":9,"height":3,"angle":140},
+  "actions":[{"actor":"me","move":[-6,0,-8],"path":"arc","state":"walk"},{"actor":"shaker","state":"shake"},{"actor":"sleeper","state":"lie"}]},
+ {"dur":8,"text":"Smoke rises from the fire; the candle on the table.","camera":{"mode":"fixed","target":"fire","pos":[2,2.5,9],"lookAt":"fire"},
+  "actions":[{"actor":"fire","state":"idle"},{"actor":"plume","state":"idle"},{"actor":"cand","state":"idle"},{"actor":"shaker","state":"shake"}]},
+ {"dur":8,"text":"Close on the candle and the bed.","camera":{"mode":"fixed","target":"cand","pos":[-6,1.6,4],"lookAt":"cand"},
+  "actions":[{"actor":"cand","state":"idle"},{"actor":"sleeper","state":"lie"}]}
 ]}
