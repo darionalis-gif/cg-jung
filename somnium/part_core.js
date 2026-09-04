@@ -51,7 +51,7 @@ STAGE SCRIPT FORMAT (all keys shown; hex colours like "#a1b2c3"; y is up; units 
    { "id": "unique_snake_case", "kind": one of KINDS, "label": "what the dreamer would call it (empty string for scenery that needs no label)",
      "color": hex, "size": 0.05-40 (scale multiplier on the kind's base size given in the KINDS list; 1 = that base size), "pos": [x,y,z] (where the actor touches the ground: y is 0 for anything standing on the ground and the builder adds its own height; a window, a sign board, a moon are placed at their pos), "yaw": degrees (0 faces +z),
      "detail": {"wear": "coat"|"raincoat"|"jacket"|"uniform"|"cloak"|"dress"|"skirt"|"hat"|"cap", "wearColor": "#rrggbb"} on a person the report describes by their clothes, "hidden": true|false (start invisible, appear later), "glow": true|false, "ghost": true|false (translucent), "carriedBy": actorId (a thing held or carried: it rides in that person's hand and needs no move of its own),
-     "detail": { optional, by kind: "species" for animal (dog,cat,horse,bird,fish,snake,wolf,bear,deer,cow,lion,spider,rat,chimp,rabbit,generic), "text" for sign, "count" for crowd (4-30) and forest/city/flower/field (5-60), "radius" for forest/city/crowd/water/pit/field, "width"/"depth"/"height" for room/wall/building/corridor/bridge/road/river, "open" true for door, "second": hex for a second colour, "skin": hex for person skin, "hair": hex }
+     "detail": { optional, by kind: "species" for animal (dog,cat,horse,bird,fish,snake,wolf,bear,deer,cow,lion,spider,rat,chimp,rabbit,generic), "text" for sign, "count" for crowd (4-30; obey the report's own scale word: "some people" or "a few" is 3-5, "many" or "a crowd" is 12-30, and an "almost-empty" street holds 3 at most) and forest/city/flower/field (5-60), "radius" for forest/city/crowd/water/pit/field, "width"/"depth"/"height" for room/wall/building/corridor/bridge/road/river, "open" true for door, "second": hex for a second colour, "skin": hex for person skin, "hair": hex }. Whatever the report says a person looks like must be built, not only written in the label: skin and hair for colouring, size for a child (0.6-0.8) or a big man (1.15), wear for what they have on. A "middle-aged black medic" needs a dark skin and a uniform, not a default body with a long label.
    }
  ],
  "beats": [
@@ -69,7 +69,7 @@ STAGE SCRIPT FORMAT (all keys shown; hex colours like "#a1b2c3"; y is up; units 
 }
 
 KINDS (base size at size 1): ${KINDS.map(k => k + ' = ' + KIND_INFO[k]).join('; ')}.
-STATES: ${STATES.join(', ')}. Use 'yell' for shouting, arguing or angry speech (and give the words as a say), 'pockets' for someone standing with their hands in their pockets or arms folded, 'throw' for throwing or casting something (give the thrown thing its own move in the same beat, to where it lands), 'grieve' for sadness, dejection or despair.
+STATES: ${STATES.join(', ')}. Use 'yell' for shouting, arguing or angry speech (and give the words as a say), 'push' for shoving, pushing or striking someone (put the two within 1 m of each other), 'pockets' for someone standing with their hands in their pockets or arms folded, 'throw' for throwing or casting something (give the thrown thing its own move in the same beat, to where it lands), 'grieve' for sadness, dejection or despair.
 
 Rules that matter:
 1. Fidelity first. Every place, person, creature and thing the dream names is an actor with a recognisable label. Events happen in the order the dream tells them; nothing is invented that contradicts the text; where the dream is vague, choose the plainest reading. Emotions are staged through colour, light, fog, weather, camera distance and effect, not left out. "say" carries only words the report quotes or reports; when the report says someone yelled, shouted or argued without saying what, use the state yell and no invented words.
@@ -169,7 +169,8 @@ function normalizeScene(raw, dreamText) {
   // nothing that stands on the ground belongs across the mouth of a hole
   { const pits = actors.filter(a => a.kind === 'pit');
     for (const p of pits) { const r = (p.detail.radius || 1.5) * p.size;
-      for (const a of actors) { if (a === p || a.pos[1] < -0.5) continue; if (a.kind === 'pit') continue;
+      const COVERS = new Set(['fence', 'road', 'path', 'field', 'water', 'sign', 'bridge']);
+      for (const a of actors) { if (a === p || a.pos[1] < -0.5) continue; if (a.kind === 'pit' || COVERS.has(a.kind)) continue;
         const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
         const own = (a.detail.radius || 0) * a.size; if (d < r + own + 0.4) { const n = d > 0.01 ? [dx / d, dz / d] : [1, 0]; const out = r + own + 1.1; a.pos = [p.pos[0] + n[0] * out, a.pos[1], p.pos[2] + n[1] * out]; } } } }
   // a beat that arrives somewhere should show the place, not spend itself on the journey
