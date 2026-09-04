@@ -258,6 +258,15 @@ const Stage = {
     // a disc aimed once, at the middle of beat 1, is nailed to that world point and has left the
     // frame by beat 3: re-aim it at every cut, when the new beat's camera has been solved
     if (this.reaimSky) { this.reaimSky = false; this.aimSkyLive(); }
+    // every point light in the scene is evaluated for every fragment of a full-screen ground and
+    // sky. Five street lamps and a fire put a 400 ms floor under a beat with ten thousand
+    // triangles in it; the lamps at the far end of the road contribute nothing to what is on
+    // screen, so only the strongest few near the shot stay lit.
+    { const ls = this._pointLights || (this._pointLights = (() => { const out = []; this.root.traverse(o => { if (o.isPointLight) out.push(o); }); return out; })());
+      if (ls.length > 4) { const w0 = new THREE.Vector3(); const scored = [];
+        for (const l of ls) { l.getWorldPosition(w0); scored.push({ l, k: (l.intensity || 1) / Math.max(2, w0.distanceTo(this.cam.look)) }); }
+        scored.sort((a, b) => b.k - a.k);
+        scored.forEach((q, i) => { const on = i < 4; if (q.l.visible !== on) q.l.visible = on; }); } }
     this.fitSky(states); this.root.traverse(o => { if (o.userData.billboard) o.quaternion.copy(this.camera.quaternion); }); this.r.render(this.three, this.camera); this.updateLabels(states);
     if (this.onTime) this.onTime(t, false);
   },
