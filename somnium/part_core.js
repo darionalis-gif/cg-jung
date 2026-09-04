@@ -149,7 +149,10 @@ function normalizeScene(raw, dreamText) {
         const near = Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) < 90;
         if (!near) continue;
         const k = (R + 2.2) / Math.max(0.001, d);
-        a.pos[0] = cw.pos[0] + (d < 0.05 ? R + 2.2 : dx * k); a.pos[2] = cw.pos[2] + (d < 0.05 ? 0 : dz * k); } } }
+        a.pos[0] = cw.pos[0] + (d < 0.05 ? R + 2.2 : dx * k); a.pos[2] = cw.pos[2] + (d < 0.05 ? 0 : dz * k);
+        // and give them a colour a viewer can actually tell apart
+        const mix = (v, t) => Math.round(v + (t - v) * 0.55).toString(16).padStart(2, '0');
+        a.color = '#' + mix(A[0], 235) + mix(A[1], 210) + mix(A[2], 60); } } }
   const SIZE_CAP = { tooth: 2, flower: 3, candle: 2, mirror: 2, book: 2, key: 3, ring: 3, phone: 2, gun: 1.6, knife: 2 };
   for (const a of actors) { const cap = SIZE_CAP[a.kind]; if (cap && a.size > cap) a.size = cap;
     if (a.kind === 'table' && a.detail.width > 14) a.detail.width = 14; }

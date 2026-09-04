@@ -151,7 +151,7 @@ const Stage = {
     for (const a of S.actors) { const st = out.get(a.id); if (!st || a.kind !== 'person' || st.state !== 'sit') continue;
       for (const v of S.actors) { if (!VEHICLE.has(v.kind)) continue; const vs = out.get(v.id); if (!vs || vs.op < 0.3) continue;
         const rr = 2.4 * vs.size; if (Math.hypot(st.pos[0] - vs.pos[0], st.pos[2] - vs.pos[2]) > rr) continue;
-        const top = vs.pos[1] + (SEAT[v.kind] || 1) * vs.size;
+        const top = vs.pos[1] + ((SEAT[v.kind] || 1) + (['helicopter', 'plane', 'boat', 'truck'].includes(v.kind) ? 0.55 : 0.15)) * vs.size;
         // fan riders across the cabin instead of stacking them all on one point
         const riders = S.actors.filter(q => q.kind === 'person' && (out.get(q.id) || {}).state === 'sit'
           && Math.hypot((out.get(q.id) || st).pos[0] - vs.pos[0], (out.get(q.id) || st).pos[2] - vs.pos[2]) <= rr);
@@ -329,7 +329,8 @@ const Stage = {
         const ph = [0, Math.PI, Math.PI, 0]; ud.legs.forEach((l, i) => { const want = mv ? Math.sin(φ + ph[i]) * 0.55 : 0; l.rotation.x += (want - l.rotation.x) * Math.min(1, dt * 12); const kw = mv ? -Math.max(0, Math.cos(φ + ph[i])) * 0.7 : 0; ud.shins[i].rotation.x += (kw - ud.shins[i].rotation.x) * Math.min(1, dt * 12); });
         if (ud.headG) { const bob = mv ? Math.sin(φ * 2) * 0.06 : Math.sin(τ * 0.8) * 0.05; ud.headG.rotation.x = bob; ud.headG.rotation.y = mv ? 0 : Math.sin(τ * 0.5) * 0.3; } if (ud.tailG) ud.tailG.rotation.y = Math.sin(τ * (mv ? 9 : 3)) * 0.35; g.position.y += mv ? Math.abs(Math.sin(φ)) * 0.03 * st.size : 0; }
       else ud.legs.forEach((l, i) => l.rotation.x = mv ? Math.sin(φ + (i % 2) * Math.PI) * 0.6 : (kind === 'animal' && rec.a.detail.species === 'spider' ? Math.sin(τ * 6 + i) * 0.15 : 0));
-      if (s === 'lie') g.rotation.z = 1.5; if (s === 'shake') g.position.x += (Math.random() - 0.5) * 0.06; if (s === 'spin') g.rotation.y += τ * 5; if (s === 'fly' || s === 'float') g.position.y += (1 + Math.sin(τ * 2) * 0.3) * st.size; }
+      if (ud.skirt) ud.skirt.visible = s !== 'lie';
+    if (s === 'lie') g.rotation.z = 1.5; if (s === 'shake') g.position.x += (Math.random() - 0.5) * 0.06; if (s === 'spin') g.rotation.y += τ * 5; if (s === 'fly' || s === 'float') g.position.y += (1 + Math.sin(τ * 2) * 0.3) * st.size; }
     if (ud.wings) { const flying = s === 'fly' || st.moving > 0.05 || st.pos[1] > 0.5; const flap = flying ? Math.sin(τ * 11) * 0.75 : Math.sin(τ * 1.5) * 0.06; ud.wings[0].rotation.z = flap; ud.wings[1].rotation.z = -flap; g.position.y += flying ? Math.sin(τ * 2.2) * 0.12 : 0; g.rotation.x = flying ? 0.15 + Math.sin(τ * 2.2) * 0.05 : 0; g.rotation.z = st.moving > 0.05 ? Math.sin(τ * 0.9) * 0.2 : 0; }
     if (ud.tail) ud.tail.rotation.y = Math.sin(τ * 6) * 0.5;
     if (ud.segs) ud.segs.forEach((sg, i) => sg.position.x = Math.sin(τ * 4 - i * 0.7) * 0.15 * (st.moving > 0.05 || s !== 'idle' ? 1 : 0.3));
@@ -421,7 +422,7 @@ const Stage = {
           const sA = states.get(f.id); const fcA = dirAt(this.faceYaw(f.id, sA), 1, 0);
           const vA = out0.pos.clone().sub(new THREE.Vector3(sA.pos[0], sA.pos[1], sA.pos[2]));
           if ((vA.x * fcA.x + vA.z * fcA.z) / (Math.hypot(vA.x, vA.z) || 1) < 0.2) fails = true; } }
-      if (seen === 0 || fails) {
+      if (seen === 0 || fails) { this.nearAuthored = true;
         // the author chose this framing: look for the nearest variant of it that works before
         // handing the beat to a free search
         let rescued = null;
@@ -433,8 +434,9 @@ const Stage = {
             if (vis && f.w >= 1 && f.faced && (f.h || 0) > 1 && (f.h / Math.max(1, f.p.distanceTo(t0.pos))) < 0.06) { ok2 = false; break; } }
           if (ok2) { rescued = { az, mu }; break; } }
           if (rescued) break; }
-        if (rescued) { pos = this.turnShot(pos, look, rescued.az, rescued.mu); }
+        if (rescued) { pos = this.turnShot(pos, look, rescued.az, rescued.mu); this.nearAuthored = false; }
         else authored = false; } }
+      else this.nearAuthored = false;
     const speakerHere = beat.actions.some(x => (x.say || FACE_STATE.has(x.state)) && FACED.has(((this.actors.get(x.actor) || {}).a || {}).kind));
     const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state) || ((tg.moving || 0) < 0.3 && x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
     if (facesMatter && c.mode !== 'pov' && !(c.mode === 'fixed' && c.pos)) {
@@ -451,7 +453,7 @@ const Stage = {
       let best = { az: 0, mul: 1, score: -1 }; if (this.debugFrames) this.frameScan = [];
       const off0 = pos.distanceTo(look);
       const underground = framed.some(f => { const st3 = states.get(f.id); return st3 && st3.pos[1] < -1; });
-      const azList = facesMatter ? [0, 26, -26, 55, -55, 90, -90, 140, -140, 180] : [0, 26, -26, 55, -55, 80, -80];
+      const azList = this.nearAuthored ? [0, 26, -26, 55, -55] : (facesMatter ? [0, 26, -26, 55, -55, 90, -90, 140, -140, 180] : [0, 26, -26, 55, -55, 80, -80]);
       let anyOk = false;
       // any person or crowd near the action can fill the lens, whether or not the beat names them;
       // a crowd is measured by its box, since its centre can be far from its nearest member
@@ -472,8 +474,8 @@ const Stage = {
         for (const o of (this.solidsNow || [])) { if ((o.userData.soft && !o.userData.opaque) || this.isOwn(o, selfs)) continue;
           const bx2 = this.solidBox(o); if (bx2.distanceToPoint(look) > 22) continue;
           const h2 = bx2.max.y - bx2.min.y; if (!(h2 > 0.5)) continue;
-          const w2 = Math.min(bx2.max.x - bx2.min.x, bx2.max.z - bx2.min.z);
-          bodies.push({ id: '#solid', box: bx2, h: Math.min(Math.max(h2, w2 * 0.6), 6), yaw: 0 }); } }
+          const w2 = Math.max(bx2.max.x - bx2.min.x, bx2.max.z - bx2.min.z);
+          bodies.push({ id: '#solid', box: bx2, h: Math.min(Math.max(h2, w2), 8), yaw: 0 }); } }
       // one sweep, three verdicts: a shot that keeps both the speaker's face and the target beats
       // one that keeps only the face, which beats whatever is left
       const tiers = [{ az: 0, mul: 1, lift: 0, score: -1e9, has: false }, { az: 0, mul: 1, lift: 0, score: -1e9, has: false }, { az: 0, mul: 1, lift: 0, score: -1e9, has: false }];
@@ -547,8 +549,9 @@ const Stage = {
         if (pos.y > up) pos.y = up; }
       if (c.mode !== 'pov' && !(c.mode === 'fixed' && c.pos)) { const want0 = Math.hypot(c.distance || 8, c.height || 3) * 1.35;
         const got0 = pos.distanceTo(look); if (got0 > want0) pos = look.clone().lerp(pos, want0 / got0);
-        const wantH = (c.distance || 8) * 1.3, gotH = Math.hypot(pos.x - look.x, pos.z - look.z);
-        if (gotH > wantH) { const k = wantH / gotH; pos.x = look.x + (pos.x - look.x) * k; pos.z = look.z + (pos.z - look.z) * k; } } }
+        const wantH = (c.distance || 8) * 1.3, minH = (c.distance || 8) * 0.7, gotH = Math.hypot(pos.x - look.x, pos.z - look.z);
+        if (gotH > wantH) { const k = wantH / gotH; pos.x = look.x + (pos.x - look.x) * k; pos.z = look.z + (pos.z - look.z) * k; }
+        else if (gotH > 0.05 && gotH < minH) { const k = minH / gotH; pos.x = look.x + (pos.x - look.x) * k; pos.z = look.z + (pos.z - look.z) * k; } } }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
     if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + Math.min(tg.moving || 0, 8) * 0.8) * dt;
@@ -716,6 +719,10 @@ const Stage = {
   },
 
   fitSky(states) {
+    // a sun or a moon has no business hanging over the wall of a room you are standing in
+    { const inRoom = !!this.roomAround(this.cam.look);
+      for (const [id, rec] of this.actors) { if (!rec.g.userData.far || !rec.g.userData.centered) continue;
+        if (rec.g.userData.indoor) continue; rec.g.visible = !inRoom; } }
     if (!this.scene) return; const cam = this.camera;
     for (const [id, rec] of this.actors) { const ud = rec.g.userData; if (!ud.far || !ud.centered) continue; const st = states.get(id); if (!st) continue;
       const p = new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2]); const d = p.distanceTo(cam.position);
@@ -734,9 +741,17 @@ const Stage = {
     // a crowded frame keeps the labels of whoever is acting; the scenery gives up its name
     placed.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
     const cap = 6; if (placed.length > cap) { let keep = cap; while (keep < placed.length && placed[keep].rank <= 2) keep++; for (const p of placed.slice(keep)) p.lbl.hidden = true; placed.length = keep; }
+    // a chip must not be painted across somebody's head
+    const heads = []; { const hv = new THREE.Vector3();
+      for (const [id, rec] of this.actors) { if (!FACED.has(rec.a.kind)) continue; const st2 = states.get(id); if (!st2 || st2.op < 0.3) continue;
+        const hh = rec.g.userData.baseHeight * (st2.size / rec.a.size);
+        hv.set(st2.pos[0], st2.pos[1] + hh * 0.92, st2.pos[2]); const d2 = hv.distanceTo(camPos); hv.project(this.camera);
+        if (hv.z > 1) continue; const px = (hv.x + 1) / 2 * W, py = (1 - hv.y) / 2 * H;
+        const r2 = Math.max(10, (hh * 0.3) / Math.max(1, d2) * H); heads.push({ x: px, y: py, r: r2 }); } }
     const rects = [];
     for (const p of placed) { const w = p.lbl.offsetWidth || 60, h = p.lbl.offsetHeight || 20; let y = p.y, tries = 0;
       const clash = (xx, yy) => rects.some(r => Math.abs(r.x - xx) < (r.w + w) / 2 + 4 && Math.abs(r.y - yy) < h + 2)
+        || heads.some(q => Math.abs(q.x - xx) < w / 2 + q.r && Math.abs(q.y - yy) < h / 2 + q.r)
         || pts.some(q => Math.abs(q.x - xx) < w / 2 + 12 && q.y > yy - h && q.y < yy + h * 1.7);
       let x = p.x, placedOk = !clash(x, y);
       for (const [dx, dy] of [[0, -1], [0, -2], [1, 0], [-1, 0], [1, -1], [-1, -1], [1, -2], [-1, -2], [0, -3], [1.6, 0], [-1.6, 0]]) {

@@ -68,7 +68,7 @@ function humanoid(a, o = {}) {
     const skirt = mesh(G.cyl(0.2 * S, 0.235 * S, wear === 'cloak' ? 0.62 : 0.44, 14, 1, true), wearM, 0, wear === 'cloak' ? -0.24 : -0.15, 0); skirt.scale.set(1, 1, 0.82); torso.add(skirt);
     if (wear !== 'cloak') for (const sx of [-1, 1]) torso.add(mesh(G.cap(0.055, 0.2, 8), wearM, sx * 0.2 * S, 0.24, 0));
   } else if (wear === 'dress' || wear === 'skirt' || wear === 'gown') {
-    const skirt = mesh(G.cyl(0.19 * S, 0.42 * S, 0.66, 18, 1, true), wearM, 0, -0.3, 0); torso.add(skirt);
+    const skirt = mesh(G.cyl(0.19 * S, 0.42 * S, 0.66, 18, 1, true), wearM, 0, -0.3, 0); torso.add(skirt); g.userData.skirt = skirt;
   }
   if (wear === 'hat' || wear === 'cap' || a.detail.hat) {
     const hatM = mat(a.detail.wearColor || shade(col, 0.45), opts);
