@@ -365,28 +365,6 @@ function normalizeScene(raw, dreamText) {
       const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
       const lim = Math.max(0.15, R * 0.45); if (d <= lim) continue;
       const k = lim / d; a.pos[0] = p.pos[0] + dx * k; a.pos[2] = p.pos[2] + dz * k; } }
-  // a named person standing inside a crowd of their own colour cannot be found in the frame
-  { const hex2 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-    // the ring has to be wide enough to hold its own count without the members inside each other,
-    // and the radius has to be written down, or the builder and everything that reasons about the
-    // crowd disagree about where it reaches
-    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const n0 = Math.min(cw.detail.count || 12, 26);
-      cw.detail.radius = Math.round(Math.max(cw.detail.radius || 0, 2, Math.sqrt(n0) * 0.9, Math.sqrt(n0 / 2.2)) * 100) / 100; }
-    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const R = (cw.detail.radius || 5) * cw.size;
-      for (const a of actors) { if (a.kind !== 'person') continue;
-        const dx = a.pos[0] - cw.pos[0], dz = a.pos[2] - cw.pos[2]; const d = Math.hypot(dx, dz);
-        if (d > R + 0.5) continue;
-        // a named person inside the ring is behind somebody from most bearings whatever colour they
-        // are, and the camera that goes looking for them ends up inside the crowd, shooting backs.
-        // They stand at its edge instead: near enough to be with it, outside enough to be seen.
-        const out0 = R + 1.8;
-        const k = out0 / Math.max(0.001, d);
-        a.pos[0] = cw.pos[0] + (d < 0.05 ? out0 : dx * k); a.pos[2] = cw.pos[2] + (d < 0.05 ? 0 : dz * k);
-        // and if they were the crowd's own colour, give them one a viewer can tell apart
-        const A = hex2(a.color), B = hex2(cw.color);
-        if (Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) < 90) {
-          const mix = (v, t) => Math.round(v + (t - v) * 0.55).toString(16).padStart(2, '0');
-          a.color = '#' + mix(A[0], 235) + mix(A[1], 210) + mix(A[2], 60); } } } }
   const SIZE_CAP = { tooth: 2, flower: 3, candle: 2, mirror: 2, book: 2, key: 3, ring: 3, phone: 2, gun: 1.6, knife: 2 };
   for (const a of actors) { const cap = SIZE_CAP[a.kind]; if (cap && a.size > cap) a.size = cap;
     if (a.kind === 'table' && a.detail.width > 14) a.detail.width = 14; }
@@ -526,6 +504,53 @@ function normalizeScene(raw, dreamText) {
     riders.forEach((x, k) => { const dx = (k - (riders.length - 1) / 2) * 0.8;
       x.move = [Math.round((to[0] + dx) * 1000) / 1000, Math.round((to[1] + 0.2) * 1000) / 1000, Math.round(to[2] * 1000) / 1000]; });
   }
+  // a named person standing inside a crowd of their own colour cannot be found in the frame
+  { const hex2 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    // the ring has to be wide enough to hold its own count without the members inside each other,
+    // and the radius has to be written down, or the builder and everything that reasons about the
+    // crowd disagree about where it reaches
+    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const n0 = Math.min(cw.detail.count || 12, 26);
+      let want0 = Math.max(cw.detail.radius || 0, 2, Math.sqrt(n0) * 0.9, Math.sqrt(n0 / 2.2));
+      // but not so far that it swallows a table the people are meant to be standing round
+      for (const f of actors) { if (!['table', 'bed', 'desk', 'sofa', 'car', 'truck', 'bus'].includes(f.kind)) continue;
+        const half = Math.max((f.detail.width || 1.6) * f.size, (f.detail.depth || 0.9) * f.size) / 2 + 0.7;
+        const d0 = Math.hypot(f.pos[0] - cw.pos[0], f.pos[2] - cw.pos[2]);
+        if (d0 - half > 2) want0 = Math.min(want0, d0 - half); }
+      cw.detail.radius = Math.round(want0 * 100) / 100; }
+    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const R = (cw.detail.radius || 5) * cw.size;
+      for (const a of actors) { if (a.kind !== 'person') continue;
+        const dx = a.pos[0] - cw.pos[0], dz = a.pos[2] - cw.pos[2]; const d = Math.hypot(dx, dz);
+        if (d > R + 0.5) continue;
+        // a named person inside the ring is behind somebody from most bearings whatever colour they
+        // are, and the camera that goes looking for them ends up inside the crowd, shooting backs.
+        // They stand at its edge instead: near enough to be with it, outside enough to be seen.
+        const out0 = R + 1.8;
+        // and out of the OTHER crowd too: pushing them clear of one ring straight into the next
+        // moved them again on the next pass, and where they ended up depended on the order the
+        // crowds happened to be declared in
+        const rings = actors.filter(q => q.kind === 'crowd').map(q => ({ x: q.pos[0], z: q.pos[2], r: (q.detail.radius || 5) * q.size + 0.5 }));
+        const free = (px, pz) => !rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r);
+        const a0 = d < 0.05 ? 0 : Math.atan2(dx, dz);
+        let px = cw.pos[0] + Math.sin(a0) * out0, pz = cw.pos[2] + Math.cos(a0) * out0;
+        if (!free(px, pz)) for (let step = 1; step <= 12; step++) { let done = false;
+          for (const sg of [1, -1]) { const ang = a0 + sg * step * (Math.PI / 12);
+            const qx = cw.pos[0] + Math.sin(ang) * out0, qz = cw.pos[2] + Math.cos(ang) * out0;
+            if (free(qx, qz)) { px = qx; pz = qz; done = true; break; } }
+          if (done) break; }
+        a.pos[0] = px; a.pos[2] = pz;
+        // and if they were the crowd's own colour, give them one a viewer can tell apart
+        const A = hex2(a.color), B = hex2(cw.color);
+        if (Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) < 90) {
+          const mix = (v, t) => Math.round(v + (t - v) * 0.55).toString(16).padStart(2, '0');
+          a.color = '#' + mix(A[0], 235) + mix(A[1], 210) + mix(A[2], 60);
+          // and a coat covers the body colour entirely, so it has to be told too
+          if (a.detail.wear && a.detail.wearColor) { const W = hex2(a.detail.wearColor);
+            a.detail.wearColor = '#' + mix(W[0], 235) + mix(W[1], 205) + mix(W[2], 55); } } } } }
+  // a pass that reads its own output has to see the same numbers: round everything the passes
+  // above may have arrived at by a slightly different route
+  { const r4 = v => Math.round(v * 10000) / 10000;
+    for (const a of actors) a.pos = a.pos.map(r4);
+    for (const b of beats) for (const x of b.actions) { if (x.move) x.move = x.move.map(r4); if (x.actor && x.at !== undefined) x.at = Math.round(x.at * 10000) / 10000; } }
   return { title: typeof s.title === 'string' && s.title.trim() ? s.title.trim().slice(0, 80) : 'Untitled dream', mood: typeof s.mood === 'string' ? s.mood.slice(0, 200) : '', world, actors, beats, total: t };
 }
 function normWorld(w, base) {
@@ -914,7 +939,7 @@ function buildActor(a) {
   let g; try { g = (B[a.kind] || B.thing)(a); } catch (e) { console.warn('builder failed', a.kind, e); g = B.thing(a); }
   if (SOFT.has(a.kind)) g.traverse(o => { if (o.isMesh && o.geometry.type === 'CapsuleGeometry') { o.userData.solid = true; o.userData.soft = true; } });
   if (SOLID.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.material.side !== THREE.BackSide) o.userData.solid = true; });
-  const SEETHROUGH = new Set(['tree', 'forest', 'bush', 'flower']);
+  const SEETHROUGH = new Set(['forest', 'bush', 'flower']);
   if (LEAFY.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh) { o.userData.solid = true; o.userData.soft = true; if (!SEETHROUGH.has(a.kind)) o.userData.opaque = true; } });
   // everything else opaque is solid too: list the exceptions rather than the inclusions
   if (!g.userData.far && !g.userData.billboard) g.traverse(o => {
@@ -1212,7 +1237,7 @@ const Stage = {
   poseHuman(g, L, s, τ, dt, size, window, phase, moving, lookYaw, snap) {
     const P = g.userData.pose || (g.userData.pose = { legs: [0, 0], shins: [0, 0], armsX: [0, 0], armsZ: [0, 0], fore: [0, 0], headX: 0, headY: 0, headZ: 0, bodyX: 0, bodyZ: 0, hipsZ: 0, y: 0, torsoS: 1, headS: 1 });
     const T = { legs: [0, 0], shins: [0, 0], armsX: [0, 0], armsZ: [0.08, -0.08], fore: [-0.25, -0.25], headX: 0, headY: 0, headZ: 0, bodyX: 0, bodyZ: 0, hipsZ: 0, y: 0, torsoS: 1, headS: 1 };
-    const t = τ + phase; const run = s === 'run' || moving > 2.5; const sp = run ? 11 : (s === 'limp' ? 5 : 6.5); const φ = t * sp;
+    const t = τ + phase; const run = s === 'run' || moving > 2.5; const sp = run ? 11 : (s === 'limp' ? 5 : clamp(2.2 + moving * 3.4, 2.4, 8.5)); const φ = t * sp;
     let keepHead = true;
     if (s === 'walk' || s === 'run' || s === 'limp' || s === 'crawl') {
       const A = run ? 0.85 : 0.5; const sw = Math.sin(φ); const cs = Math.cos(φ);
@@ -1482,6 +1507,9 @@ const Stage = {
         const wantH = (c.distance || 8) * 1.3, minH = (c.distance || 8) * 0.7, gotH = Math.hypot(p.x - l.x, p.z - l.z);
         if (gotH > wantH) { const k = wantH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; }
         else if (gotH > 0.05 && gotH < minH) { const k = minH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; } }
+      { const rm = this.roomAround(l); if (rm) { const b = rm.box, pad = 0.4;
+          p.x = clamp(p.x, b.min.x + pad, b.max.x - pad); p.z = clamp(p.z, b.min.z + pad, b.max.z - pad);
+          if (p.y > b.max.y - 0.3) p.y = b.max.y - 0.3; } }
       return { pos: p, look: l }; };
     let authored = c.mode === 'fixed' && !!c.pos;
     if (authored && framed.length) { const out0 = dress(settle(pos, look)); let seen = 0, fails = false;
@@ -1660,13 +1688,35 @@ const Stage = {
     if (this.framePick.smAz || this.framePick.smMul !== 1) pos = this.turnShot(pos, look, this.framePick.smAz, this.framePick.smMul);
     if (this.framePick.smLift) pos = pos.clone().setY(pos.y + this.framePick.smLift);
     { const out = dress(settle(pos, look)); pos = out.pos; look = out.look; }
+    // The last word, and the cheapest check in the file: the report already knows whether the
+    // person the sentence is about ended up on screen. Ask it here, of the pose that is about to
+    // be rendered, and if the answer is no, go and find one where it is yes.
+    if (!this.user.on) {
+      const must = framed.filter(f => f.w >= 1);
+      const lost = (p1, l1) => { let n = 0; for (const f of must) if (!this.inShot(p1, l1, f.p, f.g)) n++; return n; };
+      let bad = must.length ? lost(pos, look) : 0;
+      if (this.debugFrames) this.saveDbg = { bad, n: must.length, ids: must.map(f => f.id + (this.inShot(pos, look, f.p, f.g) ? '+' : '-')), saves: this.framePick.saves || 0 };
+      if (bad) {
+        let bq = pos, bl = look, bb = bad, bAz = null, bMul = 1, bLift = 0;
+        outer2: for (const mul of [1, 1.25, 1.6]) for (const lift of [0, 1.6]) for (const az of [0, 20, -20, 40, -40, 70, -70, 110, -110, 150, -150, 180]) {
+          const cand = this.turnShot(pos, look, az, mul); if (lift) cand.y += lift;
+          const o6 = dress(settle(cand, look)); const n6 = lost(o6.pos, o6.look);
+          if (n6 < bb) { bb = n6; bq = o6.pos; bl = o6.look; bAz = az; bMul = mul; bLift = lift; if (!n6) break outer2; } }
+        if (bAz !== null) { this.framePick.saves = (this.framePick.saves || 0) + 1;
+          this.framePick.az = ((this.framePick.az + bAz + 540) % 360) - 180; this.framePick.mul *= bMul; this.framePick.lift = (this.framePick.lift || 0) + bLift;
+          this.framePick.smAz = this.framePick.az; this.framePick.smMul = this.framePick.mul; this.framePick.smLift = this.framePick.lift;
+          // and take it now rather than easing toward it across the beat: three of these per beat
+          // at most, and the alternative is the subject missing from the shot the viewer sees
+          // cut to it the first time in a beat; after that ease, so a subject who keeps walking is
+          // kept in frame without the camera snapping at them every few frames
+          pos = bq; look = bl; if ((this.framePick.saves || 0) <= 1) this._snapNow = true; } } }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const rm2 = this.roomAround(look); if (rm2 && pos.y > rm2.box.max.y - 0.3) pos.y = rm2.box.max.y - 0.3; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
     if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + Math.min(tg.moving || 0, 8) * 0.8) * dt;
       if (step > cap) pos = this._lastAim.clone().lerp(pos, cap / step); }
     this._lastAim = (this._lastAim || new THREE.Vector3()).copy(pos);
-    if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); this._lastCamOff = null; this._lastOff = null; } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k);
+    if (snap || this._snapNow) { this._snapNow = false; this.cam.pos.copy(pos); this.cam.look.copy(look); this._lastCamOff = null; this._lastOff = null; this._lastAim = (this._lastAim || new THREE.Vector3()).copy(pos); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k);
       const was = this.cam.pos.clone(); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f);
       if (local > 1 && dt > 0 && this._lastCamOff) { const o2 = this.cam.pos.clone().sub(this.cam.look);
         const moved = o2.distanceTo(this._lastCamOff), lim = 3.2 * dt;

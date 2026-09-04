@@ -274,7 +274,7 @@ const Stage = {
   poseHuman(g, L, s, τ, dt, size, window, phase, moving, lookYaw, snap) {
     const P = g.userData.pose || (g.userData.pose = { legs: [0, 0], shins: [0, 0], armsX: [0, 0], armsZ: [0, 0], fore: [0, 0], headX: 0, headY: 0, headZ: 0, bodyX: 0, bodyZ: 0, hipsZ: 0, y: 0, torsoS: 1, headS: 1 });
     const T = { legs: [0, 0], shins: [0, 0], armsX: [0, 0], armsZ: [0.08, -0.08], fore: [-0.25, -0.25], headX: 0, headY: 0, headZ: 0, bodyX: 0, bodyZ: 0, hipsZ: 0, y: 0, torsoS: 1, headS: 1 };
-    const t = τ + phase; const run = s === 'run' || moving > 2.5; const sp = run ? 11 : (s === 'limp' ? 5 : 6.5); const φ = t * sp;
+    const t = τ + phase; const run = s === 'run' || moving > 2.5; const sp = run ? 11 : (s === 'limp' ? 5 : clamp(2.2 + moving * 3.4, 2.4, 8.5)); const φ = t * sp;
     let keepHead = true;
     if (s === 'walk' || s === 'run' || s === 'limp' || s === 'crawl') {
       const A = run ? 0.85 : 0.5; const sw = Math.sin(φ); const cs = Math.cos(φ);
@@ -544,6 +544,9 @@ const Stage = {
         const wantH = (c.distance || 8) * 1.3, minH = (c.distance || 8) * 0.7, gotH = Math.hypot(p.x - l.x, p.z - l.z);
         if (gotH > wantH) { const k = wantH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; }
         else if (gotH > 0.05 && gotH < minH) { const k = minH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; } }
+      { const rm = this.roomAround(l); if (rm) { const b = rm.box, pad = 0.4;
+          p.x = clamp(p.x, b.min.x + pad, b.max.x - pad); p.z = clamp(p.z, b.min.z + pad, b.max.z - pad);
+          if (p.y > b.max.y - 0.3) p.y = b.max.y - 0.3; } }
       return { pos: p, look: l }; };
     let authored = c.mode === 'fixed' && !!c.pos;
     if (authored && framed.length) { const out0 = dress(settle(pos, look)); let seen = 0, fails = false;
@@ -722,13 +725,35 @@ const Stage = {
     if (this.framePick.smAz || this.framePick.smMul !== 1) pos = this.turnShot(pos, look, this.framePick.smAz, this.framePick.smMul);
     if (this.framePick.smLift) pos = pos.clone().setY(pos.y + this.framePick.smLift);
     { const out = dress(settle(pos, look)); pos = out.pos; look = out.look; }
+    // The last word, and the cheapest check in the file: the report already knows whether the
+    // person the sentence is about ended up on screen. Ask it here, of the pose that is about to
+    // be rendered, and if the answer is no, go and find one where it is yes.
+    if (!this.user.on) {
+      const must = framed.filter(f => f.w >= 1);
+      const lost = (p1, l1) => { let n = 0; for (const f of must) if (!this.inShot(p1, l1, f.p, f.g)) n++; return n; };
+      let bad = must.length ? lost(pos, look) : 0;
+      if (this.debugFrames) this.saveDbg = { bad, n: must.length, ids: must.map(f => f.id + (this.inShot(pos, look, f.p, f.g) ? '+' : '-')), saves: this.framePick.saves || 0 };
+      if (bad) {
+        let bq = pos, bl = look, bb = bad, bAz = null, bMul = 1, bLift = 0;
+        outer2: for (const mul of [1, 1.25, 1.6]) for (const lift of [0, 1.6]) for (const az of [0, 20, -20, 40, -40, 70, -70, 110, -110, 150, -150, 180]) {
+          const cand = this.turnShot(pos, look, az, mul); if (lift) cand.y += lift;
+          const o6 = dress(settle(cand, look)); const n6 = lost(o6.pos, o6.look);
+          if (n6 < bb) { bb = n6; bq = o6.pos; bl = o6.look; bAz = az; bMul = mul; bLift = lift; if (!n6) break outer2; } }
+        if (bAz !== null) { this.framePick.saves = (this.framePick.saves || 0) + 1;
+          this.framePick.az = ((this.framePick.az + bAz + 540) % 360) - 180; this.framePick.mul *= bMul; this.framePick.lift = (this.framePick.lift || 0) + bLift;
+          this.framePick.smAz = this.framePick.az; this.framePick.smMul = this.framePick.mul; this.framePick.smLift = this.framePick.lift;
+          // and take it now rather than easing toward it across the beat: three of these per beat
+          // at most, and the alternative is the subject missing from the shot the viewer sees
+          // cut to it the first time in a beat; after that ease, so a subject who keeps walking is
+          // kept in frame without the camera snapping at them every few frames
+          pos = bq; look = bl; if ((this.framePick.saves || 0) <= 1) this._snapNow = true; } } }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const rm2 = this.roomAround(look); if (rm2 && pos.y > rm2.box.max.y - 0.3) pos.y = rm2.box.max.y - 0.3; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
     if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + Math.min(tg.moving || 0, 8) * 0.8) * dt;
       if (step > cap) pos = this._lastAim.clone().lerp(pos, cap / step); }
     this._lastAim = (this._lastAim || new THREE.Vector3()).copy(pos);
-    if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); this._lastCamOff = null; this._lastOff = null; } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k);
+    if (snap || this._snapNow) { this._snapNow = false; this.cam.pos.copy(pos); this.cam.look.copy(look); this._lastCamOff = null; this._lastOff = null; this._lastAim = (this._lastAim || new THREE.Vector3()).copy(pos); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k);
       const was = this.cam.pos.clone(); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f);
       if (local > 1 && dt > 0 && this._lastCamOff) { const o2 = this.cam.pos.clone().sub(this.cam.look);
         const moved = o2.distanceTo(this._lastCamOff), lim = 3.2 * dt;

@@ -147,28 +147,6 @@ function normalizeScene(raw, dreamText) {
       const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
       const lim = Math.max(0.15, R * 0.45); if (d <= lim) continue;
       const k = lim / d; a.pos[0] = p.pos[0] + dx * k; a.pos[2] = p.pos[2] + dz * k; } }
-  // a named person standing inside a crowd of their own colour cannot be found in the frame
-  { const hex2 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-    // the ring has to be wide enough to hold its own count without the members inside each other,
-    // and the radius has to be written down, or the builder and everything that reasons about the
-    // crowd disagree about where it reaches
-    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const n0 = Math.min(cw.detail.count || 12, 26);
-      cw.detail.radius = Math.round(Math.max(cw.detail.radius || 0, 2, Math.sqrt(n0) * 0.9, Math.sqrt(n0 / 2.2)) * 100) / 100; }
-    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const R = (cw.detail.radius || 5) * cw.size;
-      for (const a of actors) { if (a.kind !== 'person') continue;
-        const dx = a.pos[0] - cw.pos[0], dz = a.pos[2] - cw.pos[2]; const d = Math.hypot(dx, dz);
-        if (d > R + 0.5) continue;
-        // a named person inside the ring is behind somebody from most bearings whatever colour they
-        // are, and the camera that goes looking for them ends up inside the crowd, shooting backs.
-        // They stand at its edge instead: near enough to be with it, outside enough to be seen.
-        const out0 = R + 1.8;
-        const k = out0 / Math.max(0.001, d);
-        a.pos[0] = cw.pos[0] + (d < 0.05 ? out0 : dx * k); a.pos[2] = cw.pos[2] + (d < 0.05 ? 0 : dz * k);
-        // and if they were the crowd's own colour, give them one a viewer can tell apart
-        const A = hex2(a.color), B = hex2(cw.color);
-        if (Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) < 90) {
-          const mix = (v, t) => Math.round(v + (t - v) * 0.55).toString(16).padStart(2, '0');
-          a.color = '#' + mix(A[0], 235) + mix(A[1], 210) + mix(A[2], 60); } } } }
   const SIZE_CAP = { tooth: 2, flower: 3, candle: 2, mirror: 2, book: 2, key: 3, ring: 3, phone: 2, gun: 1.6, knife: 2 };
   for (const a of actors) { const cap = SIZE_CAP[a.kind]; if (cap && a.size > cap) a.size = cap;
     if (a.kind === 'table' && a.detail.width > 14) a.detail.width = 14; }
@@ -308,6 +286,53 @@ function normalizeScene(raw, dreamText) {
     riders.forEach((x, k) => { const dx = (k - (riders.length - 1) / 2) * 0.8;
       x.move = [Math.round((to[0] + dx) * 1000) / 1000, Math.round((to[1] + 0.2) * 1000) / 1000, Math.round(to[2] * 1000) / 1000]; });
   }
+  // a named person standing inside a crowd of their own colour cannot be found in the frame
+  { const hex2 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    // the ring has to be wide enough to hold its own count without the members inside each other,
+    // and the radius has to be written down, or the builder and everything that reasons about the
+    // crowd disagree about where it reaches
+    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const n0 = Math.min(cw.detail.count || 12, 26);
+      let want0 = Math.max(cw.detail.radius || 0, 2, Math.sqrt(n0) * 0.9, Math.sqrt(n0 / 2.2));
+      // but not so far that it swallows a table the people are meant to be standing round
+      for (const f of actors) { if (!['table', 'bed', 'desk', 'sofa', 'car', 'truck', 'bus'].includes(f.kind)) continue;
+        const half = Math.max((f.detail.width || 1.6) * f.size, (f.detail.depth || 0.9) * f.size) / 2 + 0.7;
+        const d0 = Math.hypot(f.pos[0] - cw.pos[0], f.pos[2] - cw.pos[2]);
+        if (d0 - half > 2) want0 = Math.min(want0, d0 - half); }
+      cw.detail.radius = Math.round(want0 * 100) / 100; }
+    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const R = (cw.detail.radius || 5) * cw.size;
+      for (const a of actors) { if (a.kind !== 'person') continue;
+        const dx = a.pos[0] - cw.pos[0], dz = a.pos[2] - cw.pos[2]; const d = Math.hypot(dx, dz);
+        if (d > R + 0.5) continue;
+        // a named person inside the ring is behind somebody from most bearings whatever colour they
+        // are, and the camera that goes looking for them ends up inside the crowd, shooting backs.
+        // They stand at its edge instead: near enough to be with it, outside enough to be seen.
+        const out0 = R + 1.8;
+        // and out of the OTHER crowd too: pushing them clear of one ring straight into the next
+        // moved them again on the next pass, and where they ended up depended on the order the
+        // crowds happened to be declared in
+        const rings = actors.filter(q => q.kind === 'crowd').map(q => ({ x: q.pos[0], z: q.pos[2], r: (q.detail.radius || 5) * q.size + 0.5 }));
+        const free = (px, pz) => !rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r);
+        const a0 = d < 0.05 ? 0 : Math.atan2(dx, dz);
+        let px = cw.pos[0] + Math.sin(a0) * out0, pz = cw.pos[2] + Math.cos(a0) * out0;
+        if (!free(px, pz)) for (let step = 1; step <= 12; step++) { let done = false;
+          for (const sg of [1, -1]) { const ang = a0 + sg * step * (Math.PI / 12);
+            const qx = cw.pos[0] + Math.sin(ang) * out0, qz = cw.pos[2] + Math.cos(ang) * out0;
+            if (free(qx, qz)) { px = qx; pz = qz; done = true; break; } }
+          if (done) break; }
+        a.pos[0] = px; a.pos[2] = pz;
+        // and if they were the crowd's own colour, give them one a viewer can tell apart
+        const A = hex2(a.color), B = hex2(cw.color);
+        if (Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) < 90) {
+          const mix = (v, t) => Math.round(v + (t - v) * 0.55).toString(16).padStart(2, '0');
+          a.color = '#' + mix(A[0], 235) + mix(A[1], 210) + mix(A[2], 60);
+          // and a coat covers the body colour entirely, so it has to be told too
+          if (a.detail.wear && a.detail.wearColor) { const W = hex2(a.detail.wearColor);
+            a.detail.wearColor = '#' + mix(W[0], 235) + mix(W[1], 205) + mix(W[2], 55); } } } } }
+  // a pass that reads its own output has to see the same numbers: round everything the passes
+  // above may have arrived at by a slightly different route
+  { const r4 = v => Math.round(v * 10000) / 10000;
+    for (const a of actors) a.pos = a.pos.map(r4);
+    for (const b of beats) for (const x of b.actions) { if (x.move) x.move = x.move.map(r4); if (x.actor && x.at !== undefined) x.at = Math.round(x.at * 10000) / 10000; } }
   return { title: typeof s.title === 'string' && s.title.trim() ? s.title.trim().slice(0, 80) : 'Untitled dream', mood: typeof s.mood === 'string' ? s.mood.slice(0, 200) : '', world, actors, beats, total: t };
 }
 function normWorld(w, base) {

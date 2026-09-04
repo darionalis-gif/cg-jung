@@ -350,7 +350,7 @@ function buildActor(a) {
   let g; try { g = (B[a.kind] || B.thing)(a); } catch (e) { console.warn('builder failed', a.kind, e); g = B.thing(a); }
   if (SOFT.has(a.kind)) g.traverse(o => { if (o.isMesh && o.geometry.type === 'CapsuleGeometry') { o.userData.solid = true; o.userData.soft = true; } });
   if (SOLID.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.material.side !== THREE.BackSide) o.userData.solid = true; });
-  const SEETHROUGH = new Set(['tree', 'forest', 'bush', 'flower']);
+  const SEETHROUGH = new Set(['forest', 'bush', 'flower']);
   if (LEAFY.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh) { o.userData.solid = true; o.userData.soft = true; if (!SEETHROUGH.has(a.kind)) o.userData.opaque = true; } });
   // everything else opaque is solid too: list the exceptions rather than the inclusions
   if (!g.userData.far && !g.userData.billboard) g.traverse(o => {
