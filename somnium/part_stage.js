@@ -127,7 +127,9 @@ const Stage = {
     const bi = this.beatAt(t); if (bi !== this.lastBeat) { const prev = this.lastBeat; this.lastBeat = bi; if (this.onBeat) this.onBeat(bi); if (prev >= 0 && !snap) this.camBlend = 0; }
     if (!snap && dt > 0) { for (const x of S.beats[bi].actions) { if (!x.effect || x.effect === 'none') continue; const at = S.beats[bi].start + x.at * S.beats[bi].dur; if (t - dt < at && t >= at) this.triggerEffect(x.effect); } }
     // actors
-    for (const [id, rec] of this.actors) { const st = states.get(id), g = rec.g, a = rec.a, ud = g.userData; g.visible = st.op > 0.01; g.position.set(st.pos[0], st.pos[1] - (st.pos[1] > 0.25 && ud.propBase ? ud.propBase * (st.size / a.size) : 0), st.pos[2]); g.rotation.set(0, g.rotation.y, 0); const sc = ud.noScale ? 1 : st.size; g.scale.setScalar(sc); if (rec.blob) { rec.blob.visible = g.visible && st.pos[1] > -0.5 && st.pos[1] < 0.6 && !['fly', 'float', 'swim'].includes(st.state); rec.blob.position.set(st.pos[0], 0.02, st.pos[2]); rec.blob.scale.setScalar(sc); }
+    for (const [id, rec] of this.actors) { const st = states.get(id), g = rec.g, a = rec.a, ud = g.userData; g.visible = st.op > 0.01; g.position.set(st.pos[0], st.pos[1] - (st.pos[1] > 0.25 && ud.propBase ? ud.propBase * (st.size / a.size) : 0), st.pos[2]);
+      if (a.carriedBy) { const cr = this.actors.get(a.carriedBy); const sw = cr && cr.g.userData.armSwing; if (sw) { const ang = sw[a.id.length % 2 ? 1 : 0]; const r0 = st.yaw * Math.PI / 180, reach = 0.5 * (states.get(a.carriedBy) || st).size;
+        g.position.x += Math.sin(r0) * -Math.sin(ang) * reach; g.position.z += Math.cos(r0) * -Math.sin(ang) * reach; g.position.y += (1 - Math.cos(ang)) * reach * 0.6; } } g.rotation.set(0, g.rotation.y, 0); const sc = ud.noScale ? 1 : st.size; g.scale.setScalar(sc); if (rec.blob) { rec.blob.visible = g.visible && st.pos[1] > -0.5 && st.pos[1] < 0.6 && !['fly', 'float', 'swim'].includes(st.state); rec.blob.position.set(st.pos[0], 0.02, st.pos[2]); rec.blob.scale.setScalar(sc); }
       for (const m of rec.mats) { const bo = m.userData.baseOpacity; const want = st.op * bo; if (Math.abs(m.opacity - want) > 0.001) { m.opacity = want; m.transparent = want < 0.999 || m.userData.baseOpacity < 0.999; m.needsUpdate = false; } if (st.colorC && !ud.noColor) { const bc = m.userData.baseColor; const from = new THREE.Color(st.colorC[0]), to = new THREE.Color(st.colorC[1]); const ratio = bc.clone().multiply(new THREE.Color(1 / Math.max(0.05, from.r), 1 / Math.max(0.05, from.g), 1 / Math.max(0.05, from.b))); m.color.copy(from.clone().lerp(to, st.colorC[2]).multiply(ratio)); } else if (st.color !== a.color) { const bc = m.userData.baseColor; const from = new THREE.Color(a.color), to = new THREE.Color(st.color); const ratio = bc.clone().multiply(new THREE.Color(1 / Math.max(0.05, from.r), 1 / Math.max(0.05, from.g), 1 / Math.max(0.05, from.b))); m.color.copy(to.multiply(ratio)); } }
       this.animate(rec, st, τ, dt, snap);
     }
@@ -164,7 +166,7 @@ const Stage = {
     else if (s === 'kneel') { T.legs = [1.5, 1.5]; T.shins = [-2.7, -2.7]; T.y = -0.52; T.ground = true; T.armsX = [-0.7, -0.7]; T.fore = [-0.8, -0.8]; T.bodyX = 0.2; }
     else if (s === 'lie') { T.bodyX = -1.5; T.y = 0.2 - 0.96 + 0.18; T.ground = true; T.armsX = [-0.2, -0.2]; T.armsZ = [0.25, -0.25]; T.headX = 0.2; keepHead = false; }
     else if (s === 'collapse') { const p = easeInOut(window); T.ground = p > 0.6; T.bodyX = -1.5 * p; T.y = (0.2 - 0.96 - 0.02) * p; T.legs = [0.5 * p, 0.2 * p]; T.shins = [-0.6 * p, -0.3 * p]; T.armsX = [-0.6 * p, -0.9 * p]; T.headX = 0.5 * p; keepHead = false; }
-    else if (s === 'shake') { T.armsX = [-0.9 + Math.sin(t * 20) * 0.35, -0.9 - Math.sin(t * 20) * 0.35]; T.fore = [-1.2, -1.2]; T.armsZ = [0.3, -0.3]; T.bodyX = 0.18 + Math.sin(t * 9) * 0.1; T.headZ = Math.sin(t * 30) * 0.15; T.hipsZ = Math.sin(t * 25) * 0.04; }
+    else if (s === 'shake') { T.armsX = [-0.9, -0.9]; T.fore = [-1.2, -1.2]; T.armsZ = [0.3, -0.3]; T.bodyX = 0.18; T.legs = [0.12, -0.12]; T.shins = [-0.15, -0.15]; }
     else if (s === 'push') { T.armsX = [-1.5, -1.5]; T.fore = [-0.1, -0.1]; T.bodyX = 0.2 + Math.max(0, Math.sin(t * 4)) * 0.15; T.legs = [0.3, -0.3]; T.shins = [-0.2, -0.5]; }
     else if (s === 'spin') { T.armsZ = [0.9, -0.9]; T.armsX = [-0.3, -0.3]; }
     else if (s === 'dance') { const v = 0.5 + 0.5 * Math.sin(phase * 3.7); T.y = Math.abs(Math.sin(t * 6)) * 0.12; T.armsZ = [1.1 + v * 1.3 + Math.sin(t * 6) * 0.5, -(0.9 + (1 - v) * 1.5) - Math.sin(t * 6 + 1) * 0.5]; T.fore = [-0.6, -0.6]; T.legs = [Math.sin(t * 6) * 0.2, -Math.sin(t * 6) * 0.2]; T.hipsZ = Math.sin(t * 6) * 0.12; }
@@ -179,8 +181,18 @@ const Stage = {
     for (const k of ['headX', 'headY', 'headZ', 'bodyX', 'bodyZ', 'hipsZ', 'y', 'torsoS', 'headS']) P[k] = lp(P[k], T[k]);
     // apply
     for (let i = 0; i < 2; i++) { L.legs[i].rotation.x = P.legs[i]; L.shins[i].rotation.x = P.shins[i]; L.arms[i].rotation.x = P.armsX[i]; L.arms[i].rotation.z = P.armsZ[i]; L.fore[i].rotation.x = P.fore[i]; }
+    g.userData.armSwing = [P.armsX[0], P.armsX[1]];
     L.head.rotation.set(P.headX, P.headY, P.headZ); L.head.scale.set(1 + (1 - P.headS) * 0.5, P.headS, 1 + (1 - P.headS) * 0.3);
     L.torso.scale.set(1 + (1 - P.torsoS) * 0.5, P.torsoS, 1 + (1 - P.torsoS) * 0.5); L.hips.rotation.set(P.bodyX, 0, P.bodyZ + P.hipsZ); L.hips.position.y = 0.96 + P.y;
+    if (s === 'shake') { // a tremor the blend cannot swallow: arms, head and hips out of step
+      const q = t * 19, jitter = Math.sin(q) * 0.42, roll = Math.sin(q * 0.62 + 1.1) * 0.1;
+      L.arms[0].rotation.x += jitter; L.arms[1].rotation.x -= jitter;
+      L.arms[0].rotation.z += roll; L.arms[1].rotation.z += roll;
+      L.fore[0].rotation.x += jitter * 0.5; L.fore[1].rotation.x -= jitter * 0.5;
+      L.head.rotation.z += Math.sin(q * 1.4) * 0.13; L.head.rotation.y += Math.sin(q * 0.9 + 2) * 0.1;
+      L.hips.rotation.z += Math.sin(q * 0.5) * 0.07; L.hips.rotation.y = Math.sin(q * 0.33) * 0.06;
+      g.position.y += Math.abs(Math.sin(q * 0.5)) * 0.02 * size;
+    }
     // a pose that folds the limbs cannot know where they end up: measure the rig and set it on the ground
     if (T.ground) { g.updateMatrixWorld(true); const bb = this._bb || (this._bb = new THREE.Box3()); bb.setFromObject(L.hips); const foot = bb.min.y - g.position.y; if (Number.isFinite(foot)) L.hips.position.y += -foot + 0.03; }
   },
