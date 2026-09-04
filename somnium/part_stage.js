@@ -268,7 +268,7 @@ const Stage = {
           let n = 0, tgtSeen = false, tooSmall = false;
           let scenery = 0;
           for (const f of framed) { if (!this.inShot(out.pos, out.look, f.p, f.g)) continue; if (f.w < 1) { scenery = Math.min(0.7, scenery + f.w); } else n += f.w; if (f.id === c.target) { tgtSeen = true; n += 0.8; }
-            if (f.w >= 1) { const apparent = (f.h || 1.8) / Math.max(1, f.p.distanceTo(out.pos)); if (apparent < (f.speaks ? 0.15 : 0.06)) tooSmall = true; } }
+            if (f.w >= 1) { const d0 = f.p.distanceTo(out.pos); const apparent = (f.h || 1.8) / Math.max(1, d0); if (apparent < (f.speaks ? 0.15 : 0.06)) tooSmall = true; if (d0 < 1.9) tooSmall = true; } }
           if (tooSmall) continue;
           n += scenery;
           const toCam = out.pos.clone().sub(T); const facing = dirAt(tg.yaw, 1, 0); const front = (toCam.x * facing.x + toCam.z * facing.z) / (Math.hypot(toCam.x, toCam.z) || 1);
@@ -303,8 +303,9 @@ const Stage = {
     return Infinity;
   },
   lensCrowding(pos, self) {
-    const sol = this.solidsNow; if (!sol || !sol.length) return 0; const w = this._v3 || (this._v3 = new THREE.Vector3()); let n = 0; const seen = new Set();
-    for (const o of sol) { if (this.isOwn(o, self)) continue; const owner = o.parent && o.parent.parent ? o.parent.parent : o.parent; if (seen.has(owner)) continue; o.getWorldPosition(w); if (w.distanceTo(pos) < 2.4) { seen.add(owner); n++; } }
+    const sol = this.solidsNow; if (!sol || !sol.length) return 0; let n = 0; const seen = new Set(); const bx = this._bx2 || (this._bx2 = new THREE.Box3());
+    for (const o of sol) { if (this.isOwn(o, self)) continue; const owner = o.parent && o.parent.parent ? o.parent.parent : o.parent; if (seen.has(owner)) continue;
+      bx.setFromObject(o); if (bx.distanceToPoint(pos) < 2.4) { seen.add(owner); n++; } }
     return n;
   },
   pushOffLens(pos, look, self) {
