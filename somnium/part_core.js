@@ -133,8 +133,12 @@ function normalizeScene(raw, dreamText) {
   const shove = (a, ox, oz) => { a.pos[0] += ox; a.pos[2] += oz; const d = shifted.get(a.id) || [0, 0]; shifted.set(a.id, [d[0] + ox, d[1] + oz]); };
   for (const w of actors) { if (w.kind !== 'water' || !w.detail.open) continue;
     const r = w.yaw * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r);
+    const R0 = (w.detail.radius || 30) * w.size, REACH = Math.max(60, R0 * 1.5);
     for (const a of actors) { if (a === w || a.kind === 'water' || a.kind === 'river' || a.kind === 'boat' || a.kind === 'moon' || a.kind === 'sun' || a.kind === 'cloud' || a.kind === 'star') continue;
       const dx = a.pos[0] - w.pos[0], dz = a.pos[2] - w.pos[2];
+      // the sea is a shoreline, not a half of the world: something a few hundred metres inland of
+      // it is somewhere else in the dream and is not standing in the water
+      if (Math.hypot(dx, dz) > REACH) continue;
       const fwd = dx * sn + dz * cs; if (fwd <= 1.5) continue;
       shove(a, -sn * (fwd + 1.5), -cs * (fwd + 1.5)); } }
   // someone at the bottom of a pit has to be inside its mouth: outside it they are in solid ground
@@ -154,16 +158,17 @@ function normalizeScene(raw, dreamText) {
       for (const a of actors) { if (a.kind !== 'person') continue;
         const dx = a.pos[0] - cw.pos[0], dz = a.pos[2] - cw.pos[2]; const d = Math.hypot(dx, dz);
         if (d > R + 0.5) continue;
-        // a named person inside the ring is behind somebody from most bearings whatever colour
-        // they are; only the outermost metre of a big crowd is a place to stand
+        // a named person inside the ring is behind somebody from most bearings whatever colour they
+        // are, and the camera that goes looking for them ends up inside the crowd, shooting backs.
+        // They stand at its edge instead: near enough to be with it, outside enough to be seen.
+        const out0 = R + 1.8;
+        const k = out0 / Math.max(0.001, d);
+        a.pos[0] = cw.pos[0] + (d < 0.05 ? out0 : dx * k); a.pos[2] = cw.pos[2] + (d < 0.05 ? 0 : dz * k);
+        // and if they were the crowd's own colour, give them one a viewer can tell apart
         const A = hex2(a.color), B = hex2(cw.color);
-        const near = Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) < 90;
-        if (!near && d > R - 0.9) continue;
-        const k = (R + 2.2) / Math.max(0.001, d);
-        a.pos[0] = cw.pos[0] + (d < 0.05 ? R + 2.2 : dx * k); a.pos[2] = cw.pos[2] + (d < 0.05 ? 0 : dz * k);
-        // and give them a colour a viewer can actually tell apart
-        const mix = (v, t) => Math.round(v + (t - v) * 0.55).toString(16).padStart(2, '0');
-        a.color = '#' + mix(A[0], 235) + mix(A[1], 210) + mix(A[2], 60); } } }
+        if (Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) < 90) {
+          const mix = (v, t) => Math.round(v + (t - v) * 0.55).toString(16).padStart(2, '0');
+          a.color = '#' + mix(A[0], 235) + mix(A[1], 210) + mix(A[2], 60); } } } }
   const SIZE_CAP = { tooth: 2, flower: 3, candle: 2, mirror: 2, book: 2, key: 3, ring: 3, phone: 2, gun: 1.6, knife: 2 };
   for (const a of actors) { const cap = SIZE_CAP[a.kind]; if (cap && a.size > cap) a.size = cap;
     if (a.kind === 'table' && a.detail.width > 14) a.detail.width = 14; }
@@ -175,7 +180,7 @@ function normalizeScene(raw, dreamText) {
     const c = b.camera && typeof b.camera === 'object' ? b.camera : {};
     const mode = oneOf(c.mode, CAMERA_MODES, c.pos ? 'fixed' : 'follow');
     let target = typeof c.target === 'string' && ids.has(c.target) ? c.target : (typeof c.lookAt === 'string' && ids.has(c.lookAt) ? c.lookAt : firstId);
-    const camera = { mode, target, pos: c.pos ? vec(c.pos, [0, 3, 10]) : null, lookAt: Array.isArray(c.lookAt) ? vec(c.lookAt, [0, 1, 0]) : (typeof c.lookAt === 'string' && ids.has(c.lookAt) ? c.lookAt : null), distance: num(c.distance, 8, 1.5, 120), height: num(c.height, 2.5, 0, 80), angle: num(c.angle, 160) };
+    const camera = { mode, target, pos: c.pos ? vec(c.pos, [0, 3, 10]) : null, lookAt: Array.isArray(c.lookAt) ? vec(c.lookAt, [0, 1, 0]) : (typeof c.lookAt === 'string' && ids.has(c.lookAt) ? c.lookAt : null), distance: num(c.distance, mode === 'wide' ? 22 : 8, 1.5, 120), height: num(c.height, 2.5, 0, 80), angle: num(c.angle, 160) };
     const actions = (Array.isArray(b.actions) ? b.actions : []).filter(x => x && typeof x === 'object').map(x => {
       if (x.world && typeof x.world === 'object') return { world: normWorld(x.world, world), at: num(x.at, 0, 0, 1), for: num(x.for, 1, 0.05, 1) };
       if (x.effect) return { effect: oneOf(x.effect, EFFECTS, 'none'), at: num(x.at, 0, 0, 1) };
@@ -187,6 +192,7 @@ function normalizeScene(raw, dreamText) {
       if (x.path) a.path = oneOf(x.path, ['line', 'arc', 'circle'], 'line');
       if (x.yaw !== undefined && Number.isFinite(+x.yaw)) a.yaw = +x.yaw;
       if (x.state) a.state = oneOf(x.state, STATES, 'idle');
+      if (x.glow !== undefined) a.glow = !!x.glow;
       if (x.appear) a.appear = true;
       if (x.vanish) a.vanish = true;
       if (x.size !== undefined && Number.isFinite(+x.size)) a.size = clamp(+x.size, 0.05, 80);
@@ -204,8 +210,11 @@ function normalizeScene(raw, dreamText) {
   // and no move may walk anyone but a swimmer out past the waterline
   for (const w of actors) { if (w.kind !== 'water' || !w.detail.open) continue;
     const r = w.yaw * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r);
+    const R1 = (w.detail.radius || 30) * w.size, REACH1 = Math.max(60, R1 * 1.5);
     for (const b of beats) for (const x of b.actions) { if (!x.move) continue; const ac = actors.find(q => q.id === x.actor);
-      if (!ac || ['water', 'river', 'boat', 'moon', 'sun', 'cloud', 'star', 'plane', 'helicopter'].includes(ac.kind)) continue;
+      // only people are kept out of the sea: a stone cast back into the surf belongs in the water
+      if (!ac || !['person', 'crowd', 'animal', 'monster'].includes(ac.kind)) continue;
+      if (Math.hypot(x.move[0] - w.pos[0], x.move[2] - w.pos[2]) > REACH1) continue;
       if (x.state === 'swim' || x.state === 'fly' || x.state === 'float') continue;
       const fwd = (x.move[0] - w.pos[0]) * sn + (x.move[2] - w.pos[2]) * cs; if (fwd <= 1.5) continue;
       x.move = [x.move[0] - sn * (fwd + 1.5), x.move[1], x.move[2] - cs * (fwd + 1.5)]; } }
@@ -230,7 +239,9 @@ function normalizeScene(raw, dreamText) {
         if (jump) { const far = Math.hypot(x.move[0] - from[0], x.move[2] - from[2]), drop = Math.abs(x.move[1] - from[1]);
           if ((far > 15 || drop > 5) && x.for > 0.4) x.for = 0.3; }
         cur.set(x.actor, x.move.slice()); } } }
-  for (const b of beats) for (const x of b.actions) if (x.appear && x.at > 0.3) x.at = 0.15;
+  // an appear so late in its beat that it cannot be seen is a mistake; one at 0.4 or 0.6 is a
+  // sequence -- one by one each tooth fell out -- and dragging them all to the front destroys it
+  for (const b of beats) for (const x of b.actions) if (x.appear && x.at > 0.82) x.at = 0.7;
   let t = 0; for (const b of beats) { b.start = t; t += b.dur; }
   // a flight over the timberland has to end above the timberland
   { const GROUNDY = new Set(['forest', 'field', 'water', 'city', 'hill']);
@@ -238,10 +249,14 @@ function normalizeScene(raw, dreamText) {
       if (!air.length) continue;
       const named = b.actions.map(x => actors.find(a => a.id === x.actor)).filter(a => a && GROUNDY.has(a.kind));
       if (!named.length) continue;
-      let cx = 0, cz = 0; for (const g of named) { cx += g.pos[0]; cz += g.pos[2]; } cx /= named.length; cz /= named.length;
-      const reach = Math.max(...named.map(g => (g.detail.radius || 25) * g.size)) * 0.7;
-      for (const x of air) { const d = Math.hypot(x.move[0] - cx, x.move[2] - cz); if (d <= reach) continue;
-        const k = reach / d; x.move[0] = cx + (x.move[0] - cx) * k; x.move[2] = cz + (x.move[2] - cz) * k; } } }
+      for (const x of air) {
+        // aim at the nearest of the places the beat names, not at the middle of all of them, which
+        // for two woods is the gap between the two woods
+        let best = named[0], bd = 1e9;
+        for (const g of named) { const d0 = Math.hypot(x.move[0] - g.pos[0], x.move[2] - g.pos[2]); if (d0 < bd) { bd = d0; best = g; } }
+        const reach = (best.detail.radius || 25) * best.size * 0.7;
+        if (bd <= reach) continue;
+        const k = reach / bd; x.move[0] = best.pos[0] + (x.move[0] - best.pos[0]) * k; x.move[2] = best.pos[2] + (x.move[2] - best.pos[2]) * k; } } }
   // someone the script lays down belongs on the bed it wrote for them
   { const beds = actors.filter(a => a.kind === 'bed');
     if (beds.length) for (const b of beats) for (const x of b.actions) {
@@ -286,7 +301,9 @@ function normalizeScene(raw, dreamText) {
     if (vs.length !== 1) continue; const to = vs[0];
     const riders = b.actions.filter(x => { if (!x.actor || !x.move) return false; const a = actors.find(q => q.id === x.actor);
       if (!a || (a.kind !== 'person' && a.kind !== 'animal')) return false;
-      if (!b.actions.some(q => q.actor === x.actor && (q.state === 'sit' || q.state === 'lie'))) return false;
+      // the seated state has to be on this very action: a beat that walks a man to the helicopter
+      // and then seats him carries both, and only the second of them is a ride
+      if (x.state !== 'sit' && x.state !== 'lie') return false;
       return x.move[1] >= 0.8 || to[1] >= 3; });
     riders.forEach((x, k) => { const dx = (k - (riders.length - 1) / 2) * 0.8;
       x.move = [Math.round((to[0] + dx) * 1000) / 1000, Math.round((to[1] + 0.2) * 1000) / 1000, Math.round(to[2] * 1000) / 1000]; });
