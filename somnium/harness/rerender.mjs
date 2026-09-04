@@ -25,7 +25,11 @@ for (const id of ids) {
   const src = path.join(IN, id); if (!existsSync(path.join(src, 'scene.json'))) { log('skip', id); continue; }
   const dir = path.join(OUT, id); mkdirSync(dir, { recursive: true });
   for (const f of ['scene.json', 'raw.json', 'scene-after-edit.json']) if (existsSync(path.join(src, f))) copyFileSync(path.join(src, f), path.join(dir, f));
-  const scene = JSON.parse(readFileSync(path.join(src, 'scene.json'), 'utf8'));
+  // prefer what Claude actually answered: a normaliser fix cannot be judged against a scene the
+  // old normaliser has already moved things in
+  const rawF = path.join(src, 'raw.json');
+  let scene = JSON.parse(readFileSync(path.join(src, 'scene.json'), 'utf8'));
+  if (args.raw !== false && existsSync(rawF)) { try { const r0 = JSON.parse(readFileSync(rawF, 'utf8')); if (r0 && Array.isArray(r0.actors) && r0.actors.length) scene = r0; } catch (e) { } }
   const before = prev.find(r => r.id === id) || {};
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   const page = await ctx.newPage(); const errors = [];
