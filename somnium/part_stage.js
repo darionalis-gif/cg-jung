@@ -459,8 +459,11 @@ const Stage = {
         for (const rr of this.actors.values()) { if (rr.a.kind !== 'pit') continue; const q = rr.a.pos; if (Math.hypot(q[0] - c0.x, q[2] - c0.z) > 6) continue; depth = (rr.a.detail.height || 4) * rr.a.size; rad = (rr.a.detail.radius || 1.5) * rr.a.size; ax = q[0]; az2 = q[2]; }
         let strayed = 0; for (const st of low) strayed = Math.max(strayed, Math.hypot(st.pos[0] - ax, st.pos[2] - az2));
         const clear = rad - strayed;
-        const need = Math.atan2(depth, Math.max(0.35, clear));
-        const rimOnly = need > Math.PI / 180 * 80;
+        // a narrow deep hole is not unlookable, it just has to be looked into from nearly overhead:
+        // giving up at eighty degrees left the two men at the bottom out of every shot of the beat
+        // that is about them
+        const need = Math.atan2(depth, Math.max(0.22, clear));
+        const rimOnly = need > Math.PI / 180 * 86;
         const h0 = high.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(high.length);
         const shown = [];
         // past 80 degrees the hole cannot be looked into at all: frame the rim instead
@@ -474,7 +477,7 @@ const Stage = {
         const off = p.clone().sub(look2); const want = Math.hypot(c.distance || 8, c.height || 3);
         let span = 0; for (const q of shown) span = Math.max(span, look2.distanceTo(q));
         const len = clamp(Math.min(off.length(), want), Math.max(3, span * (facesMatter ? 2.6 : 2.1)), Math.max(3, want * 1.5)); const flat = Math.hypot(off.x, off.z) || 0.001;
-        const pitch = rimOnly ? Math.PI / 180 * 52 : clamp(need + 0.12, Math.PI / 180 * 50, Math.PI / 180 * (need <= Math.PI / 180 * 62 ? 64 : 80));
+        const pitch = rimOnly ? Math.PI / 180 * 52 : clamp(need + 0.12, Math.PI / 180 * 50, Math.PI / 180 * (need <= Math.PI / 180 * 62 ? 64 : 88));
         steep = !rimOnly;
         p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
     // a beat flying over something must show what it flies over, not empty sky

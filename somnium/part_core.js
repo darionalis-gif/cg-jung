@@ -269,6 +269,22 @@ function normalizeScene(raw, dreamText) {
     for (const b of beats) for (const x of b.actions) { if (!x.actor || !x.move) continue;
       const a = actors.find(q => q.id === x.actor); if (!a || (a.kind !== 'person' && a.kind !== 'crowd')) continue;
       const q = pull(x.move); if (q) x.move = q; } }
+  // somebody calling down a hole is standing at the hole. When a beat has people at the bottom of
+  // a pit and people above, the ones above belong on its rim: written thirty metres up the street
+  // they drag the shot away from the hole and neither half of the sentence is in it.
+  { const pits = actors.filter(a => a.kind === 'pit');
+    if (pits.length) for (const b of beats) {
+      const ids = new Set(b.actions.filter(x => x.actor).map(x => x.actor));
+      let deep = null;
+      for (const id of ids) { const a = actors.find(q => q.id === id); if (!a || a.pos[1] > -1) continue;
+        for (const p of pits) if (Math.hypot(a.pos[0] - p.pos[0], a.pos[2] - p.pos[2]) < (p.detail.radius || 1.5) * p.size + 2) deep = p; }
+      if (!deep) continue;
+      const R = (deep.detail.radius || 1.5) * deep.size, rim = R + 0.9;
+      for (const id of ids) { const a = actors.find(q => q.id === id);
+        if (!a || a.kind !== 'person' || a.pos[1] < -0.5) continue;
+        const dx = a.pos[0] - deep.pos[0], dz = a.pos[2] - deep.pos[2], d = Math.hypot(dx, dz);
+        if (d <= rim + 1.6) continue;
+        const k = rim / (d || 1); a.pos[0] = deep.pos[0] + dx * k; a.pos[2] = deep.pos[2] + dz * k; } } }
   // a rider goes where the machine goes. The vocabulary asks for the same move on both, and when
   // the script gives the helicopter one destination and the two men in it another forty metres
   // away, the beat plays with the cabin empty and its passengers hanging in the air beside it.
