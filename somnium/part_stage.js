@@ -109,8 +109,8 @@ const Stage = {
   applyWorld(w) {
     this.sky.material.uniforms.top.value.set(w.skyColor); this.sky.material.uniforms.hor.value.set(w.horizonColor); this.sky.material.uniforms.fogRaw.value.set(parseInt(w.fogColor.slice(1, 3), 16) / 255, parseInt(w.fogColor.slice(3, 5), 16) / 255, parseInt(w.fogColor.slice(5, 7), 16) / 255); this.three.fog.color.set(w.fogColor); this.three.fog.density = w.fogDensity; this.r.setClearColor(w.fogColor);
     const amb = new THREE.Color(w.ambient); const L = 0.2126 * amb.r + 0.7152 * amb.g + 0.0722 * amb.b; if (L < 0.26) amb.lerp(new THREE.Color('#8f93b4'), (0.26 - L) / 0.26 * 0.7);
-    this.ambient.color.copy(amb); this.ambient.groundColor.set(shade(w.groundColor, 0.6)); this.ambient.intensity = w.sky === 'day' ? 2.4 : (w.sky === 'void' ? 1.4 : 2.0);
-    this.sun.color.set(w.sunColor); this.sun.intensity = Math.max(0.8, w.sunIntensity * 2.4);
+    this.ambient.color.copy(amb); this.ambient.groundColor.set(shade(w.groundColor, 0.6)); this.ambient.intensity = w.sky === 'day' ? 2.4 : (w.sky === 'void' ? 2.1 : 2.0);
+    this.sun.color.set(w.sunColor); this.sun.intensity = Math.max(w.sky === 'void' ? 1.15 : 0.8, w.sunIntensity * 2.4);
     this.fill.position.copy(this.camera.position); this.fill.target.position.copy(this.cam.look); this.fill.intensity = w.sky === 'day' ? 0.4 : 0.9; const d = new THREE.Vector3(...w.sunDir).normalize().multiplyScalar(80); this.sun.position.copy(this.cam.look).add(d); this.sun.target.position.copy(this.cam.look);
     this.stars.visible = !!w.stars && w.sky !== 'day';
     const water = w.ground === 'water'; this.waterGround.visible = water; this.ground.visible = !water && w.ground !== 'none'; if (water) this.waterGround.material.color.set(w.groundColor); else { const c = new THREE.Color(w.groundColor); this.groundMat.color.copy(c); const tex = noiseTexture(w.groundColor, w.ground === 'floor' || w.ground === 'road' ? 0.05 : 0.14, w.ground === 'floor' ? 120 : 60); this.groundMat.map = tex; this.groundMat.color.set('#ffffff'); this.groundMat.roughness = w.ground === 'snow' ? 0.7 : (w.ground === 'floor' ? 0.6 : 1); this.groundMat.needsUpdate = true; }
@@ -183,7 +183,18 @@ const Stage = {
     else if (s === 'dance') { const v = 0.5 + 0.5 * Math.sin(phase * 3.7); T.y = Math.abs(Math.sin(t * 6)) * 0.12; T.armsZ = [1.1 + v * 1.3 + Math.sin(t * 6) * 0.5, -(0.9 + (1 - v) * 1.5) - Math.sin(t * 6 + 1) * 0.5]; T.fore = [-0.6, -0.6]; T.legs = [Math.sin(t * 6) * 0.2, -Math.sin(t * 6) * 0.2]; T.hipsZ = Math.sin(t * 6) * 0.12; }
     else if (s === 'wave') { T.armsZ = [0.08, -2.7]; T.armsX = [0, -0.2]; T.fore = [-0.25, -0.3 + Math.sin(t * 8) * 0.5]; T.headY = 0; }
     else if (s === 'melt') { const p = window; T.ground = true; T.torsoS = Math.max(0.05, 1 - p); T.y = -0.9 * p; T.armsZ = [0.8 * p, -0.8 * p]; }
-    else if (s === 'fold') { const p = window; T.headS = Math.max(0.15, 1 - p * 0.85); T.headX = p * 1.1; T.headZ = Math.sin(p * 6) * 0.3 * p; T.armsX = [-1.6 * p, -1.6 * p]; T.fore = [-0.9 * p, -0.9 * p]; T.bodyX = 0.35 * p; keepHead = false; }
+    else if (s === 'fold') { const p = window; T.headS = Math.max(0.15, 1 - p * 0.85); T.headX = p * 0.28; T.headZ = Math.sin(p * 6) * 0.3 * p; T.armsX = [-1.6 * p, -1.6 * p]; T.fore = [-0.9 * p, -0.9 * p]; T.bodyX = 0.35 * p; keepHead = false; }
+    else if (s === 'throw') { // wind up, then a whole-body cast: the thrown thing leaves on its own move
+      const c0 = clamp(window * 2.4, 0, 1), sw2 = c0 < 0.4 ? c0 / 0.4 : 1 - (c0 - 0.4) / 0.6;
+      T.armsX = [-2.5 + c0 * 3.6, -0.5 + sw2 * 0.5]; T.fore = [-0.4 - sw2 * 0.7, -0.5];
+      T.armsZ = [0.2, -0.3]; T.bodyX = -0.2 + c0 * 0.55; T.hipsZ = 0.1 - c0 * 0.2;
+      T.legs = [0.35 - c0 * 0.5, -0.3 + c0 * 0.4]; T.shins = [-0.2, -0.25]; T.headX = -0.1; }
+    else if (s === 'grieve') { // head down, shoulders in, a slow rock: dejection with a body to it
+      const br = Math.sin(t * 0.8) * 0.05;
+      T.headX = 0.55 + br; T.headZ = Math.sin(t * 0.45) * 0.08;
+      T.armsX = [-0.25 + br, -0.3 - br]; T.armsZ = [0.34, -0.34]; T.fore = [-0.6, -0.55];
+      T.bodyX = 0.3; T.bodyZ = Math.sin(t * 0.5) * 0.05; T.torsoS = 0.97 + Math.sin(t * 0.9) * 0.02;
+      T.legs = [0.05, -0.05]; keepHead = false; }
     else if (s === 'pockets') { // hands in pockets: arms down and pinned back, weight on one hip, no swing
       T.armsX = [0.12, 0.12]; T.armsZ = [0.3, -0.3]; T.fore = [-0.95, -0.95];
       T.hipsZ = 0.05 + Math.sin(t * 0.5) * 0.02; T.bodyZ = -0.04; T.legs = [0.06, -0.06];
@@ -318,7 +329,7 @@ const Stage = {
           const cand = this.turnShot(pos, look, az, mul); if (lift) cand.y += lift; const out = settle(cand, look);
           let n = 0, tgtSeen = false, tooSmall = false, small = '', tinyTalk = 0, hog = 0, tiny = 0;
           let scenery = 0;
-          for (const f of framed) f.seen = f.w < 1 ? this.inShot(out.pos, out.look, f.p, f.g) : this.seenWell(out.pos, out.look, f, f.id === c.target);
+          for (const f of framed) f.seen = f.w < 1 ? this.inShot(out.pos, out.look, f.p, f.g) : this.seenWell(out.pos, out.look, f, f.id === c.target || (facesMatter && f.faced));
           for (const f of framed) { if (!f.seen) continue; if (f.w < 1) { scenery = Math.min(1.4, scenery + f.w); } else n += f.w; if (f.id === c.target) { tgtSeen = true; n += 0.8; }
 
             if (f.w >= 1) { const d0 = f.p.distanceTo(out.pos); const apparent = (f.h || 1.8) / Math.max(1, d0); if (f.speaks && apparent < 0.15) tinyTalk += 0.15 - apparent; if (f.faced && (f.h || 0) > 1 && apparent < 0.06) { tiny += 0.06 - apparent; if (this.debugFrames) small = f.id + ' small ' + apparent.toFixed(3) + ' @' + d0.toFixed(1); } if (d0 < 1.9) { tooSmall = true; if (this.debugFrames) small = f.id + ' near ' + d0.toFixed(1); } } }

@@ -173,8 +173,10 @@ function waterMaterial(color) { const m = new THREE.MeshStandardMaterial({ color
       '#include <color_fragment>\n diffuseColor.rgb *= 1.0 + vWave * 0.3;\n diffuseColor.rgb += vec3(0.10, 0.13, 0.15) * smoothstep(0.55, 1.15, vWave);'); }; m.userData.water = true; return m; }
 B.water = a => { const g = new THREE.Group(); const R = a.detail.radius || 15;
   if (a.detail.open || R >= 30) { const w = Math.max(2 * R, 320), d = 520, m0 = waterMaterial(a.color);
-    const p0 = mesh(new THREE.PlaneGeometry(w, d, Math.round(w / 6), Math.round(d / 6)), m0, 0, 0.09, -d / 2); p0.rotation.x = -Math.PI / 2; p0.castShadow = false; g.add(p0);
-    g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; return g; }
+    const p0 = mesh(new THREE.PlaneGeometry(w, d, Math.round(w / 6), Math.round(d / 6)), m0, 0, 0.09, d / 2); p0.rotation.x = -Math.PI / 2; p0.castShadow = false; g.add(p0);
+    const foam = mesh(new THREE.PlaneGeometry(w, 5, Math.round(w / 4), 3), mat('#eef4f6', { rough: 0.35, transparent: true, opacity: 0.72 }), 0, 0.115, 2.2);
+    foam.rotation.x = -Math.PI / 2; foam.castShadow = false; foam.receiveShadow = false; g.add(foam);
+    g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; g.userData.foam = foam; return g; }
   const p = mesh(new THREE.RingGeometry(0.001, R, 64, Math.min(64, Math.max(10, Math.round(R / 0.8)))), waterMaterial(a.color), 0, 0.09, 0); p.rotation.x = -Math.PI / 2; p.castShadow = false; g.add(p); g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; return g; };
 B.river = a => { const g = new THREE.Group(); const w = a.detail.width || 8, d = a.detail.depth || 120; const p = mesh(new THREE.PlaneGeometry(w, d, 8, 60), waterMaterial(a.color), 0, 0.09, 0); p.rotation.x = -Math.PI / 2; p.castShadow = false; g.add(p); g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; return g; };
 B.cloud = a => { const g = new THREE.Group(); const m = mat(a.color, { transparent: true, opacity: 0.85, rough: 1 }); const rnd = seeded(a.id.length + 4); for (let i = 0; i < 5; i++) { const s = mesh(G.sph(1.2 + rnd() * 1.2, 10), m, (i - 2) * 1.6, 12 + rnd() * 0.6, (rnd() - 0.5) * 1.5); s.castShadow = false; g.add(s); } g.userData.height = 14; g.userData.drift = true; g.userData.airborne = true; return g; };
