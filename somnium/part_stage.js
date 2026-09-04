@@ -669,8 +669,12 @@ const Stage = {
     // a crowd or a row of houses is not hidden because its centre point is: sample the body
     const h = rec.g.userData.baseHeight * (st.size / rec.a.size) || 1.8;
     const q = this._aps || (this._aps = new THREE.Vector3());
+    // a single body is hidden when its middle is: a head showing over a door leaf is not the man,
+    // and a chip drawn from it lands on the door. A crowd or a row of houses is different -- it is
+    // not hidden because its centre is -- so that keeps sampling.
+    if (!rec.g.userData.members) return !this.occluded(from, v.clone(), rec.g);
     for (const k of [0, -0.35, 0.3]) { q.copy(v); q.y += h * k; if (!this.occluded(from, q, rec.g)) return true; }
-    if (rec.g.userData.members) { const w = new THREE.Vector3();
+    { const w = new THREE.Vector3();
       for (const m of rec.g.userData.members.slice(0, 8)) { m.getWorldPosition(w); w.y += h * 0.5; if (!this.occluded(from, w, rec.g)) return true; } }
     return false;
   },
@@ -791,7 +795,7 @@ const Stage = {
       const camRoom = this.roomAround(cam.position);
       if (camRoom) { const b = camRoom.box; const f = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion); f.y = 0; f.normalize();
         let t = 1e6; for (const [lo, hi, o, dd] of [[b.min.x, b.max.x, cam.position.x, f.x], [b.min.z, b.max.z, cam.position.z, f.z]]) { if (Math.abs(dd) < 1e-4) continue; for (const tt of [(hi - o) / dd, (lo - o) / dd]) if (tt > 0.5 && tt < t) t = tt; }
-        if (t < 1e5) { const q = cam.position.clone().add(f.multiplyScalar(Math.max(1.5, t - 0.6))); q.y = b.min.y + (b.max.y - b.min.y) * 0.72;
+        if (t < 1e5) { const q = cam.position.clone().add(f.multiplyScalar(Math.max(1.5, t - 0.6))); q.y = b.min.y + (b.max.y - b.min.y) * 0.55;
           const aq = [+q.x.toFixed(2), +q.y.toFixed(2), +q.z.toFixed(2)]; rec.g.userData.aimed = aq; const st2 = this.states && this.states.get(a.id); if (st2) st2.pos = aq.slice(); rec.g.position.copy(q); rec.g.userData.indoor = true; }
         continue; }
       if (this.roomAround(new THREE.Vector3(a.pos[0], Math.min(a.pos[1], 2), a.pos[2]))) continue;
