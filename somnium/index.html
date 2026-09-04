@@ -786,7 +786,7 @@ const Stage = {
     const sg = new THREE.BufferGeometry(); const sp = []; const rnd = seeded(42); for (let i = 0; i < 1600; i++) { const th = rnd() * 6.283, ph = Math.acos(rnd() * 0.95); sp.push(Math.sin(ph) * Math.cos(th) * 460, Math.cos(ph) * 460, Math.sin(ph) * Math.sin(th) * 460); } sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
     this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: '#ffffff', size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.85, fog: false })); this.three.add(this.stars);
     this.ambient = new THREE.HemisphereLight('#6a6f9a', '#202030', 1.2); this.three.add(this.ambient);
-    this.sun = new THREE.DirectionalLight('#cfd6ff', 1); this.sun.castShadow = true; this.sun.shadow.mapSize.set(2048, 2048); const sc = this.sun.shadow.camera; sc.left = sc.bottom = -40; sc.right = sc.top = 40; sc.near = 1; sc.far = 200; this.sun.shadow.bias = -0.0015; this.three.add(this.sun); this.three.add(this.sun.target);
+    this.sun = new THREE.DirectionalLight('#cfd6ff', 1); this.sun.castShadow = true; this.sun.shadow.mapSize.set(1024, 1024); const sc = this.sun.shadow.camera; sc.left = sc.bottom = -40; sc.right = sc.top = 40; sc.near = 1; sc.far = 200; this.sun.shadow.bias = -0.0015; this.three.add(this.sun); this.three.add(this.sun.target);
     this.fill = new THREE.DirectionalLight('#dfe3ff', 0.8); this.fill.castShadow = false; this.three.add(this.fill); this.three.add(this.fill.target);
     this.groundMat = new THREE.MeshStandardMaterial({ color: '#2f4a33', roughness: 1, stencilWrite: true, stencilFunc: THREE.NotEqualStencilFunc, stencilRef: 1 }); this.ground = new THREE.Mesh(new THREE.CircleGeometry(600, 48), this.groundMat); this.ground.rotation.x = -Math.PI / 2; this.ground.receiveShadow = true; this.three.add(this.ground);
     this.waterGround = new THREE.Mesh(new THREE.PlaneGeometry(600, 600, 60, 60), waterMaterial('#1f4d6e')); this.waterGround.rotation.x = -Math.PI / 2; this.waterGround.visible = false; this.three.add(this.waterGround);
@@ -880,7 +880,7 @@ const Stage = {
     const out = new Map(); const S = this.scene;
     for (const a of S.actors) out.set(a.id, { pos: a.pos.slice(), yaw: a.yaw, size: a.size, color: a.color, op: a.hidden ? 0 : 1, state: 'idle', say: null, moving: 0, window: 0, colorC: null });
     for (const b of S.beats) { if (t < b.start) break; for (const x of b.actions) { if (!x.actor) continue; const st = out.get(x.actor); if (!st) continue; const a0 = b.start + x.at * b.dur, a1 = Math.min(b.start + b.dur, a0 + x.for * b.dur); const p = a1 > a0 ? clamp((t - a0) / (a1 - a0), 0, 1) : (t >= a0 ? 1 : 0); if (t < a0) continue; const e = easeInOut(p);
-        if (x.move) { const from = st.pos, to = x.move; let np = [lerp(from[0], to[0], e), lerp(from[1], to[1], e), lerp(from[2], to[2], e)]; const dist = Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]); if (x.path === 'arc' && AIRBORNE_STATES.has(x.state || st.state)) np[1] += Math.sin(p * Math.PI) * Math.min(dist * 0.3, 6); if (x.path === 'circle') { const cx = (from[0] + to[0]) / 2, cz = (from[2] + to[2]) / 2, r = Math.hypot(from[0] - cx, from[2] - cz), a00 = Math.atan2(from[2] - cz, from[0] - cx); np[0] = cx + Math.cos(a00 + p * Math.PI) * r; np[2] = cz + Math.sin(a00 + p * Math.PI) * r; } if (p < 1 && dist > 0.05) { st.moving = dist / Math.max(0.5, a1 - a0); if (x.yaw === undefined && dist > 0.2) { const dx = (x.path === 'circle' ? np[0] - st.lastPos?.[0] : to[0] - from[0]) || 0, dz = (x.path === 'circle' ? np[2] - st.lastPos?.[2] : to[2] - from[2]) || 0; if (Math.hypot(dx, dz) > 0.01) st.yaw = Math.atan2(dx, dz) * 180 / Math.PI; } } else st.moving = 0; st.lastPos = np; if (p >= 1) st.pos = to.slice(); else st.pos = np; }
+        if (x.move) { const from = st.pos, to = x.move; let np = [lerp(from[0], to[0], e), lerp(from[1], to[1], e), lerp(from[2], to[2], e)]; const dist = Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]); if (x.path === 'arc' && (((this.actors.get(x.actor) || {}).a || {}).kind !== 'person' || AIRBORNE_STATES.has(x.state || st.state))) np[1] += Math.sin(p * Math.PI) * Math.min(dist * 0.3, 6); if (x.path === 'circle') { const cx = (from[0] + to[0]) / 2, cz = (from[2] + to[2]) / 2, r = Math.hypot(from[0] - cx, from[2] - cz), a00 = Math.atan2(from[2] - cz, from[0] - cx); np[0] = cx + Math.cos(a00 + p * Math.PI) * r; np[2] = cz + Math.sin(a00 + p * Math.PI) * r; } if (p < 1 && dist > 0.05) { st.moving = dist / Math.max(0.5, a1 - a0); if (x.yaw === undefined && dist > 0.2) { const dx = (x.path === 'circle' ? np[0] - st.lastPos?.[0] : to[0] - from[0]) || 0, dz = (x.path === 'circle' ? np[2] - st.lastPos?.[2] : to[2] - from[2]) || 0; if (Math.hypot(dx, dz) > 0.01) st.yaw = Math.atan2(dx, dz) * 180 / Math.PI; } } else st.moving = 0; st.lastPos = np; if (p >= 1) st.pos = to.slice(); else st.pos = np; }
         if (x.yaw !== undefined) { const d = ((x.yaw - st.yaw + 540) % 360) - 180; st.yaw = st.yaw + d * e; }
         if (x.size !== undefined) st.size = lerp(st.size, x.size, e);
         if (x.color) { st.colorC = [st.color, x.color, e]; if (p >= 1) st.color = x.color; }
@@ -944,6 +944,7 @@ const Stage = {
         if (Math.abs(st.pos[0] - fs.pos[0]) > 1.8 * fs.size || Math.abs(st.pos[2] - fs.pos[2]) > 2.2 * fs.size) continue;
         floor = Math.max(floor, fs.pos[1] + 0.62 * fs.size); }
       if (st.pos[1] > floor + 0.06) st.pos = [st.pos[0], floor, st.pos[2]]; }
+    this.faceEachOther(S, out);
     for (const st of out.values()) if (st.moving && st.state === 'idle') st.state = st.moving > 2.5 ? 'run' : 'walk';
     return out;
   },
@@ -966,7 +967,10 @@ const Stage = {
   frame() {
     requestAnimationFrame(() => this.frame()); const now = performance.now(); let dt = Math.min(0.1, (now - this.clock) / 1000); this.clock = now; if (!this.scene) { this.r.render(this.three, this.camera); return; }
     if (this.playing) { this.time += dt; if (this.time >= this.scene.total) { this.time = this.scene.total; this.playing = false; if (this.onTime) this.onTime(this.time, true); } }
-    this.evaluate(dt, false); const t1 = performance.now(); this.frameTimes.push(t1 - now); if (this.frameTimes.length > 240) this.frameTimes.shift();
+    this.evaluate(dt, false);
+    if (this.lastFrameAt !== undefined) { const gap = now - this.lastFrameAt; if (gap > 0 && gap < 2000) { this.frameTimes.push(gap); if (this.frameTimes.length > 240) this.frameTimes.shift(); } }
+    this.lastFrameAt = now;
+    this.submitTimes = this.submitTimes || []; this.submitTimes.push(performance.now() - now); if (this.submitTimes.length > 240) this.submitTimes.shift();
   },
   evaluate(dt, snap) {
     const t = this.time, S = this.scene, τ = t; const states = this.evalActors(t); this.states = states; const w = this.evalWorld(t); this.applyWorld(w);
@@ -1029,7 +1033,7 @@ const Stage = {
     else if (s === 'push') { T.armsX = [-1.5, -1.5]; T.fore = [-0.1, -0.1]; T.bodyX = 0.2 + Math.max(0, Math.sin(t * 4)) * 0.15; T.legs = [0.3, -0.3]; T.shins = [-0.2, -0.5]; }
     else if (s === 'spin') { T.armsZ = [0.9, -0.9]; T.armsX = [-0.3, -0.3]; }
     else if (s === 'dance') { const v = 0.5 + 0.5 * Math.sin(phase * 3.7); T.y = Math.abs(Math.sin(t * 6)) * 0.12; T.armsZ = [1.1 + v * 1.3 + Math.sin(t * 6) * 0.5, -(0.9 + (1 - v) * 1.5) - Math.sin(t * 6 + 1) * 0.5]; T.fore = [-0.6, -0.6]; T.legs = [Math.sin(t * 6) * 0.2, -Math.sin(t * 6) * 0.2]; T.hipsZ = Math.sin(t * 6) * 0.12; }
-    else if (s === 'wave') { T.armsZ = [0.08, -2.7]; T.armsX = [0, -0.2]; T.fore = [-0.25, -0.3 + Math.sin(t * 8) * 0.5]; T.headY = 0; }
+    else if (s === 'wave') { T.armsZ = [0.08, 2.55]; T.armsX = [0, -0.2]; T.fore = [-0.25, -0.3 + Math.sin(t * 8) * 0.5]; T.headY = 0; }
     else if (s === 'melt') { const p = window; T.ground = true; T.torsoS = Math.max(0.05, 1 - p); T.y = -0.9 * p; T.armsZ = [0.8 * p, -0.8 * p]; }
     else if (s === 'fold') { const p = window; T.headS = Math.max(0.45, 1 - p * 0.55); T.headX = p * 0.28; T.headZ = Math.sin(p * 6) * 0.3 * p; T.armsX = [-1.6 * p, -1.6 * p]; T.fore = [-0.9 * p, -0.9 * p]; T.bodyX = 0.35 * p; keepHead = false; }
     else if (s === 'throw') { // wind up, cast, then recover: the pose must not freeze once the stone is gone
@@ -1087,6 +1091,25 @@ const Stage = {
   faceYaw(id, st) {
     const rec = this.actors.get(id); if (!rec) return st.yaw;
     const hy = rec.g.userData.headYaw; return hy === undefined ? st.yaw : st.yaw + hy * 180 / Math.PI;
+  },
+  faceEachOther(S, out) {
+    // two people in a conversation should be facing each other, not standing back to back
+    const beat = this.scene.beats[this.lastBeat]; if (!beat) return;
+    const said = beat.actions.filter(x => x.say && x.actor).map(x => x.actor);
+    if (!said.length) return;
+    const set = new Set(beat.actions.filter(x => x.actor).map(x => x.actor));
+    for (const sp of said) { const a = S.actors.find(q => q.id === sp); if (!a || a.kind !== 'person') continue;
+      const ss = out.get(sp); if (!ss) continue;
+      let best = null, bd = 9;
+      for (const b of S.actors) { if (b.id === sp || !FACED.has(b.kind)) continue; if (!set.has(b.id)) continue;
+        const bs = out.get(b.id); if (!bs || bs.op < 0.3) continue;
+        const d = Math.hypot(bs.pos[0] - ss.pos[0], bs.pos[2] - ss.pos[2]); if (d < bd) { bd = d; best = bs; } }
+      if (!best || bd < 0.4) continue;
+      const want = Math.atan2(best.pos[0] - ss.pos[0], best.pos[2] - ss.pos[2]) * 180 / Math.PI;
+      const rel = ((want - ss.yaw + 540) % 360) - 180;
+      if (Math.abs(rel) > 70) ss.yaw = want;
+      const br = ((ss.yaw + 180 - best.yaw + 540) % 360) - 180;
+      if (Math.abs(br) > 110 && !said.includes(best.id === undefined ? '' : '')) best.yaw = ss.yaw + 180; }
   },
   headTarget(rec, st) {
     // who should this figure look at: the nearest other visible actor acting in this beat, within 7 m
@@ -1342,6 +1365,7 @@ const Stage = {
         if (gotH > wantH) { const k = wantH / gotH; pos.x = look.x + (pos.x - look.x) * k; pos.z = look.z + (pos.z - look.z) * k; }
         else if (gotH > 0.05 && gotH < minH) { const k = minH / gotH; pos.x = look.x + (pos.x - look.x) * k; pos.z = look.z + (pos.z - look.z) * k; } } }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
+    { const rm2 = this.roomAround(look); if (rm2 && pos.y > rm2.box.max.y - 0.3) pos.y = rm2.box.max.y - 0.3; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
     if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + Math.min(tg.moving || 0, 8) * 0.8) * dt;
       if (step > cap) pos = this._lastAim.clone().lerp(pos, cap / step); }
@@ -1375,6 +1399,15 @@ const Stage = {
   frameScanScoreOf(tiers, pick) {
     for (const t of tiers) if (t.has && t.az === pick.az && t.mul === pick.mul && (t.lift || 0) === (pick.lift || 0)) return t.score;
     return null;
+  },
+  anyPointSeen(from, v, rec, st) {
+    // a crowd or a row of houses is not hidden because its centre point is: sample the body
+    const h = rec.g.userData.baseHeight * (st.size / rec.a.size) || 1.8;
+    const q = this._aps || (this._aps = new THREE.Vector3());
+    for (const k of [0, -0.35, 0.3]) { q.copy(v); q.y += h * k; if (!this.occluded(from, q, rec.g)) return true; }
+    if (rec.g.userData.members) { const w = new THREE.Vector3();
+      for (const m of rec.g.userData.members.slice(0, 8)) { m.getWorldPosition(w); w.y += h * 0.5; if (!this.occluded(from, w, rec.g)) return true; } }
+    return false;
   },
   seenWell(pos, look, f, strictLow) {
     const h = Math.max(0.6, f.h || 1.8); const q = this._sw || (this._sw = new THREE.Vector3());
@@ -1533,7 +1566,8 @@ const Stage = {
     const placed = [], pts = [];
     for (const [id, rec] of this.actors) { const st = states.get(id); const lbl = rec.lbl; const text = st.say ? `${rec.a.label || rec.a.kind}: “${st.say}”` : rec.a.label; if (!this.labelsOn || !text || st.op < 0.05 || id === povId) { lbl.hidden = true; continue; } const top = rec.a.carriedBy ? 0.45 : (rec.g.userData.centered ? rec.g.userData.baseHeight * (st.size / rec.a.size) + 1 : rec.g.userData.baseHeight * (st.size / rec.a.size) + 0.25); const under = st.pos[1] < -0.5; v.set(st.pos[0], st.pos[1] + (under ? Math.min(top, 12) * 0.45 : Math.min(top, 12)), st.pos[2]); const dist = v.distanceTo(camPos); const isTarget = id === curTarget; const rank = st.say ? 0 : (isTarget ? 1 : (acting.has(id) ? 2 : 3));
       if (!rec.g.userData.far && rank > 2 && dist > 38) { lbl.hidden = true; continue; }
-      if (!rec.g.userData.far && this.occluded(camPos, v.clone(), rec.g)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } if (v.y < -0.72 || v.y > 0.9) { lbl.hidden = true; continue; } const vx0 = v.x, vy0 = v.y; v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.78); if (rank > 1 && (Math.abs(v.x - vx0) > 0.07 || Math.abs(v.y - vy0) > 0.07)) { lbl.hidden = true; continue; } lbl.hidden = false; lbl.textContent = text; lbl.style.maxWidth = Math.min(340, W * 0.42).toFixed(0) + 'px'; lbl.style.whiteSpace = text.length > 46 ? 'normal' : 'nowrap'; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = Math.max(44 + Math.max(lbl.offsetHeight, 22) / 2, (1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; pts.push({ id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H }); placed.push({ lbl, id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank }); }
+      if (!rec.g.userData.far && !this.anyPointSeen(camPos, v, rec, st)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } if (v.y < -0.72 || v.y > 0.9) { lbl.hidden = true; continue; } const vx0 = v.x, vy0 = v.y; v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.78); if (rank > 1 && (Math.abs(v.x - vx0) > 0.07 || Math.abs(v.y - vy0) > 0.07)) { lbl.hidden = true; continue; } lbl.hidden = false; lbl.textContent = text; const capW = Math.min(340, W * 0.42); lbl.style.maxWidth = capW.toFixed(0) + 'px';
+      lbl.style.whiteSpace = 'nowrap'; if (lbl.scrollWidth > capW) lbl.style.whiteSpace = 'normal'; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = Math.max(44 + Math.max(lbl.offsetHeight, 22) / 2, (1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; pts.push({ id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H }); placed.push({ lbl, id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank }); }
     // a crowded frame keeps the labels of whoever is acting; the scenery gives up its name
     placed.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
     const cap = 6; if (placed.length > cap) { let keep = cap; while (keep < placed.length && placed[keep].rank <= 2) keep++; for (const p of placed.slice(keep)) p.lbl.hidden = true; placed.length = keep; }
@@ -1548,7 +1582,7 @@ const Stage = {
     for (const p of placed) { const w = p.lbl.offsetWidth || 60, h = p.lbl.offsetHeight || 20; let y = p.y, tries = 0;
       const clash = (xx, yy) => rects.some(r => Math.abs(r.x - xx) < (r.w + w) / 2 + 4 && Math.abs(r.y - yy) < h + 2)
         || heads.some(q => Math.abs(q.x - xx) < w / 2 + q.r && Math.abs(q.y - yy) < h / 2 + q.r)
-        || pts.some(q => Math.abs(q.x - xx) < w / 2 + 12 && q.y > yy - h && q.y < yy + h * 1.7);
+        || pts.some(q => q.id !== p.id && Math.abs(q.x - xx) < w / 2 + 12 && q.y > yy - h && q.y < yy + h * 1.7);
       let x = p.x, placedOk = !clash(x, y);
       for (const [dx, dy] of [[0, -1], [0, -2], [1, 0], [-1, 0], [1, -1], [-1, -1], [1, -2], [-1, -2], [0, -3], [1.6, 0], [-1.6, 0]]) {
         if (placedOk) break; const nx = p.x + dx * Math.min(w / 2 + 16, 90), ny = p.y + dy * (h + 4);
@@ -1563,7 +1597,7 @@ const Stage = {
   metrics() {
     if (!this.scene) return null; const bi = this.beatAt(this.time), b = this.scene.beats[bi]; const ids = new Set(b.actions.filter(x => x.actor).map(x => x.actor)); ids.add(b.camera.target); if (b.camera.mode === 'pov') ids.delete(b.camera.target); const v = new THREE.Vector3(); const res = [];
     for (const id of ids) { const rec = this.actors.get(id), st = this.states.get(id); if (!rec || !st) continue; const top = rec.g.userData.baseHeight * (st.size / rec.a.size); v.set(st.pos[0], st.pos[1] + top / 2, st.pos[2]); const dist = v.distanceTo(this.camera.position); const occ = this.occluded(this.camera.position, v.clone(), rec.g); v.project(this.camera); res.push({ id, visible: st.op > 0.05, onScreen: st.op > 0.05 && !occ && v.z < 1 && Math.abs(v.x) < 1 && Math.abs(v.y) < 1, occluded: occ, dist: +dist.toFixed(1), x: +v.x.toFixed(2), y: +v.y.toFixed(2) }); }
-    const ft = this.frameTimes.slice(-120); const avg = ft.length ? ft.reduce((a, b) => a + b, 0) / ft.length : 0; return { beat: bi, time: +this.time.toFixed(2), camera: { pos: this.camera.position.toArray().map(q => +q.toFixed(1)), look: this.cam.look.toArray().map(q => +q.toFixed(1)), mode: b.camera.mode }, fog: +this.three.fog.density.toFixed(4), actors: res, frameMs: +avg.toFixed(1), tris: this.r.info.render.triangles, calls: this.r.info.render.calls };
+    const ft = this.frameTimes.slice(-120); const avg = ft.length ? ft.reduce((a, b) => a + b, 0) / ft.length : 0; return { beat: bi, time: +this.time.toFixed(2), camera: { pos: this.camera.position.toArray().map(q => +q.toFixed(1)), look: this.cam.look.toArray().map(q => +q.toFixed(1)), mode: b.camera.mode }, fog: +this.three.fog.density.toFixed(4), actors: res, frameMs: +avg.toFixed(1), submitMs: +(((this.submitTimes || []).slice(-120).reduce((a, b) => a + b, 0)) / Math.max(1, (this.submitTimes || []).slice(-120).length)).toFixed(1), tris: this.r.info.render.triangles, calls: this.r.info.render.calls };
   }
 };
 

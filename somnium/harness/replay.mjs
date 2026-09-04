@@ -42,7 +42,7 @@ for (const id of ids) {
       const t0 = scene.beats.slice(0, i).reduce((a, x) => a + x.dur, 0);
       const peak = await page.evaluate(async ([start, dur]) => {
         const St = window.__somnium.Stage; St.setTime(start); St.playing = false;
-        let prev = null, worst = 0, at = 0, t = start;
+        let prev = null, worst = 0, at = 0, t = start, a0 = null, aLast = 0, turned = 0;
         const stop = start + dur - 0.2;
         while (t < stop) { t += 1 / 30; St.time = t; St.evaluate(1 / 30, false);
           const p = St.cam.pos.clone();
@@ -56,15 +56,18 @@ for (const id of ids) {
             da = Math.max(0, da - 22 * Math.PI / 180 / 30);
             const v = (Math.abs(r2 - r1) + Math.abs(o.y - prev.o.y) + da * r2) * 30;
             if (v > worst) { worst = v; at = t - start; } }
+          { const ab = Math.atan2(o.x, o.z); if (a0 === null) { a0 = ab; aLast = ab; }
+            turned += Math.abs(((ab - aLast + Math.PI * 3) % (Math.PI * 2)) - Math.PI); aLast = ab; }
           prev = { o }; }
-        return { worst: +worst.toFixed(1), at: +at.toFixed(2) };
+        return { worst: +worst.toFixed(1), at: +at.toFixed(2), turned: +(turned * 180 / Math.PI).toFixed(0) };
       }, [t0, scene.beats[i].dur]);
       rows[i].speed = peak.worst; rows[i].speedAt = peak.at;
+      rows[i].turned = peak.turned - (scene.beats[i].camera.mode === 'orbit' ? Math.round(scene.beats[i].dur * 18) : 0);
     }
   }
   const bad = rows.filter(r => r.near || r.off.length);
   console.log(`\n== ${id} (${scene.beats.length} beats)`);
-  for (const r of rows) console.log(`  b${String(r.beat).padStart(2, '0')} ${r.mode.padEnd(6)} want ${r.want === null ? 'fixed' : String(r.want).padStart(4)}  got ${String(r.got).padStart(5)}  ${String(r.ms).padStart(5)}ms ${String(r.calls).padStart(4)}calls${r.near ? '  << UNDER 3 m' : ''}${r.off.length ? '  offscreen: ' + r.off.join(',') : ''}${r.speed !== undefined ? `  peak ${String(r.speed).padStart(5)} m/s${r.speed > 3 ? ' <<' : ''}` : ''}`);
+  for (const r of rows) console.log(`  b${String(r.beat).padStart(2, '0')} ${r.mode.padEnd(6)} want ${r.want === null ? 'fixed' : String(r.want).padStart(4)}  got ${String(r.got).padStart(5)}  ${String(r.ms).padStart(5)}ms ${String(r.calls).padStart(4)}calls${r.near ? '  << UNDER 3 m' : ''}${r.off.length ? '  offscreen: ' + r.off.join(',') : ''}${r.speed !== undefined ? `  peak ${String(r.speed).padStart(5)} m/s${r.speed > 3 ? ' <<' : ''}  turned ${String(Math.max(0, r.turned)).padStart(4)}°${r.turned > 90 ? ' <<' : ''}` : ''}`);
   console.log(`  ${bad.length} beat(s) with a problem`);
 }
 console.log('\nerrors:', errs); await b.close(); server.close();
