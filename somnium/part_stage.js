@@ -120,7 +120,7 @@ const Stage = {
     for (const a of S.actors) { const st = out.get(a.id); if (!st || a.kind !== 'person' || st.state !== 'sit') continue;
       for (const v of S.actors) { if (!VEHICLE.has(v.kind)) continue; const vs = out.get(v.id); if (!vs || vs.op < 0.3) continue;
         const rr = 2.4 * vs.size; if (Math.hypot(st.pos[0] - vs.pos[0], st.pos[2] - vs.pos[2]) > rr) continue;
-        const top = vs.pos[1] + (SEAT[v.kind] || 1) * vs.size;
+        const top = vs.pos[1] + ((SEAT[v.kind] || 1) + 0.45) * vs.size;
         if (st.pos[1] < top) st.pos = [st.pos[0], top, st.pos[2]]; } }
     for (const st of out.values()) if (st.moving && st.state === 'idle') st.state = st.moving > 2.5 ? 'run' : 'walk';
     return out;
@@ -311,7 +311,7 @@ const Stage = {
           // a wall behind the subject used to walk the camera into their back; swing round the room instead
           const near = Math.max(1.2, (rec ? rec.g.userData.baseHeight * 1.6 : 2.9));
           if (t - 0.15 < Math.min(dl, near * 1.35)) { const flat = Math.hypot(d.x, d.z) || 1e-4;
-            for (let k = 1; k <= 11; k++) { const ang = (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 8);
+            for (let k = 1; k <= 7; k++) { const ang = (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 8);
               const cx = Math.cos(ang), sx = Math.sin(ang);
               const nd = new THREE.Vector3(d.x * cx - d.z * sx, d.y, d.x * sx + d.z * cx);
               const nt = reach(nd); if (nt > t + 0.25) { t = nt; dBest = nd; if (t - 0.15 >= Math.min(dl, near * 1.35)) break; } } }
@@ -328,6 +328,13 @@ const Stage = {
         const len = clamp(Math.min(off.length(), want), Math.max(3, span * 2.1), Math.max(3, want * 1.5)); const flat = Math.hypot(off.x, off.z) || 0.001;
         let depth = 4, rad = 1.6; for (const rr of this.actors.values()) { if (rr.a.kind !== 'pit') continue; const q = rr.a.pos; if (Math.hypot(q[0] - look2.x, q[2] - look2.z) > 6) continue; depth = (rr.a.detail.height || 4) * rr.a.size; rad = (rr.a.detail.radius || 1.5) * rr.a.size; }
         const pitch = clamp(Math.atan2(depth, Math.max(0.4, rad)) + 0.12, Math.PI / 180 * 58, Math.PI / 180 * 80); p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
+    // a beat flying over something must show what it flies over, not empty sky
+    { if (look2.y > 12) { let ground = false;
+        for (const x of beat.actions) { if (!x.actor) continue; const r3 = this.actors.get(x.actor); const s4 = states.get(x.actor);
+          if (!r3 || !s4 || s4.op < 0.3) continue; if (!(r3.g.userData.flat || r3.g.userData.big) || s4.pos[1] > 6) continue;
+          ground = true; break; }
+        // aim a little under the aircraft and lift the lens, so what it flies over fills the lower frame
+        if (ground) { const drop = Math.min(6, (look2.y - 6) * 0.3); look2.y -= drop; p.y += drop * 1.4; } } }
     // keep camera above ground and out of the target
     const minY = Math.min(0.4, T.y + 0.5); if (p.y < minY) p.y = minY;
     const look2Rec = typeof c.look2At === 'string' ? this.actors.get(c.look2At) : null;
@@ -340,6 +347,10 @@ const Stage = {
     const framed = [];
     const cut = beat.actions.some(x => x.effect === 'blackout');
     for (const x of beat.actions) { if (!x.actor) continue; if (cut && !x.appear && !x.say && !x.move) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; const weight = (x.say || x.move || x.appear || (x.state && x.state !== 'idle')) ? 1 : (FACED.has(r2.a.kind) ? 0.7 : 0.35); const prev = framed.find(q => q.id === x.actor); if (prev) { prev.w = Math.max(prev.w, weight); prev.speaks = prev.speaks || !!x.say || FACE_STATE.has(x.state); continue; } const shrink = ['sit', 'lie', 'crouch', 'kneel', 'crawl'].includes(st2.state) ? 0.55 : 1; framed.push({ id: x.actor, g: r2.g, w: weight, faced: FACED.has(r2.a.kind), speaks: !!x.say || FACE_STATE.has(x.state), h: r2.g.userData.baseHeight * (st2.size / r2.a.size) * shrink, p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
+    for (const a2 of this.scene.actors) { if (!a2.carriedBy) continue; if (!framed.some(q => q.id === a2.carriedBy)) continue;
+      if (framed.some(q => q.id === a2.id)) continue; const r4 = this.actors.get(a2.id), s5 = states.get(a2.id);
+      if (!r4 || !s5 || s5.op < 0.3) continue;
+      framed.push({ id: a2.id, g: r4.g, w: 0.7, faced: false, speaks: false, h: r4.g.userData.baseHeight * (s5.size / a2.size), p: new THREE.Vector3(s5.pos[0], s5.pos[1], s5.pos[2]) }); }
     let authored = c.mode === 'fixed' && !!c.pos;
     if (authored && framed.length) { const out0 = settle(pos, look); let seen = 0, fails = false;
       const mustSee = new Set(beat.actions.filter(x => x.actor && (x.move || x.appear || x.say)).map(x => x.actor));
@@ -389,7 +400,7 @@ const Stage = {
       const tiers = [{ az: 0, mul: 1, lift: 0, score: -1e9, has: false }, { az: 0, mul: 1, lift: 0, score: -1e9, has: false }, { az: 0, mul: 1, lift: 0, score: -1e9, has: false }];
       {
       if (framed.length >= 1) {
-        const already = clamp(Math.hypot(pos.x - look.x, pos.z - look.z) / Math.max(0.1, c.distance || 1), 1, 3); const wantsClose = facesMatter || framed.some(f => f.speaks && (f.h || 1.8) / Math.max(1, f.p.distanceTo(pos)) < 0.15); const crowded = framed.length >= 5;
+        const already = clamp(Math.hypot(pos.x - look.x, pos.z - look.z) / Math.max(0.1, c.distance || 1), 1, 3); const wantsClose = c.mode !== 'wide' && (facesMatter || framed.some(f => f.speaks && (f.h || 1.8) / Math.max(1, f.p.distanceTo(pos)) < 0.15)); const crowded = framed.length >= 5;
         const mulList = underground ? [1] : [...(wantsClose ? (crowded ? [0.7] : [0.6, 0.78]) : []), 1, ...(crowded ? [] : [1.2]), 1.45, 1.85].filter(m => m * already <= 1.9);
         let sawHog = false;
         for (const lift of [0, 1.3]) { if (lift && !sawHog) break; for (const mul of (mulList.length ? mulList : [1])) for (const az of azList) {
@@ -400,7 +411,7 @@ const Stage = {
           for (const f of framed) { if (!f.seen) continue; if (f.w < 1) { scenery = Math.min(1.4, scenery + f.w); } else n += f.w; if (f.id === c.target) { tgtSeen = true; n += 0.8; }
 
             if (f.w >= 1) { const d0 = f.p.distanceTo(out.pos); const apparent = (f.h || 1.8) / Math.max(1, d0); if (f.speaks && apparent < 0.15) tinyTalk += 0.15 - apparent; if (f.faced && (f.h || 0) > 1 && apparent < 0.06) { tiny += 0.06 - apparent; if (this.debugFrames) small = f.id + ' small ' + apparent.toFixed(3) + ' @' + d0.toFixed(1); } if (d0 < 1.9) { tooSmall = true; if (this.debugFrames) small = f.id + ' near ' + d0.toFixed(1); } } }
-          const lostTarget = !tgtSeen && framed.some(f => f.id === c.target && f.w >= 1);
+          const lostTarget = (!tgtSeen && framed.some(f => f.id === c.target && f.w >= 1)) || framed.some(f => f.w >= 1 && !f.seen);
           for (const b of bodies) {
             const bc = b.box.getCenter(this._bc2 || (this._bc2 = new THREE.Vector3()));
             const fwd0 = out.look.clone().sub(out.pos); if (bc.sub(out.pos).dot(fwd0) <= 0) continue;
