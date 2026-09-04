@@ -139,6 +139,11 @@ B.room = a => { const g = new THREE.Group(); const w = a.detail.width || 8, d = 
   const lamp = new THREE.PointLight('#ffe0b0', 20, w + d, 1.6); lamp.position.set(0, h - 0.3, 0); g.add(lamp); g.add(mesh(G.sph(0.15, 8), mat('#fff4d0', { emissive: '#fff0c0', ei: 1.5 }), 0, h - 0.3, 0));
   g.userData.height = h; g.userData.big = true; g.userData.room = { w, d, h }; return g; };
 B.wall = a => { const g = new THREE.Group(); g.add(mesh(G.box(a.detail.width || 6, a.detail.height || 2.5, 0.3), mat(a.color), 0, (a.detail.height || 2.5) / 2, 0)); g.userData.height = a.detail.height || 2.5; return g; };
+B.grating = a => { const g = new THREE.Group(); const w = a.detail.width || 2.2, d = a.detail.depth || 2.2, m = mat(a.color, { metal: 0.5, rough: 0.6 });
+  for (let x = -w / 2 + 0.09; x <= w / 2; x += 0.34) g.add(mesh(G.box(0.07, 0.1, d), m, x, 0.06, 0));
+  g.add(mesh(G.box(w, 0.11, 0.1), m, 0, 0.06, -d / 2 + 0.05), mesh(G.box(w, 0.11, 0.1), m, 0, 0.06, d / 2 - 0.05));
+  g.add(mesh(G.box(0.1, 0.11, d), m, -w / 2 + 0.03, 0.06, 0), mesh(G.box(0.1, 0.11, d), m, w / 2 - 0.03, 0.06, 0));
+  g.userData.height = 0.14; g.userData.flat = true; g.traverse(o => { if (o.isMesh) { o.userData.solid = true; o.userData.soft = true; } }); return g; };
 B.fence = a => { const g = new THREE.Group(); const w = a.detail.width || 8, m = mat(a.color); for (let x = -w / 2; x <= w / 2; x += 1.2) g.add(mesh(G.box(0.12, 1.2, 0.12), m, x, 0.6, 0)); g.add(mesh(G.box(w, 0.1, 0.06), m, 0, 0.5, 0), mesh(G.box(w, 0.1, 0.06), m, 0, 1.0, 0)); g.userData.height = 1.2; return g; };
 B.door = a => { const g = new THREE.Group(); const fm = mat(shade(a.color, 0.5)); g.add(mesh(G.box(0.12, 2.2, 0.15), fm, -0.56, 1.1, 0), mesh(G.box(0.12, 2.2, 0.15), fm, 0.56, 1.1, 0), mesh(G.box(1.24, 0.12, 0.15), fm, 0, 2.26, 0));
   const pivot = new THREE.Group(); pivot.position.set(-0.5, 0, 0); pivot.add(mesh(G.box(1, 2.2, 0.08), mat(a.color), 0.5, 1.1, 0)); pivot.add(mesh(G.sph(0.05, 6), mat('#d4af37'), 0.85, 1.05, 0.06)); g.add(pivot); g.userData.doorPivot = pivot; if (a.detail.open) pivot.rotation.y = -1.6; g.userData.height = 2.3; return g; };

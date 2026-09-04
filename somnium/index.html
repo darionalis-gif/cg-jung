@@ -232,7 +232,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 /* ---------------- the stage vocabulary (shared with the prompt) ---------------- */
 const KIND_INFO = {
   person: 'a mannequin 1.8 m tall (skin/hair via detail)', crowd: 'count people within radius (default 12 in 3 m)', animal: 'by detail.species; dog 0.5 m, horse 1.3 m, bird flies, fish swims, snake, spider', monster: 'a 2.8 m spiked figure with red eyes', ghost: 'a translucent glowing floating person', skeleton: 'a bone-white figure', hand: 'a 1 m hand', eye: 'a 1 m eyeball', tooth: 'a single tooth 0.14 m with two roots (size 2-3 so a falling tooth can be seen)',
-  house: 'a one/two-storey house 8×7 m, 3.2 m walls and a roof (use for cottages, shops, huts, slum dwellings)', shop: 'a shopfront: a house with a big lit window and a sign (detail.text)', building: 'a multi-storey block 10×10×14 m with a window grid (apartment, hotel, school, factory, hospital, office)', tower: 'a round stone tower 22 m tall', castle: 'a small crenellated castle 4 m tall; a sand castle is size 0.12 so it stands knee-high beside the people building it', city: 'count skyline blocks scattered within radius (default 24 in 60 m); use only for a real city', room: 'an interior box width×depth×height (default 8×8×3) with a floor, a door, a window and a ceiling lamp; put the people inside it', wall: 'a wall width×height', door: 'a door 2.2 m in a frame; state open swings it', window: 'a window 1.4 m', stairs: 'ten steps rising detail.height (3 m)', corridor: 'a lit corridor width×depth×height (3×30×3)', bridge: 'a footbridge width×depth (3×20)', road: 'a road strip width×depth (8×120) with a centre line, flat on the ground', path: 'a footpath strip (2×60)', fence: 'a wooden fence width (8 m)', tent: 'a canvas tent 2.4 m (size 1-2; an aid station or a big tent is a house)', grave: 'a headstone', church: 'a church 14 m with a spire', elevator: 'an elevator car', ladder: 'a ladder detail.height (4 m)',
+  house: 'a one/two-storey house 8×7 m, 3.2 m walls and a roof (use for cottages, shops, huts, slum dwellings)', shop: 'a shopfront: a house with a big lit window and a sign (detail.text)', building: 'a multi-storey block 10×10×14 m with a window grid (apartment, hotel, school, factory, hospital, office)', tower: 'a round stone tower 22 m tall', castle: 'a small crenellated castle 4 m tall; a sand castle is size 0.12 so it stands knee-high beside the people building it', city: 'count skyline blocks scattered within radius (default 24 in 60 m); use only for a real city', room: 'an interior box width×depth×height (default 8×8×3) with a floor, a door, a window and a ceiling lamp; put the people inside it', wall: 'a wall width×height', door: 'a door 2.2 m in a frame; state open swings it', window: 'a window 1.4 m', stairs: 'ten steps rising detail.height (3 m)', corridor: 'a lit corridor width×depth×height (3×30×3)', bridge: 'a footbridge width×depth (3×20)', road: 'a road strip width×depth (8×120) with a centre line, flat on the ground', path: 'a footpath strip (2×60)', grating: 'a flat metal grating you can see through, width×depth (2.2×2.2), lying on the ground; put it at the same pos as a pit so the hole is in it', fence: 'a wooden fence width (8 m)', tent: 'a canvas tent 2.4 m (size 1-2; an aid station or a big tent is a house)', grave: 'a headstone', church: 'a church 14 m with a spire', elevator: 'an elevator car', ladder: 'a ladder detail.height (4 m)',
   tree: 'a tree 5-7 m', forest: 'count trees within radius (30 in 25 m)', bush: 'a bush 1.3 m', flower: 'count flowers within radius', field: 'a flat patch radius (30 m) with tufts; also a beach, a lawn, a meadow', mountain: 'three snow-capped peaks 40-80 m (place 150+ m away)', hill: 'a rounded hill radius (20 m); put forests and houses beside it, not on it', rock: 'a boulder 1.3 m', cliff: 'a rock face width×height×depth (40×30×20)', cave: 'a dark cave mouth 6 m in a rock shell; put the actors in front of or inside the mouth', pit: 'a hole in the ground radius (1.5 m) and detail.height deep (4 m), dimly lit inside; people at its bottom stand at y = -height and are only seen from a camera looking steeply down (orbit with height larger than distance)', water: 'a round pool/lake radius (15 m), flat, animated; an ocean or a sea is water with detail.open true, placed on the waterline with yaw pointing from the land out to sea, and then runs to the horizon instead of being a pond', river: 'a water strip width×depth (8×120)', cloud: 'a cloud at 12 m up, drifting', moon: 'a glowing disc exactly at pos (use y 25-60, 60-150 m away; never fogged)', sun: 'a bright disc exactly at pos', star: 'a small glowing star at pos', fire: 'a fire 1.6 m with light and flames', smoke: 'a column of smoke 6 m', lamp: 'a street lamp detail.height (4 m) with light', candle: 'a candle with a small flame',
   car: 'a car 4.2 m (wheels turn when it moves)', bus: 'a bus 10 m', truck: 'a truck 7 m (also wagon, cart)', train: 'a four-car train', plane: 'an airliner 12 m span (fly it 30+ m up)', helicopter: 'a helicopter with a spinning rotor', boat: 'a sailing boat 6 m', bike: 'a bicycle',
   bed: 'a bed 2.1 m', table: 'a table width×depth (1.6×0.9); an extremely long table is detail.width 8-14 at size 1 (beyond that it stops reading as a table), never a big size; put food, a candle or a book on one when people are sitting at it', chair: 'a chair', sofa: 'a sofa 2 m', desk: 'a desk', mirror: 'a standing mirror 1.7 m', phone: 'a phone held at 1 m', book: 'a book', sign: 'a signpost 3 m whose board shows detail.text', tv: 'a television', computer: 'a computer', clock: 'a wall clock', key: 'a key', ring: 'a ring', balloon: 'a balloon on a string', umbrella: 'an umbrella', food: 'a plate of food', bag: 'a bag', gun: 'a rifle 0.9 m held at 1.2 m', knife: 'a blade (also axe, sword)', lens: 'a camera lens: a barrel with a glass front (size 0.2-0.4); use it for a lens or a telescope so it does not read as another box', box: 'a box width×height×depth (1×1×1)', sphere: 'a sphere 1.2 m', cylinder: 'a column detail.height (3 m)', pyramid: 'a pyramid detail.height (3 m)', orb: 'a glowing floating orb', portal: 'a glowing ring 3 m', thing: 'a generic object 0.6 m on the ground, only for what no other kind can carry; the label does the work'
@@ -324,7 +324,7 @@ function opt(v, a, b) { v = +v; return Number.isFinite(v) && v > 0 ? clamp(v, a,
 function num(v, d, a = -1e6, b = 1e6) { v = +v; return Number.isFinite(v) ? clamp(v, a, b) : d; }
 function vec(v, d) { return Array.isArray(v) && v.length >= 3 && v.slice(0, 3).every(x => Number.isFinite(+x)) ? v.slice(0, 3).map(x => clamp(+x, -500, 500)) : d.slice(); }
 function oneOf(v, list, d) { v = String(v || '').toLowerCase().trim(); return list.includes(v) ? v : d; }
-const KIND_ALIAS = { man:'person', woman:'person', boy:'person', girl:'person', child:'person', people:'crowd', friend:'person', mother:'person', father:'person', human:'person', figure:'person', soldier:'person', dog:'animal', cat:'animal', horse:'animal', bird:'animal', fish:'animal', snake:'animal', wolf:'animal', bear:'animal', deer:'animal', cow:'animal', lion:'animal', spider:'animal', rat:'animal', chimp:'animal', monkey:'animal', rabbit:'animal', creature:'monster', demon:'monster', beast:'monster', shop:'shop', store:'shop', bakery:'shop', cafe:'shop', diner:'shop', bar:'shop', restaurant:'shop', hut:'house', cottage:'house', cabin:'house', bunkhouse:'house', shack:'house', shed:'house', barn:'house', home:'house', school:'building', hotel:'building', hospital:'building', factory:'building', apartment:'building', office:'building', sandcastle:'castle', fortress:'castle', temple:'church', street:'road', alley:'road', sidewalk:'path', trail:'path', lake:'water', pool:'water', sea:'water', ocean:'water', pond:'water', puddle:'water', stream:'river', woods:'forest', trees:'forest', jungle:'forest', garden:'field', beach:'field', meadow:'field', hole:'pit', manhole:'pit', tunnel:'corridor', hallway:'corridor', hall:'corridor', staircase:'stairs', steps:'stairs', vehicle:'car', taxi:'car', ship:'boat', airplane:'plane', jet:'plane', bicycle:'bike', couch:'sofa', cellphone:'phone', telephone:'phone', television:'tv', laptop:'computer', screen:'tv', crate:'box', chest:'box', ball:'sphere', globe:'sphere', pillar:'cylinder', column:'cylinder', light:'lamp', streetlamp:'lamp', streetlight:'lamp', torch:'candle', flame:'fire', bonfire:'fire', fog:'smoke', mist:'smoke', gate:'door', doorway:'door', object:'thing', item:'thing', grating:'fence', grate:'fence', dishes:'food', plate:'food', camera:'box', suitcase:'box', luggage:'box', pillow:'box', blanket:'box', paper:'book', letter:'book', money:'book', wallet:'bag', purse:'bag', stone:'rock', boulder:'rock', bones:'skeleton', spirit:'ghost', shadow:'ghost', teeth:'tooth', wave:'water', surf:'water', sand:'field', helicopter:'helicopter', chopper:'helicopter', mountains:'mountain', hills:'hill', wagon:'truck', cart:'truck', tank:'truck', bunk:'bed', mattress:'bed', bench:'sofa', counter:'table', drawer:'box', cabinet:'box', poster:'sign', picture:'sign', painting:'sign', flowers:'flower', axe:'knife', sword:'knife', rifle:'gun', pistol:'gun', flag:'sign', crown:'ring', necklace:'ring', star:'star', planet:'sphere', sunrise:'sun', moonlight:'moon' };
+const KIND_ALIAS = { man:'person', woman:'person', boy:'person', girl:'person', child:'person', people:'crowd', friend:'person', mother:'person', father:'person', human:'person', figure:'person', soldier:'person', dog:'animal', cat:'animal', horse:'animal', bird:'animal', fish:'animal', snake:'animal', wolf:'animal', bear:'animal', deer:'animal', cow:'animal', lion:'animal', spider:'animal', rat:'animal', chimp:'animal', monkey:'animal', rabbit:'animal', creature:'monster', demon:'monster', beast:'monster', shop:'shop', store:'shop', bakery:'shop', cafe:'shop', diner:'shop', bar:'shop', restaurant:'shop', hut:'house', cottage:'house', cabin:'house', bunkhouse:'house', shack:'house', shed:'house', barn:'house', home:'house', school:'building', hotel:'building', hospital:'building', factory:'building', apartment:'building', office:'building', sandcastle:'castle', fortress:'castle', temple:'church', street:'road', alley:'road', sidewalk:'path', trail:'path', lake:'water', pool:'water', sea:'water', ocean:'water', pond:'water', puddle:'water', stream:'river', woods:'forest', trees:'forest', jungle:'forest', garden:'field', beach:'field', meadow:'field', hole:'pit', manhole:'pit', tunnel:'corridor', hallway:'corridor', hall:'corridor', staircase:'stairs', steps:'stairs', vehicle:'car', taxi:'car', ship:'boat', airplane:'plane', jet:'plane', bicycle:'bike', couch:'sofa', cellphone:'phone', telephone:'phone', television:'tv', laptop:'computer', screen:'tv', crate:'box', chest:'box', ball:'sphere', globe:'sphere', pillar:'cylinder', column:'cylinder', light:'lamp', streetlamp:'lamp', streetlight:'lamp', torch:'candle', flame:'fire', bonfire:'fire', fog:'smoke', mist:'smoke', gate:'door', doorway:'door', object:'thing', item:'thing',  dishes:'food', plate:'food', camera:'box', suitcase:'box', luggage:'box', pillow:'box', blanket:'box', paper:'book', letter:'book', money:'book', wallet:'bag', purse:'bag', stone:'rock', boulder:'rock', bones:'skeleton', spirit:'ghost', shadow:'ghost', teeth:'tooth', wave:'water', surf:'water', sand:'field', helicopter:'helicopter', chopper:'helicopter', mountains:'mountain', hills:'hill', wagon:'truck', cart:'truck', tank:'truck', bunk:'bed', mattress:'bed', bench:'sofa', counter:'table', drawer:'box', cabinet:'box', poster:'sign', picture:'sign', painting:'sign', flowers:'flower', axe:'knife', sword:'knife', rifle:'gun', pistol:'gun', flag:'sign', crown:'ring', necklace:'ring', star:'star', planet:'sphere', sunrise:'sun', moonlight:'moon' };
 function normKind(k) { k = String(k || 'thing').toLowerCase().trim().replace(/\s+/g, '_'); if (KINDS.includes(k)) return k; if (KIND_ALIAS[k]) return KIND_ALIAS[k]; const s = k.replace(/s$/, ''); if (KINDS.includes(s)) return s; if (KIND_ALIAS[s]) return KIND_ALIAS[s]; return 'thing'; }
 
 function normalizeScene(raw, dreamText) {
@@ -357,6 +357,17 @@ function normalizeScene(raw, dreamText) {
       const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
       const lim = Math.max(0.15, R * 0.45); if (d <= lim) continue;
       const k = lim / d; a.pos[0] = p.pos[0] + dx * k; a.pos[2] = p.pos[2] + dz * k; } }
+  // a named person standing inside a crowd of their own colour cannot be found in the frame
+  { const hex2 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const R = (cw.detail.radius || 5) * cw.size;
+      for (const a of actors) { if (a.kind !== 'person') continue;
+        const dx = a.pos[0] - cw.pos[0], dz = a.pos[2] - cw.pos[2]; const d = Math.hypot(dx, dz);
+        if (d > R + 0.5) continue;
+        const A = hex2(a.color), B = hex2(cw.color);
+        const near = Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) < 90;
+        if (!near) continue;
+        const k = (R + 2.2) / Math.max(0.001, d);
+        a.pos[0] = cw.pos[0] + (d < 0.05 ? R + 2.2 : dx * k); a.pos[2] = cw.pos[2] + (d < 0.05 ? 0 : dz * k); } } }
   const SIZE_CAP = { tooth: 2, flower: 3, candle: 2, mirror: 2, book: 2, key: 3, ring: 3, phone: 2, gun: 1.6, knife: 2 };
   for (const a of actors) { const cap = SIZE_CAP[a.kind]; if (cap && a.size > cap) a.size = cap;
     if (a.kind === 'table' && a.detail.width > 14) a.detail.width = 14; }
@@ -604,6 +615,11 @@ B.room = a => { const g = new THREE.Group(); const w = a.detail.width || 8, d = 
   const lamp = new THREE.PointLight('#ffe0b0', 20, w + d, 1.6); lamp.position.set(0, h - 0.3, 0); g.add(lamp); g.add(mesh(G.sph(0.15, 8), mat('#fff4d0', { emissive: '#fff0c0', ei: 1.5 }), 0, h - 0.3, 0));
   g.userData.height = h; g.userData.big = true; g.userData.room = { w, d, h }; return g; };
 B.wall = a => { const g = new THREE.Group(); g.add(mesh(G.box(a.detail.width || 6, a.detail.height || 2.5, 0.3), mat(a.color), 0, (a.detail.height || 2.5) / 2, 0)); g.userData.height = a.detail.height || 2.5; return g; };
+B.grating = a => { const g = new THREE.Group(); const w = a.detail.width || 2.2, d = a.detail.depth || 2.2, m = mat(a.color, { metal: 0.5, rough: 0.6 });
+  for (let x = -w / 2 + 0.09; x <= w / 2; x += 0.34) g.add(mesh(G.box(0.07, 0.1, d), m, x, 0.06, 0));
+  g.add(mesh(G.box(w, 0.11, 0.1), m, 0, 0.06, -d / 2 + 0.05), mesh(G.box(w, 0.11, 0.1), m, 0, 0.06, d / 2 - 0.05));
+  g.add(mesh(G.box(0.1, 0.11, d), m, -w / 2 + 0.03, 0.06, 0), mesh(G.box(0.1, 0.11, d), m, w / 2 - 0.03, 0.06, 0));
+  g.userData.height = 0.14; g.userData.flat = true; g.traverse(o => { if (o.isMesh) { o.userData.solid = true; o.userData.soft = true; } }); return g; };
 B.fence = a => { const g = new THREE.Group(); const w = a.detail.width || 8, m = mat(a.color); for (let x = -w / 2; x <= w / 2; x += 1.2) g.add(mesh(G.box(0.12, 1.2, 0.12), m, x, 0.6, 0)); g.add(mesh(G.box(w, 0.1, 0.06), m, 0, 0.5, 0), mesh(G.box(w, 0.1, 0.06), m, 0, 1.0, 0)); g.userData.height = 1.2; return g; };
 B.door = a => { const g = new THREE.Group(); const fm = mat(shade(a.color, 0.5)); g.add(mesh(G.box(0.12, 2.2, 0.15), fm, -0.56, 1.1, 0), mesh(G.box(0.12, 2.2, 0.15), fm, 0.56, 1.1, 0), mesh(G.box(1.24, 0.12, 0.15), fm, 0, 2.26, 0));
   const pivot = new THREE.Group(); pivot.position.set(-0.5, 0, 0); pivot.add(mesh(G.box(1, 2.2, 0.08), mat(a.color), 0.5, 1.1, 0)); pivot.add(mesh(G.sph(0.05, 6), mat('#d4af37'), 0.85, 1.05, 0.06)); g.add(pivot); g.userData.doorPivot = pivot; if (a.detail.open) pivot.rotation.y = -1.6; g.userData.height = 2.3; return g; };
@@ -873,7 +889,10 @@ const Stage = {
       it.pos = [by.pos[0] + Math.cos(r) * side + Math.sin(r) * fwd, by.pos[1] + (0.92 - drop + (slot > 1 ? 0.22 : 0)) * (by.size || 1), by.pos[2] - Math.sin(r) * side + Math.cos(r) * fwd];
       it.yaw = by.yaw; it.op = Math.min(it.op, by.op) > 0.02 ? Math.max(it.op, by.op * 0.999) : it.op; } }
     // a person lying where a bed stands lies on it, not on the floor under it
-    for (const a of S.actors) { const st = out.get(a.id); if (!st || st.state !== 'lie' || a.kind !== 'person') continue;
+    for (const a of S.actors) { const st = out.get(a.id); if (!st || a.kind !== 'person') continue;
+      if (st.state !== 'lie') { for (const b3 of S.actors) { if (b3.kind !== 'bed') continue; const bs3 = out.get(b3.id); if (!bs3 || bs3.op < 0.3) continue;
+        if (Math.abs(st.pos[0] - bs3.pos[0]) < 1.7 * bs3.size && Math.abs(st.pos[2] - bs3.pos[2]) < 2.2 * bs3.size && st.pos[1] < bs3.pos[1] + 0.6 * bs3.size) { st.state = 'lie'; break; } } }
+      if (st.state !== 'lie') continue;
       for (const b2 of S.actors) { if (b2.kind !== 'bed') continue; const bs = out.get(b2.id); if (!bs || bs.op < 0.3) continue;
         const w = 1.7 * bs.size, d = 2.2 * bs.size;
         if (Math.abs(st.pos[0] - bs.pos[0]) < w && Math.abs(st.pos[2] - bs.pos[2]) < d && st.pos[1] < bs.pos[1] + 0.6 * bs.size) { const r2 = bs.yaw * Math.PI / 180, cs = Math.cos(r2), sn = Math.sin(r2);
@@ -1138,7 +1157,20 @@ const Stage = {
           const sA = states.get(f.id); const fcA = dirAt(this.faceYaw(f.id, sA), 1, 0);
           const vA = out0.pos.clone().sub(new THREE.Vector3(sA.pos[0], sA.pos[1], sA.pos[2]));
           if ((vA.x * fcA.x + vA.z * fcA.z) / (Math.hypot(vA.x, vA.z) || 1) < 0.2) fails = true; } }
-      if (seen === 0 || fails) authored = false; }
+      if (seen === 0 || fails) {
+        // the author chose this framing: look for the nearest variant of it that works before
+        // handing the beat to a free search
+        let rescued = null;
+        for (const az of [0, 20, -20, 40, -40, 60, -60]) { for (const mu of [1, 1.15, 0.85, 1.3]) {
+          const t0 = settle(this.turnShot(pos, look, az, mu), look);
+          let ok2 = true;
+          for (const f of framed) { const vis = f.w < 1 ? this.inShot(t0.pos, t0.look, f.p, f.g) : this.seenWell(t0.pos, t0.look, f);
+            if (!vis && (f.id === c.target || mustSee.has(f.id))) { ok2 = false; break; }
+            if (vis && f.w >= 1 && f.faced && (f.h || 0) > 1 && (f.h / Math.max(1, f.p.distanceTo(t0.pos))) < 0.06) { ok2 = false; break; } }
+          if (ok2) { rescued = { az, mu }; break; } }
+          if (rescued) break; }
+        if (rescued) { pos = this.turnShot(pos, look, rescued.az, rescued.mu); }
+        else authored = false; } }
     const speakerHere = beat.actions.some(x => (x.say || FACE_STATE.has(x.state)) && FACED.has(((this.actors.get(x.actor) || {}).a || {}).kind));
     const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state) || ((tg.moving || 0) < 0.3 && x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
     if (facesMatter && c.mode !== 'pov' && !(c.mode === 'fixed' && c.pos)) {
@@ -1175,8 +1207,9 @@ const Stage = {
           bodies.push({ id: bid, box: bb0.clone(), h: Math.max(0.6, bb0.max.y - bb0.min.y), yaw: bs.yaw }); }
         for (const o of (this.solidsNow || [])) { if ((o.userData.soft && !o.userData.opaque) || this.isOwn(o, selfs)) continue;
           const bx2 = this.solidBox(o); if (bx2.distanceToPoint(look) > 22) continue;
-          const h2 = bx2.max.y - bx2.min.y; if (!(h2 > 0.5) || bx2.max.x - bx2.min.x > 3 || bx2.max.z - bx2.min.z > 3) continue;
-          bodies.push({ id: '#solid', box: bx2, h: Math.min(h2, 4), yaw: 0 }); } }
+          const h2 = bx2.max.y - bx2.min.y; if (!(h2 > 0.5)) continue;
+          const w2 = Math.min(bx2.max.x - bx2.min.x, bx2.max.z - bx2.min.z);
+          bodies.push({ id: '#solid', box: bx2, h: Math.min(Math.max(h2, w2 * 0.6), 6), yaw: 0 }); } }
       // one sweep, three verdicts: a shot that keeps both the speaker's face and the target beats
       // one that keeps only the face, which beats whatever is left
       const tiers = [{ az: 0, mul: 1, lift: 0, score: -1e9, has: false }, { az: 0, mul: 1, lift: 0, score: -1e9, has: false }, { az: 0, mul: 1, lift: 0, score: -1e9, has: false }];
@@ -1247,7 +1280,9 @@ const Stage = {
     if (this.framePick.smLift) pos = pos.clone().setY(pos.y + this.framePick.smLift);
     { const out = settle(pos, look); pos = out.pos; look = out.look;
       if (c.mode !== 'pov' && !(c.mode === 'fixed' && c.pos)) { const want0 = Math.hypot(c.distance || 8, c.height || 3) * 1.35;
-        const got0 = pos.distanceTo(look); if (got0 > want0) pos = look.clone().lerp(pos, want0 / got0); } }
+        const got0 = pos.distanceTo(look); if (got0 > want0) pos = look.clone().lerp(pos, want0 / got0);
+        const wantH = (c.distance || 8) * 1.3, gotH = Math.hypot(pos.x - look.x, pos.z - look.z);
+        if (gotH > wantH) { const k = wantH / gotH; pos.x = look.x + (pos.x - look.x) * k; pos.z = look.z + (pos.z - look.z) * k; } } }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
     if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + (tg.moving || 0) * 0.8) * dt;
@@ -1351,7 +1386,16 @@ const Stage = {
     // nothing is clear at the scripted radius: come in along the roomiest line, and only as far as the geometry forces
     const dir = best || dir0; const floor = Math.min(len, Math.max(2.5, len * 0.55));
     const use = bestR >= floor ? Math.min(len, bestR) : Math.max(1.2, bestR);
-    const out = look.clone().add(dir.clone().multiplyScalar(use)); if (out.y < 0.35) out.y = 0.35;
+    let out = look.clone().add(dir.clone().multiplyScalar(use)); if (out.y < 0.35) out.y = 0.35;
+    if (!free(out)) { // never stand inside the scenery: walk the radius, then try every bearing
+      let fixed = null;
+      for (const t of [0.85, 0.7, 0.55, 1.15, 1.3, 0.4]) { const q = look.clone().add(dir.clone().multiplyScalar(use * t)); if (q.y < 0.35) q.y = 0.35; if (free(q)) { fixed = q; break; } }
+      if (!fixed) outer: for (const el2 of [el0, el0 + 0.3, el0 + 0.6, 1.0]) { const ch2 = Math.cos(el2), cy2 = Math.sin(el2);
+        for (const az2 of [0, 28, -28, 56, -56, 90, -90, 124, -124, 156, -156, 180]) {
+          const r2 = az2 * Math.PI / 180; const rx2 = hx * Math.cos(r2) - hz * Math.sin(r2), rz2 = hx * Math.sin(r2) + hz * Math.cos(r2);
+          const d2 = new THREE.Vector3(rx2 * ch2, cy2, rz2 * ch2);
+          for (const t of [1, 0.8, 0.6, 1.25]) { const q = look.clone().add(d2.clone().multiplyScalar(len * t)); if (q.y < 0.35) continue; if (free(q)) { fixed = q; break outer; } } } }
+      if (fixed) out = fixed; }
     return out;
   },
 
@@ -1416,7 +1460,7 @@ const Stage = {
     const curBeat = this.scene.beats[this.lastBeat]; const povId = curBeat && curBeat.camera.mode === 'pov' && !this.user.on ? curBeat.camera.target : null; const curTarget = curBeat ? curBeat.camera.target : null;
     const acting = new Set(curBeat ? curBeat.actions.filter(x => x.actor).map(x => x.actor) : []);
     const placed = [], pts = [];
-    for (const [id, rec] of this.actors) { const st = states.get(id); const lbl = rec.lbl; const text = st.say ? `${rec.a.label || rec.a.kind}: “${st.say}”` : rec.a.label; if (!this.labelsOn || !text || st.op < 0.05 || id === povId) { lbl.hidden = true; continue; } const top = rec.g.userData.centered ? rec.g.userData.baseHeight * (st.size / rec.a.size) + 1 : rec.g.userData.baseHeight * (st.size / rec.a.size) + 0.25; const under = st.pos[1] < -0.5; v.set(st.pos[0], st.pos[1] + (under ? Math.min(top, 12) * 0.45 : Math.min(top, 12)), st.pos[2]); const dist = v.distanceTo(camPos); const isTarget = id === curTarget; const rank = st.say ? 0 : (isTarget ? 1 : (acting.has(id) ? 2 : 3));
+    for (const [id, rec] of this.actors) { const st = states.get(id); const lbl = rec.lbl; const text = st.say ? `${rec.a.label || rec.a.kind}: “${st.say}”` : rec.a.label; if (!this.labelsOn || !text || st.op < 0.05 || id === povId) { lbl.hidden = true; continue; } const top = rec.a.carriedBy ? 0.45 : (rec.g.userData.centered ? rec.g.userData.baseHeight * (st.size / rec.a.size) + 1 : rec.g.userData.baseHeight * (st.size / rec.a.size) + 0.25); const under = st.pos[1] < -0.5; v.set(st.pos[0], st.pos[1] + (under ? Math.min(top, 12) * 0.45 : Math.min(top, 12)), st.pos[2]); const dist = v.distanceTo(camPos); const isTarget = id === curTarget; const rank = st.say ? 0 : (isTarget ? 1 : (acting.has(id) ? 2 : 3));
       if (!rec.g.userData.far && rank > 2 && dist > 38) { lbl.hidden = true; continue; } if (!rec.g.userData.far && rank > 2 && this.occluded(camPos, v, rec.g)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } if (v.y < -0.72 || v.y > 0.9) { lbl.hidden = true; continue; } const vx0 = v.x, vy0 = v.y; v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.78); if (rank > 1 && (Math.abs(v.x - vx0) > 0.07 || Math.abs(v.y - vy0) > 0.07)) { lbl.hidden = true; continue; } lbl.hidden = false; lbl.textContent = text; lbl.style.maxWidth = Math.min(340, W * 0.42).toFixed(0) + 'px'; lbl.style.whiteSpace = text.length > 46 ? 'normal' : 'nowrap'; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = Math.max(44 + Math.max(lbl.offsetHeight, 22) / 2, (1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; pts.push({ id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H }); placed.push({ lbl, id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank }); }
     // a crowded frame keeps the labels of whoever is acting; the scenery gives up its name
     placed.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
