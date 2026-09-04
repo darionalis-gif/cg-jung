@@ -151,10 +151,23 @@ const Stage = {
     for (const a of S.actors) { const st = out.get(a.id); if (!st || a.kind !== 'person' || st.state !== 'sit') continue;
       for (const v of S.actors) { if (!VEHICLE.has(v.kind)) continue; const vs = out.get(v.id); if (!vs || vs.op < 0.3) continue;
         const rr = 2.4 * vs.size; if (Math.hypot(st.pos[0] - vs.pos[0], st.pos[2] - vs.pos[2]) > rr) continue;
-        const vr = this.actors.get(v.id); let hull = (SEAT[v.kind] || 1) * vs.size;
-        if (vr) { const hb = this.solidBox ? new THREE.Box3().setFromObject(vr.g) : null; if (hb && Number.isFinite(hb.max.y)) hull = Math.max(hull, hb.max.y - vs.pos[1] - 0.35); }
-        const top = vs.pos[1] + hull;
-        if (st.pos[1] < top) st.pos = [st.pos[0], top, st.pos[2]]; } }
+        const top = vs.pos[1] + (SEAT[v.kind] || 1) * vs.size;
+        // fan riders across the cabin instead of stacking them all on one point
+        const riders = S.actors.filter(q => q.kind === 'person' && (out.get(q.id) || {}).state === 'sit'
+          && Math.hypot((out.get(q.id) || st).pos[0] - vs.pos[0], (out.get(q.id) || st).pos[2] - vs.pos[2]) <= rr);
+        const seat = Math.max(0, riders.indexOf(a)); const rv = vs.yaw * Math.PI / 180;
+        const sx = ((seat % 2) ? 0.45 : -0.45) * vs.size, sz = -Math.floor(seat / 2) * 0.7 * vs.size;
+        st.pos = [vs.pos[0] + Math.cos(rv) * sx + Math.sin(rv) * sz, Math.max(st.pos[1], top), vs.pos[2] - Math.sin(rv) * sx + Math.cos(rv) * sz];
+        { const ar = this.actors.get(a.id), vr = this.actors.get(v.id); if (ar && vr) ar.g.userData.ridesIn = vr.g; } } }
+    // a figure in a ground state stands on what is under it, not in the air above it
+    for (const a of S.actors) { const st = out.get(a.id); if (!st || a.kind !== 'person') continue;
+      if (AIRBORNE_STATES.has(st.state) || st.pos[1] < -0.5 || st.pos[1] <= 0.06) continue;
+      let floor = 0;
+      for (const f of S.actors) { if (!['bed', 'sofa', 'table', 'boat', 'car', 'bus', 'truck', 'train', 'plane', 'helicopter', 'stairs', 'bridge'].includes(f.kind)) continue;
+        const fs = out.get(f.id); if (!fs || fs.op < 0.3) continue;
+        if (Math.abs(st.pos[0] - fs.pos[0]) > 1.8 * fs.size || Math.abs(st.pos[2] - fs.pos[2]) > 2.2 * fs.size) continue;
+        floor = Math.max(floor, fs.pos[1] + 0.62 * fs.size); }
+      if (st.pos[1] > floor + 0.06) st.pos = [st.pos[0], floor, st.pos[2]]; }
     for (const st of out.values()) if (st.moving && st.state === 'idle') st.state = st.moving > 2.5 ? 'run' : 'walk';
     return out;
   },
@@ -186,6 +199,7 @@ const Stage = {
     // actors
     for (const [id, rec] of this.actors) { const st = states.get(id), g = rec.g, a = rec.a, ud = g.userData; g.visible = st.op > 0.01; g.position.set(st.pos[0], st.pos[1] - (st.pos[1] > 0.25 && ud.propBase && !a.carriedBy ? ud.propBase * (st.size / a.size) : 0), st.pos[2]);
       if (a.carriedBy) { if (ud.centerY) g.position.y -= ud.centerY * (st.size / a.size);
+        { const cr0 = this.actors.get(a.carriedBy); if (cr0) g.userData.carrier = cr0.g; }
         const cr = this.actors.get(a.carriedBy); const sw = cr && cr.g.userData.armSwing; if (sw) { const ang = sw[a.id.length % 2 ? 1 : 0]; const r0 = st.yaw * Math.PI / 180, reach = 0.5 * (states.get(a.carriedBy) || st).size;
         g.position.x += Math.sin(r0) * -Math.sin(ang) * reach; g.position.z += Math.cos(r0) * -Math.sin(ang) * reach; g.position.y += (1 - Math.cos(ang)) * reach * 0.6; } } g.rotation.set(0, g.rotation.y, 0); const sc = ud.noScale ? 1 : st.size; g.scale.setScalar(sc); if (rec.blob) { rec.blob.visible = g.visible && st.pos[1] > -0.5 && st.pos[1] < 0.6 && !['fly', 'float', 'swim'].includes(st.state); rec.blob.position.set(st.pos[0], 0.055, st.pos[2]); rec.blob.scale.setScalar(sc); }
       for (const m of rec.mats) { const bo = m.userData.baseOpacity; const want = st.op * bo; if (Math.abs(m.opacity - want) > 0.001) { m.opacity = want; m.transparent = want < 0.999 || m.userData.baseOpacity < 0.999; m.needsUpdate = false; } if (st.colorC && !ud.noColor) { const bc = m.userData.baseColor; const from = new THREE.Color(st.colorC[0]), to = new THREE.Color(st.colorC[1]); const ratio = bc.clone().multiply(new THREE.Color(1 / Math.max(0.05, from.r), 1 / Math.max(0.05, from.g), 1 / Math.max(0.05, from.b))); m.color.copy(from.clone().lerp(to, st.colorC[2]).multiply(ratio)); } else if (st.color !== a.color) { const bc = m.userData.baseColor; const from = new THREE.Color(a.color), to = new THREE.Color(st.color); const ratio = bc.clone().multiply(new THREE.Color(1 / Math.max(0.05, from.r), 1 / Math.max(0.05, from.g), 1 / Math.max(0.05, from.b))); m.color.copy(to.multiply(ratio)); } }
@@ -368,7 +382,11 @@ const Stage = {
         let span = 0; for (const st of low.concat(high)) span = Math.max(span, look2.distanceTo(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])));
         const len = clamp(Math.min(off.length(), want), Math.max(3, span * (facesMatter ? 2.6 : 2.1)), Math.max(3, want * 1.5)); const flat = Math.hypot(off.x, off.z) || 0.001;
         let depth = 4, rad = 1.6; for (const rr of this.actors.values()) { if (rr.a.kind !== 'pit') continue; const q = rr.a.pos; if (Math.hypot(q[0] - look2.x, q[2] - look2.z) > 6) continue; depth = (rr.a.detail.height || 4) * rr.a.size; rad = (rr.a.detail.radius || 1.5) * rr.a.size; }
-        const pitch = clamp(Math.atan2(depth, Math.max(0.4, rad)) + 0.12, Math.PI / 180 * 58, Math.PI / 180 * 80); p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
+        let clear = rad; for (const st of low) clear = Math.min(clear, rad - Math.hypot(st.pos[0] - look2.x, st.pos[2] - look2.z));
+        const need = Math.atan2(depth, Math.max(0.35, clear));
+        // past 80 degrees the hole cannot be looked into at all: frame the rim instead
+        if (need > Math.PI / 180 * 80 && high.length) { const h1 = high[0]; look2.set(h1.pos[0], h1.pos[1] + 1.1, h1.pos[2]); }
+        const pitch = clamp(need + 0.12, Math.PI / 180 * 58, Math.PI / 180 * 80); p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
     // a beat flying over something must show what it flies over, not empty sky
     { if (look2.y > 12) { let ground = false;
         for (const x of beat.actions) { if (!x.actor) continue; const r3 = this.actors.get(x.actor); const s4 = states.get(x.actor);
@@ -477,11 +495,11 @@ const Stage = {
           for (const b of bodies) {
             const bc = b.box.getCenter(this._bc2 || (this._bc2 = new THREE.Vector3()));
             const fwd0 = out.look.clone().sub(out.pos); if (bc.sub(out.pos).dot(fwd0) <= 0) continue;
-            const d1 = Math.max(0.6, b.box.distanceToPoint(out.pos)); const cov = b.h / d1 / 0.933; if (cov <= (b.id === c.target ? 0.55 : 0.35)) continue;
+            const d1 = Math.max(0.6, b.box.distanceToPoint(out.pos)); const cov = b.h / d1 / 0.933; if (cov <= (b.id === c.target ? 0.5 : 0.22)) continue;
             const sp = framed.find(q => q.id === b.id && q.speaks);
             if (sp) { const fcb = dirAt(b.yaw, 1, 0); const vb = out.pos.clone().sub(b.box.getCenter(this._bc || (this._bc = new THREE.Vector3())));
               if ((vb.x * fcb.x + vb.z * fcb.z) / (Math.hypot(vb.x, vb.z) || 1) > 0.2) continue; }
-            const over = cov - (b.id === c.target ? 0.55 : 0.35); hog += over * 0.3 + over * over * 1.9; sawHog = true; }
+            const over = cov - (b.id === c.target ? 0.5 : 0.22); hog += over * 1.5 + over * over * 2.2; sawHog = true; }
           let stacked = 0;
           for (let i2 = 0; i2 < framed.length; i2++) { const f1 = framed[i2]; if (f1.w < 1 || !f1.seen) continue;
             for (let j2 = i2 + 1; j2 < framed.length; j2++) { const f2 = framed[j2]; if (f2.w < 1 || !f2.seen) continue;
@@ -525,13 +543,15 @@ const Stage = {
     if (this.framePick.smAz || this.framePick.smMul !== 1) pos = this.turnShot(pos, look, this.framePick.smAz, this.framePick.smMul);
     if (this.framePick.smLift) pos = pos.clone().setY(pos.y + this.framePick.smLift);
     { const out = settle(pos, look); pos = out.pos; look = out.look;
+      if (facesMatter && c.mode !== 'pov') { const fl = Math.hypot(pos.x - look.x, pos.z - look.z); const up = look.y + Math.max(0.6, fl * 0.5);
+        if (pos.y > up) pos.y = up; }
       if (c.mode !== 'pov' && !(c.mode === 'fixed' && c.pos)) { const want0 = Math.hypot(c.distance || 8, c.height || 3) * 1.35;
         const got0 = pos.distanceTo(look); if (got0 > want0) pos = look.clone().lerp(pos, want0 / got0);
         const wantH = (c.distance || 8) * 1.3, gotH = Math.hypot(pos.x - look.x, pos.z - look.z);
         if (gotH > wantH) { const k = wantH / gotH; pos.x = look.x + (pos.x - look.x) * k; pos.z = look.z + (pos.z - look.z) * k; } } }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
-    if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + (tg.moving || 0) * 0.8) * dt;
+    if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + Math.min(tg.moving || 0, 8) * 0.8) * dt;
       if (step > cap) pos = this._lastAim.clone().lerp(pos, cap / step); }
     this._lastAim = (this._lastAim || new THREE.Vector3()).copy(pos);
     if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k);
@@ -548,7 +568,8 @@ const Stage = {
     for (const o of this.solidsNow) { if (o.userData.soft || (o.material && o.material.side === THREE.BackSide)) continue; if (self && this.isOwn(o, self)) continue; const bb = o.geometry.boundingBox || (o.geometry.computeBoundingBox(), o.geometry.boundingBox); if (!bb) continue; v.copy(p); o.worldToLocal(v); const sx = o.getWorldScale(this._s || (this._s = new THREE.Vector3())); const m = 0.4 / Math.max(0.05, Math.max(sx.x, sx.y, sx.z)); if (v.x > bb.min.x - m && v.x < bb.max.x + m && v.y > bb.min.y - m && v.y < bb.max.y + m && v.z > bb.min.z - m && v.z < bb.max.z + m) return true; }
     return false;
   },
-  isOwn(o, self) { if (!self) return false; if (Array.isArray(self)) { for (const q of self) if (q && this.isOwn(o, q)) return true; return false; } let p = o; while (p) { if (p === self) return true; p = p.parent; } return false; },
+  isOwn(o, self) { if (!self) return false; if (Array.isArray(self)) { for (const q of self) if (q && this.isOwn(o, q)) return true; return false; }
+    let p = o; while (p) { if (p === self) return true; if (p.userData && p.userData.carrier && p.userData.carrier === self) return true; p = p.parent; } return false; },
   clearDist(look, dir, len, self) {
     this._ray = this._ray || new THREE.Raycaster(); const r = this._ray; r.set(look, dir); r.near = 0.3; r.far = len; const hits = r.intersectObjects(this.solidsNow || [], false);
     for (const h of hits) { if (self && this.isOwn(h.object, self)) continue; if (h.object.userData.soft && len - h.distance > Math.max(1.2, len * 0.4)) continue; return h.distance; }
@@ -654,7 +675,7 @@ const Stage = {
       if (t > 0 && t < 1) { const cx = from.x + (to.x - from.x) * t, cz = from.z + (to.z - from.z) * t;
         let through = false; for (const q of this.pits) if (Math.hypot(cx - q.x, cz - q.z) <= q.r) { through = true; break; }
         if (!through) return true; } }
-    if (!this.solids || !this.solids.length) return false; this._ray2 = this._ray2 || new THREE.Raycaster(); const r = this._ray2; const dir = to.clone().sub(from); const len = dir.length(); if (len < 0.5) return false; dir.divideScalar(len); r.set(from, dir); r.near = 0.2; r.far = len - 0.3; const hits = r.intersectObjects(this.solidsNow || this.solids, false); for (const h of hits) { let o = h.object, own = false; while (o) { if (o === self) { own = true; break; } o = o.parent; } if (!own) return true; } return false;
+    if (!this.solids || !this.solids.length) return false; this._ray2 = this._ray2 || new THREE.Raycaster(); const r = this._ray2; const dir = to.clone().sub(from); const len = dir.length(); if (len < 0.5) return false; dir.divideScalar(len); r.set(from, dir); r.near = 0.2; r.far = len - 0.3; const hits = r.intersectObjects(this.solidsNow || this.solids, false); for (const h of hits) { if (this.isOwn(h.object, self)) continue; if (self && self.userData && self.userData.ridesIn && this.isOwn(h.object, self.userData.ridesIn)) continue; return true; } return false;
   },
   triggerEffect(k) { if (k === 'flash') this.fx.push({ k, t: 0.7 }); else if (k === 'blackout') { this.fx.push({ k, t: 1.4 }); this.cam.snap = true; } else if (k === 'quake') this.quake = 1.0; else if (k === 'blur') this.fx.push({ k, t: 1.6 }); else if (k === 'pulse') this.fx.push({ k, t: 2.4 }); },
   updateEffects(dt) {

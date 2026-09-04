@@ -58,10 +58,10 @@ function humanoid(a, o = {}) {
   if (!o.simple) { const neck = mesh(G.cyl(0.05, 0.06, 0.1, 8), skinM, 0, 0.43, 0); torso.add(neck); }
   const headG = new THREE.Group(); headG.position.set(0, 0.46, 0); torso.add(headG);
   const head = mesh(G.sph(0.125, o.simple ? 8 : 16), skinM, 0, 0.12, 0); headG.add(head);
-  const hairM = mesh(G.sph(0.145, o.simple ? 8 : 16), mat(hair, opts), 0, 0.15, -0.02); hairM.scale.set(1, 0.72, 1); hairM.material = hairM.material.clone(); hairM.material.polygonOffset = true; hairM.material.polygonOffsetFactor = -1; headG.add(hairM);
+  const hairM = mesh(G.sph(0.15, o.simple ? 8 : 16), mat(hair, opts), 0, 0.175, -0.025); hairM.scale.set(1, 0.72, 1); headG.add(hairM);
   const face = [];
-  if (!o.simple) { for (const sx of [-1, 1]) { const e = mesh(G.sph(0.016, 8), mat(o.eye || '#1a1a1a'), sx * 0.045, 0.135, 0.112); headG.add(e); face.push(e); }
-    const mo = mesh(G.sph(0.02, 8), skinM, 0, 0.1, 0.125); headG.add(mo); face.push(mo); }
+  if (!o.simple) { for (const sx of [-1, 1]) { const e = mesh(G.sph(0.016, 8), mat(o.eye || '#1a1a1a'), sx * 0.051, 0.137, 0.127); headG.add(e); face.push(e); }
+    const mo = mesh(G.sph(0.021, 8), mat(shade(skin, 0.72)), 0, 0.097, 0.138); headG.add(mo); face.push(mo); }
   const wear = (a.detail.wear || '').toLowerCase(); const wearM = mat(a.detail.wearColor || shade(col, 0.7), opts);
   if (wear === 'coat' || wear === 'raincoat' || wear === 'jacket' || wear === 'cloak' || wear === 'uniform') {
     const body = mesh(G.cap(0.185 * S, 0.34, 12), wearM, 0, 0.19, 0); body.scale.set(1.08, 1, 0.78); torso.add(body);
@@ -263,6 +263,13 @@ function buildActor(a) {
   if (SOLID.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.material.side !== THREE.BackSide) o.userData.solid = true; });
   const SEETHROUGH = new Set(['tree', 'forest', 'bush', 'flower']);
   if (LEAFY.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh) { o.userData.solid = true; o.userData.soft = true; if (!SEETHROUGH.has(a.kind)) o.userData.opaque = true; } });
+  // everything else opaque is solid too: list the exceptions rather than the inclusions
+  if (!g.userData.far && !g.userData.billboard) g.traverse(o => {
+    if (!o.isMesh || o.isInstancedMesh || o.userData.solid !== undefined) return;
+    const m = o.material; if (!m || m.colorWrite === false || m.side === THREE.BackSide) return;
+    if (m.transparent && (m.opacity || 1) < 0.55) return;
+    if (o.userData.billboard) return;
+    o.userData.solid = true; });
   // Material.clone() drops onBeforeCompile and customProgramCacheKey, which would silently
   // strip the water shader off any ground cover that gets stencilled for a pit
   if (GROUNDCOVER.has(a.kind)) g.traverse(o => { if (o.isMesh) { const src = o.material; o.material = src.clone(); o.material.onBeforeCompile = src.onBeforeCompile; o.material.customProgramCacheKey = src.customProgramCacheKey; o.material.stencilWrite = true; o.material.stencilFunc = THREE.NotEqualStencilFunc; o.material.stencilRef = 1; } });
