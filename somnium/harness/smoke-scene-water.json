@@ -1,0 +1,4 @@
+{"title":"water probe","world":{"sky":"day","ground":"sand","weather":"none","fog":0.004,"light":1},
+ "actors":[{"id":"me","kind":"person","label":"me","pos":[0,0,0],"yaw":180,"size":1,"color":"#6b7ba8","detail":{}},
+           {"id":"sea","kind":"water","label":"the sea","pos":[0,0,-14],"yaw":0,"size":1,"color":"#1f4d6e","detail":{"radius":12}}],
+ "beats":[{"dur":6,"text":"the sea","camera":{"mode":"fixed","pos":[0,3.2,6],"lookAt":[0,0.4,-12],"distance":10,"height":3,"angle":0},"actions":[{"actor":"me","state":"idle"}]}]}
