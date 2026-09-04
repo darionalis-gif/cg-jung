@@ -238,7 +238,8 @@ const KIND_INFO = {
   bed: 'a bed 2.1 m', table: 'a table width×depth (1.6×0.9); an extremely long table is detail.width 8-14 at size 1 (beyond that it stops reading as a table), never a big size; put food, a candle or a book on one when people are sitting at it', chair: 'a chair', sofa: 'a sofa 2 m', desk: 'a desk', mirror: 'a standing mirror 1.7 m', phone: 'a phone held at 1 m', book: 'a book', sign: 'a signpost 3 m whose board shows detail.text', tv: 'a television', computer: 'a computer', clock: 'a wall clock', key: 'a key', ring: 'a ring', balloon: 'a balloon on a string', umbrella: 'an umbrella', food: 'a plate of food', bag: 'a bag', gun: 'a rifle 0.9 m held at 1.2 m', knife: 'a blade (also axe, sword)', box: 'a box width×height×depth (1×1×1)', sphere: 'a sphere 1.2 m', cylinder: 'a column detail.height (3 m)', pyramid: 'a pyramid detail.height (3 m)', orb: 'a glowing floating orb', portal: 'a glowing ring 3 m', thing: 'a generic object 0.6 m on the ground, only for what no other kind can carry; the label does the work'
 };
 const KINDS = Object.keys(KIND_INFO);
-const STATES = ['idle','walk','run','fly','fall','float','swim','sit','kneel','lie','shake','spin','grow','shrink','open','collapse','dance','wave','crawl','limp','push','melt','fold'];
+const STATES = ['idle','walk','run','fly','fall','float','swim','sit','kneel','lie','shake','spin','grow','shrink','open','collapse','dance','wave','crawl','limp','push','melt','fold','pockets','yell'];
+const WEAR = new Set(['coat', 'raincoat', 'jacket', 'uniform', 'cloak', 'dress', 'skirt', 'gown', 'hat', 'cap']);
 const AIRBORNE_STATES = new Set(['fly', 'float', 'fall', 'swim']);
 const FACED = new Set(['person', 'crowd', 'animal', 'monster', 'ghost', 'skeleton']);
 const VEHICLE = new Set(['car', 'bus', 'truck', 'train', 'plane', 'helicopter', 'boat', 'bike']);
@@ -267,7 +268,7 @@ STAGE SCRIPT FORMAT (all keys shown; hex colours like "#a1b2c3"; y is up; units 
  "actors": [
    { "id": "unique_snake_case", "kind": one of KINDS, "label": "what the dreamer would call it (empty string for scenery that needs no label)",
      "color": hex, "size": 0.05-40 (scale multiplier on the kind's base size given in the KINDS list; 1 = that base size), "pos": [x,y,z] (where the actor touches the ground: y is 0 for anything standing on the ground and the builder adds its own height; a window, a sign board, a moon are placed at their pos), "yaw": degrees (0 faces +z),
-     "hidden": true|false (start invisible, appear later), "glow": true|false, "ghost": true|false (translucent), "carriedBy": actorId (a thing held or carried: it rides in that person's hand and needs no move of its own),
+     "detail": {"wear": "coat"|"raincoat"|"jacket"|"uniform"|"cloak"|"dress"|"skirt"|"hat"|"cap", "wearColor": "#rrggbb"} on a person the report describes by their clothes, "hidden": true|false (start invisible, appear later), "glow": true|false, "ghost": true|false (translucent), "carriedBy": actorId (a thing held or carried: it rides in that person's hand and needs no move of its own),
      "detail": { optional, by kind: "species" for animal (dog,cat,horse,bird,fish,snake,wolf,bear,deer,cow,lion,spider,rat,chimp,rabbit,generic), "text" for sign, "count" for crowd (4-30) and forest/city/flower/field (5-60), "radius" for forest/city/crowd/water/pit/field, "width"/"depth"/"height" for room/wall/building/corridor/bridge/road/river, "open" true for door, "second": hex for a second colour, "skin": hex for person skin, "hair": hex }
    }
  ],
@@ -286,7 +287,7 @@ STAGE SCRIPT FORMAT (all keys shown; hex colours like "#a1b2c3"; y is up; units 
 }
 
 KINDS (base size at size 1): ${KINDS.map(k => k + ' = ' + KIND_INFO[k]).join('; ')}.
-STATES: ${STATES.join(', ')}.
+STATES: ${STATES.join(', ')}. Use 'yell' for shouting, arguing or angry speech (and give the words as a say), 'pockets' for someone standing with their hands in their pockets or arms folded.
 
 Rules that matter:
 1. Fidelity first. Every place, person, creature and thing the dream names is an actor with a recognisable label. Events happen in the order the dream tells them; nothing is invented that contradicts the text; where the dream is vague, choose the plainest reading. Emotions are staged through colour, light, fog, weather, camera distance and effect, not left out. "say" carries only words the report quotes or reports; when the report says someone yelled without saying what, use the state shake and no invented words.
@@ -338,7 +339,7 @@ function normalizeScene(raw, dreamText) {
       id, kind, label: typeof a.label === 'string' ? a.label.slice(0, 60) : (kind === 'thing' ? id : ''),
       color: hex(a.color, DEFAULT_COLOR[kind] || '#9a9ab0'), size: num(a.size, 1, 0.05, 80), pos: vec(a.pos, [0, 0, 0]), yaw: num(a.yaw, 0),
       hidden: !!a.hidden, glow: !!a.glow, ghost: !!a.ghost, carriedBy: typeof a.carriedBy === 'string' ? a.carriedBy.toLowerCase().replace(/[^a-z0-9_]+/g, '_') : '', ...((kind === 'moon' || kind === 'sun') ? { pos: skyPos(vec(a.pos, [0, 30, -110]), insideAnyRoom(raw, vec(a.pos, [0, 30, -110]))) } : {}),
-      detail: { species: String(d.species || d.animal || '').toLowerCase(), text: typeof d.text === 'string' ? d.text.slice(0, 40) : '', count: opt(d.count, 1, 40), radius: opt(d.radius, 0.5, 300), width: opt(d.width, 0.3, 300), depth: opt(d.depth, 0.3, 300), height: opt(d.height, 0.3, 300), open: !!d.open, second: hex(d.second, null), skin: hex(d.skin, null), hair: hex(d.hair, null) }
+      detail: { species: String(d.species || d.animal || '').toLowerCase(), text: typeof d.text === 'string' ? d.text.slice(0, 40) : '', count: opt(d.count, 1, 40), radius: opt(d.radius, 0.5, 300), width: opt(d.width, 0.3, 300), depth: opt(d.depth, 0.3, 300), height: opt(d.height, 0.3, 300), open: !!d.open, wear: WEAR.has(String(d.wear || '').toLowerCase()) ? String(d.wear).toLowerCase() : '', wearColor: hex(d.wearColor, null), second: hex(d.second, null), skin: hex(d.skin, null), hair: hex(d.hair, null) }
     };
   });
   for (const a of actors) { if (a.carriedBy && (a.carriedBy === a.id || !actors.some(q => q.id === a.carriedBy))) a.carriedBy = ''; }
@@ -489,6 +490,19 @@ function humanoid(a, o = {}) {
   const head = mesh(G.sph(0.125, o.simple ? 8 : 16), skinM, 0, 0.12, 0); headG.add(head);
   const hairM = mesh(G.sph(0.145, o.simple ? 8 : 16), mat(hair, opts), 0, 0.15, -0.02); hairM.scale.set(1, 0.72, 1); hairM.material = hairM.material.clone(); hairM.material.polygonOffset = true; hairM.material.polygonOffsetFactor = -1; headG.add(hairM);
   if (!o.simple) { for (const sx of [-1, 1]) headG.add(mesh(G.sph(0.016, 8), mat(o.eye || '#1a1a1a'), sx * 0.045, 0.135, 0.112)); headG.add(mesh(G.sph(0.02, 8), skinM, 0, 0.1, 0.125)); }
+  const wear = (a.detail.wear || '').toLowerCase(); const wearM = mat(a.detail.wearColor || shade(col, 0.7), opts);
+  if (wear === 'coat' || wear === 'raincoat' || wear === 'jacket' || wear === 'cloak' || wear === 'uniform') {
+    const body = mesh(G.cap(0.185 * S, 0.34, 12), wearM, 0, 0.19, 0); body.scale.set(1.08, 1, 0.78); torso.add(body);
+    const skirt = mesh(G.cyl(0.2 * S, 0.235 * S, wear === 'cloak' ? 0.62 : 0.44, 14, 1, true), wearM, 0, wear === 'cloak' ? -0.24 : -0.15, 0); skirt.scale.set(1, 1, 0.82); torso.add(skirt);
+    if (wear !== 'cloak') for (const sx of [-1, 1]) torso.add(mesh(G.cap(0.055, 0.2, 8), wearM, sx * 0.2 * S, 0.24, 0));
+  } else if (wear === 'dress' || wear === 'skirt' || wear === 'gown') {
+    const skirt = mesh(G.cyl(0.19 * S, 0.42 * S, 0.66, 18, 1, true), wearM, 0, -0.3, 0); torso.add(skirt);
+  }
+  if (wear === 'hat' || wear === 'cap' || a.detail.hat) {
+    const hatM = mat(a.detail.wearColor || shade(col, 0.45), opts);
+    headG.add(mesh(G.cyl(0.128, 0.132, 0.13, 14), hatM, 0, 0.24, 0));
+    headG.add(mesh(G.cyl(0.23, 0.23, 0.018, 16), hatM, 0, 0.18, 0));
+  }
   const arms = [], fore = [], legs = [], shins = [], feet = [];
   for (const sx of [-1, 1]) {
     const up = new THREE.Group(); up.position.set(sx * 0.24 * S, 0.38, 0); torso.add(up); const ua = mesh(G.cap(0.055 * S, 0.22, 8), o.bare ? skinM : shirt, 0, -0.15, 0); up.add(ua);
@@ -671,6 +685,8 @@ function buildActor(a) {
   if (PROP.has(a.kind)) { g.updateMatrixWorld(true); const bx = new THREE.Box3().setFromObject(g); if (Number.isFinite(bx.min.y) && bx.min.y > 0.05) g.userData.propBase = bx.min.y; }
   if (!g.userData.noScale) g.scale.setScalar(a.size); else g.scale.setScalar(1);
   g.userData.actor = a; g.userData.baseHeight = (g.userData.height || 1.8) * (g.userData.noScale ? 1 : a.size);
+  // where the mass of a thing sits above its own origin, so a carried thing can be centred in the hand
+  if (a.carriedBy) { const bb0 = new THREE.Box3().setFromObject(g); if (Number.isFinite(bb0.min.y)) g.userData.centerY = (bb0.min.y + bb0.max.y) / 2; }
   g.traverse(o => { if (o.isMesh && a.ghost && !o.material.userData.water) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = Math.min(o.material.opacity, 0.45); o.castShadow = false; } });
   return g;
 }
@@ -804,8 +820,9 @@ const Stage = {
     const bi = this.beatAt(t); if (bi !== this.lastBeat) { const prev = this.lastBeat; this.lastBeat = bi; if (this.onBeat) this.onBeat(bi); if (prev >= 0 && !snap) this.camBlend = 0; }
     if (!snap && dt > 0) { for (const x of S.beats[bi].actions) { if (!x.effect || x.effect === 'none') continue; const at = S.beats[bi].start + x.at * S.beats[bi].dur; if (t - dt < at && t >= at) this.triggerEffect(x.effect); } }
     // actors
-    for (const [id, rec] of this.actors) { const st = states.get(id), g = rec.g, a = rec.a, ud = g.userData; g.visible = st.op > 0.01; g.position.set(st.pos[0], st.pos[1] - (st.pos[1] > 0.25 && ud.propBase ? ud.propBase * (st.size / a.size) : 0), st.pos[2]);
-      if (a.carriedBy) { const cr = this.actors.get(a.carriedBy); const sw = cr && cr.g.userData.armSwing; if (sw) { const ang = sw[a.id.length % 2 ? 1 : 0]; const r0 = st.yaw * Math.PI / 180, reach = 0.5 * (states.get(a.carriedBy) || st).size;
+    for (const [id, rec] of this.actors) { const st = states.get(id), g = rec.g, a = rec.a, ud = g.userData; g.visible = st.op > 0.01; g.position.set(st.pos[0], st.pos[1] - (st.pos[1] > 0.25 && ud.propBase && !a.carriedBy ? ud.propBase * (st.size / a.size) : 0), st.pos[2]);
+      if (a.carriedBy) { if (ud.centerY) g.position.y -= ud.centerY * (st.size / a.size);
+        const cr = this.actors.get(a.carriedBy); const sw = cr && cr.g.userData.armSwing; if (sw) { const ang = sw[a.id.length % 2 ? 1 : 0]; const r0 = st.yaw * Math.PI / 180, reach = 0.5 * (states.get(a.carriedBy) || st).size;
         g.position.x += Math.sin(r0) * -Math.sin(ang) * reach; g.position.z += Math.cos(r0) * -Math.sin(ang) * reach; g.position.y += (1 - Math.cos(ang)) * reach * 0.6; } } g.rotation.set(0, g.rotation.y, 0); const sc = ud.noScale ? 1 : st.size; g.scale.setScalar(sc); if (rec.blob) { rec.blob.visible = g.visible && st.pos[1] > -0.5 && st.pos[1] < 0.6 && !['fly', 'float', 'swim'].includes(st.state); rec.blob.position.set(st.pos[0], 0.02, st.pos[2]); rec.blob.scale.setScalar(sc); }
       for (const m of rec.mats) { const bo = m.userData.baseOpacity; const want = st.op * bo; if (Math.abs(m.opacity - want) > 0.001) { m.opacity = want; m.transparent = want < 0.999 || m.userData.baseOpacity < 0.999; m.needsUpdate = false; } if (st.colorC && !ud.noColor) { const bc = m.userData.baseColor; const from = new THREE.Color(st.colorC[0]), to = new THREE.Color(st.colorC[1]); const ratio = bc.clone().multiply(new THREE.Color(1 / Math.max(0.05, from.r), 1 / Math.max(0.05, from.g), 1 / Math.max(0.05, from.b))); m.color.copy(from.clone().lerp(to, st.colorC[2]).multiply(ratio)); } else if (st.color !== a.color) { const bc = m.userData.baseColor; const from = new THREE.Color(a.color), to = new THREE.Color(st.color); const ratio = bc.clone().multiply(new THREE.Color(1 / Math.max(0.05, from.r), 1 / Math.max(0.05, from.g), 1 / Math.max(0.05, from.b))); m.color.copy(to.multiply(ratio)); } }
       this.animate(rec, st, τ, dt, snap);
@@ -850,6 +867,15 @@ const Stage = {
     else if (s === 'wave') { T.armsZ = [0.08, -2.7]; T.armsX = [0, -0.2]; T.fore = [-0.25, -0.3 + Math.sin(t * 8) * 0.5]; T.headY = 0; }
     else if (s === 'melt') { const p = window; T.ground = true; T.torsoS = Math.max(0.05, 1 - p); T.y = -0.9 * p; T.armsZ = [0.8 * p, -0.8 * p]; }
     else if (s === 'fold') { const p = window; T.headS = Math.max(0.15, 1 - p * 0.85); T.headX = p * 1.1; T.headZ = Math.sin(p * 6) * 0.3 * p; T.armsX = [-1.6 * p, -1.6 * p]; T.fore = [-0.9 * p, -0.9 * p]; T.bodyX = 0.35 * p; keepHead = false; }
+    else if (s === 'pockets') { // hands in pockets: arms down and pinned back, weight on one hip, no swing
+      T.armsX = [0.12, 0.12]; T.armsZ = [0.3, -0.3]; T.fore = [-0.95, -0.95];
+      T.hipsZ = 0.05 + Math.sin(t * 0.5) * 0.02; T.bodyZ = -0.04; T.legs = [0.06, -0.06];
+      T.headY = Math.sin(t * 0.4) * 0.18; T.torsoS = 1 + Math.sin(t * 1.6) * 0.012; }
+    else if (s === 'yell') { // shouting: chin up, chest out, a jabbing arm on the beat of the words
+      const j = Math.sin(t * 4.5);
+      T.headX = -0.22 + j * 0.07; T.bodyX = -0.12; T.torsoS = 1.05 + j * 0.03;
+      T.armsX = [-0.5 - Math.max(0, j) * 0.9, -0.15]; T.fore = [-1.1 + Math.max(0, j) * 0.7, -0.6];
+      T.armsZ = [0.28, -0.22]; T.hipsZ = j * 0.03; T.legs = [0.14, -0.1]; }
     else { /* idle: breathe, shift weight, look around */ T.armsX = [Math.sin(t * 1.1) * 0.05, Math.sin(t * 1.3 + 1) * 0.05]; T.fore = [-0.3, -0.3]; T.hipsZ = Math.sin(t * 0.6) * 0.03; T.bodyZ = -Math.sin(t * 0.6) * 0.02; T.headY = Math.sin(t * 0.45) * 0.25; T.torsoS = 1 + Math.sin(t * 1.6) * 0.015; }
     if (keepHead && lookYaw !== null && lookYaw !== undefined) { T.headY = clamp(lookYaw, -1.1, 1.1); T.headX = 0; }
     // blend toward the target pose
@@ -884,7 +910,7 @@ const Stage = {
     const g = rec.g, ud = g.userData, s = st.state, L = ud.limbs; const sp = st.moving > 2.5 ? 11 : 6; const kind = rec.a.kind;
     // smooth turning
     const wantYaw = st.yaw * Math.PI / 180; if (snap || ud.visYaw === undefined) ud.visYaw = wantYaw; else { let d = wantYaw - ud.visYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); ud.visYaw += d * (1 - Math.exp(-dt * 6)); } g.rotation.y = ud.visYaw;
-    if (L) { const look = (s === 'idle' || s === 'sit' || s === 'kneel' || s === 'shake' || s === 'push' || s === 'wave' || s === 'walk' || s === 'limp') ? this.headTarget(rec, st) : null; this.poseHuman(g, L, s, τ, dt, st.size, st.window, g.id * 0.37, st.moving, look, snap); return; }
+    if (L) { const look = (s === 'idle' || s === 'sit' || s === 'kneel' || s === 'shake' || s === 'push' || s === 'wave' || s === 'walk' || s === 'limp' || s === 'pockets' || s === 'yell') ? this.headTarget(rec, st) : null; this.poseHuman(g, L, s, τ, dt, st.size, st.window, g.id * 0.37, st.moving, look, snap); return; }
     if (ud.members) { const ms = (s === 'walk' || s === 'run' || s === 'limp' || s === 'crawl') ? s : (st.moving > 0.05 ? 'walk' : s); ud.members.forEach(m => { const base = m.userData.basePos || (m.userData.basePos = m.position.clone()); m.position.copy(base); m.scale.setScalar(1); if (st.moving > 0.05 || ms === 'walk' || ms === 'run') m.rotation.y = 0; else m.rotation.y = m.userData.baseYaw || 0; this.poseHuman(m, m.userData.limbs, ms, τ, dt, 1, st.window, m.userData.phase, st.moving, null, snap); }); return; }
     if (ud.legs) { const mv = st.moving > 0.05 || s === 'walk' || s === 'run'; const gsp = (st.moving > 2.5 || s === 'run') ? 12 : 7; const AP = ud.animPhase === undefined ? (ud.animPhase = 0) : ud.animPhase; ud.animPhase = mv ? AP + dt * gsp : AP; const φ = ud.animPhase;
       if (ud.shins) { // quadruped: diagonal gait with knee flex, a head bob and a tail

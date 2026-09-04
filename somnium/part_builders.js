@@ -60,6 +60,19 @@ function humanoid(a, o = {}) {
   const head = mesh(G.sph(0.125, o.simple ? 8 : 16), skinM, 0, 0.12, 0); headG.add(head);
   const hairM = mesh(G.sph(0.145, o.simple ? 8 : 16), mat(hair, opts), 0, 0.15, -0.02); hairM.scale.set(1, 0.72, 1); hairM.material = hairM.material.clone(); hairM.material.polygonOffset = true; hairM.material.polygonOffsetFactor = -1; headG.add(hairM);
   if (!o.simple) { for (const sx of [-1, 1]) headG.add(mesh(G.sph(0.016, 8), mat(o.eye || '#1a1a1a'), sx * 0.045, 0.135, 0.112)); headG.add(mesh(G.sph(0.02, 8), skinM, 0, 0.1, 0.125)); }
+  const wear = (a.detail.wear || '').toLowerCase(); const wearM = mat(a.detail.wearColor || shade(col, 0.7), opts);
+  if (wear === 'coat' || wear === 'raincoat' || wear === 'jacket' || wear === 'cloak' || wear === 'uniform') {
+    const body = mesh(G.cap(0.185 * S, 0.34, 12), wearM, 0, 0.19, 0); body.scale.set(1.08, 1, 0.78); torso.add(body);
+    const skirt = mesh(G.cyl(0.2 * S, 0.235 * S, wear === 'cloak' ? 0.62 : 0.44, 14, 1, true), wearM, 0, wear === 'cloak' ? -0.24 : -0.15, 0); skirt.scale.set(1, 1, 0.82); torso.add(skirt);
+    if (wear !== 'cloak') for (const sx of [-1, 1]) torso.add(mesh(G.cap(0.055, 0.2, 8), wearM, sx * 0.2 * S, 0.24, 0));
+  } else if (wear === 'dress' || wear === 'skirt' || wear === 'gown') {
+    const skirt = mesh(G.cyl(0.19 * S, 0.42 * S, 0.66, 18, 1, true), wearM, 0, -0.3, 0); torso.add(skirt);
+  }
+  if (wear === 'hat' || wear === 'cap' || a.detail.hat) {
+    const hatM = mat(a.detail.wearColor || shade(col, 0.45), opts);
+    headG.add(mesh(G.cyl(0.128, 0.132, 0.13, 14), hatM, 0, 0.24, 0));
+    headG.add(mesh(G.cyl(0.23, 0.23, 0.018, 16), hatM, 0, 0.18, 0));
+  }
   const arms = [], fore = [], legs = [], shins = [], feet = [];
   for (const sx of [-1, 1]) {
     const up = new THREE.Group(); up.position.set(sx * 0.24 * S, 0.38, 0); torso.add(up); const ua = mesh(G.cap(0.055 * S, 0.22, 8), o.bare ? skinM : shirt, 0, -0.15, 0); up.add(ua);
@@ -242,6 +255,8 @@ function buildActor(a) {
   if (PROP.has(a.kind)) { g.updateMatrixWorld(true); const bx = new THREE.Box3().setFromObject(g); if (Number.isFinite(bx.min.y) && bx.min.y > 0.05) g.userData.propBase = bx.min.y; }
   if (!g.userData.noScale) g.scale.setScalar(a.size); else g.scale.setScalar(1);
   g.userData.actor = a; g.userData.baseHeight = (g.userData.height || 1.8) * (g.userData.noScale ? 1 : a.size);
+  // where the mass of a thing sits above its own origin, so a carried thing can be centred in the hand
+  if (a.carriedBy) { const bb0 = new THREE.Box3().setFromObject(g); if (Number.isFinite(bb0.min.y)) g.userData.centerY = (bb0.min.y + bb0.max.y) / 2; }
   g.traverse(o => { if (o.isMesh && a.ghost && !o.material.userData.water) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = Math.min(o.material.opacity, 0.45); o.castShadow = false; } });
   return g;
 }
