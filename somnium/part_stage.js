@@ -393,7 +393,7 @@ const Stage = {
           bodies.push({ id: bid, box: bb0.clone(), h: Math.max(0.6, bb0.max.y - bb0.min.y), yaw: bs.yaw }); }
         for (const o of (this.solidsNow || [])) { if (o.userData.soft || this.isOwn(o, selfs)) continue;
           const bx2 = this.solidBox(o); if (bx2.distanceToPoint(look) > 22) continue;
-          const h2 = bx2.max.y - bx2.min.y; if (!(h2 > 0.5) || bx2.max.x - bx2.min.x > 14 || bx2.max.z - bx2.min.z > 14) continue;
+          const h2 = bx2.max.y - bx2.min.y; if (!(h2 > 0.5) || bx2.max.x - bx2.min.x > 3 || bx2.max.z - bx2.min.z > 3) continue;
           bodies.push({ id: '#solid', box: bx2, h: Math.min(h2, 4), yaw: 0 }); } }
       // one sweep, three verdicts: a shot that keeps both the speaker's face and the target beats
       // one that keeps only the face, which beats whatever is left
@@ -411,7 +411,8 @@ const Stage = {
           for (const f of framed) { if (!f.seen) continue; if (f.w < 1) { scenery = Math.min(1.4, scenery + f.w); } else n += f.w; if (f.id === c.target) { tgtSeen = true; n += 0.8; }
 
             if (f.w >= 1) { const d0 = f.p.distanceTo(out.pos); const apparent = (f.h || 1.8) / Math.max(1, d0); if (f.speaks && apparent < 0.15) tinyTalk += 0.15 - apparent; if (f.faced && (f.h || 0) > 1 && apparent < 0.06) { tiny += 0.06 - apparent; if (this.debugFrames) small = f.id + ' small ' + apparent.toFixed(3) + ' @' + d0.toFixed(1); } if (d0 < 1.9) { tooSmall = true; if (this.debugFrames) small = f.id + ' near ' + d0.toFixed(1); } } }
-          const lostTarget = (!tgtSeen && framed.some(f => f.id === c.target && f.w >= 1)) || framed.some(f => f.w >= 1 && !f.seen);
+          const lostTarget = !tgtSeen && framed.some(f => f.id === c.target && f.w >= 1);
+          let lostNamed = 0; for (const f of framed) if (f.w >= 1 && !f.seen) lostNamed++;
           for (const b of bodies) {
             const bc = b.box.getCenter(this._bc2 || (this._bc2 = new THREE.Vector3()));
             const fwd0 = out.look.clone().sub(out.pos); if (bc.sub(out.pos).dot(fwd0) <= 0) continue;
@@ -439,7 +440,7 @@ const Stage = {
           let faceCost = 0; if (facesMatter) { const tf = framed.find(f => f.id === c.target); if (tf && tf.seen) faceCost = (1 - front) * 0.9;
             for (const f of framed) { if (!f.speaks || f.id === c.target || !f.seen) continue; const st3 = states.get(f.id); const fc = dirAt(this.faceYaw(f.id, st3), 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.6; } }
           const crowd = this.lensCrowding(out.pos, selfs);
-          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * 0.9 + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(3.2, hog * 2.4) + Math.min(1.0, tiny * 12) + against * 0.8 + Math.min(1.6, stacked * 0.9);
+          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * 0.9 + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(3.2, hog * 2.4) + Math.min(1.0, tiny * 12) + against * 0.8 + Math.min(1.6, stacked * 0.9) + lostNamed * 0.9;
           const score = n - cost; if (this.debugFrames) this.frameScan.push({ az, mul, lift, n: +n.toFixed(2), backToLens, lostTarget, faceCost: +faceCost.toFixed(2), crowd, score: +score.toFixed(2) });
           const cand2 = { az, mul, lift, score, n, has: true };
           if (!backToLens && !lostTarget && score > tiers[0].score) tiers[0] = cand2;
