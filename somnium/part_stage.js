@@ -281,26 +281,29 @@ const Stage = {
       let anyOk = false;
       for (const strict of [true, false]) { if (anyOk) break;
       if (framed.length >= 1) {
-        const already = clamp(Math.hypot(pos.x - look.x, pos.z - look.z) / Math.max(0.1, c.distance || 1), 1, 3); const wantsClose = framed.some(f => f.speaks); const mulList = underground ? [1] : [...(wantsClose ? [0.6, 0.78] : []), 1, 1.2, 1.45].filter(m => m * already <= 1.5);
+        const already = clamp(Math.hypot(pos.x - look.x, pos.z - look.z) / Math.max(0.1, c.distance || 1), 1, 3); const wantsClose = framed.some(f => f.speaks); const crowded = framed.length >= 5;
+        const mulList = underground ? [1] : [...(wantsClose ? (crowded ? [0.7] : [0.6, 0.78]) : []), 1, ...(crowded ? [] : [1.2]), 1.45].filter(m => m * already <= 1.5);
         let sawHog = false;
         for (const lift of [0, 1.3]) { if (lift && !sawHog) break; for (const mul of (mulList.length ? mulList : [1])) for (const az of azList) {
           const cand = this.turnShot(pos, look, az, mul); if (lift) cand.y += lift; const out = settle(cand, look);
           let n = 0, tgtSeen = false, tooSmall = false, small = '', tinyTalk = 0, hog = 0;
           let scenery = 0;
           for (const f of framed) { if (!(f.w < 1 ? this.inShot(out.pos, out.look, f.p, f.g) : this.seenWell(out.pos, out.look, f))) continue; if (f.w < 1) { scenery = Math.min(1.4, scenery + f.w); } else n += f.w; if (f.id === c.target) { tgtSeen = true; n += 0.8; }
+            if (f.faced && f.w < 1) { const dz = f.p.distanceTo(out.pos); const ap = (f.h || 1.8) / Math.max(1, dz); if (f.id !== c.target && ap > 0.55) { hog += ap - 0.55; sawHog = true; } }
             if (f.w >= 1) { const d0 = f.p.distanceTo(out.pos); const apparent = (f.h || 1.8) / Math.max(1, d0); if (f.speaks && apparent < 0.15) tinyTalk += 0.15 - apparent; if (apparent < 0.06) { tooSmall = true; if (this.debugFrames) small = f.id + ' small ' + apparent.toFixed(3) + ' @' + d0.toFixed(1); } if (d0 < 1.9) { tooSmall = true; if (this.debugFrames) small = f.id + ' near ' + d0.toFixed(1); } if (!f.speaks && f.id !== c.target && apparent > 0.55) { hog += apparent - 0.55; sawHog = true; } } }
           const lostTarget = !tgtSeen && framed.some(f => f.id === c.target && f.w >= 1);
           let backToLens = false;
-          for (const f of framed) { if (f.w < 1 || !FACED.has(((this.actors.get(f.id) || {}).a || {}).kind)) continue; const s3 = states.get(f.id); if (!f.speaks && ((s3.moving || 0) > 0.3 || f.id === c.target || ((this.actors.get(f.id) || {}).a || {}).kind === 'crowd')) continue; if (!this.inShot(out.pos, out.look, f.p, f.g)) continue; const fc3 = dirAt(s3.yaw, 1, 0); const v3 = out.pos.clone().sub(new THREE.Vector3(s3.pos[0], s3.pos[1], s3.pos[2])); const fr3 = (v3.x * fc3.x + v3.z * fc3.z) / (Math.hypot(v3.x, v3.z) || 1); if (fr3 < (f.speaks ? 0.2 : -0.6)) backToLens = true; }
+          for (const f of framed) { if (f.w < 1 || !FACED.has(((this.actors.get(f.id) || {}).a || {}).kind)) continue; const s3 = states.get(f.id); if (!f.speaks && ((s3.moving || 0) > 0.3 || (f.id === c.target && !facesMatter) || ((this.actors.get(f.id) || {}).a || {}).kind === 'crowd')) continue; if (!this.inShot(out.pos, out.look, f.p, f.g)) continue; const fc3 = dirAt(s3.yaw, 1, 0); const v3 = out.pos.clone().sub(new THREE.Vector3(s3.pos[0], s3.pos[1], s3.pos[2])); const fr3 = (v3.x * fc3.x + v3.z * fc3.z) / (Math.hypot(v3.x, v3.z) || 1); if (fr3 < (f.speaks ? 0.2 : (f.id === c.target ? 0.15 : -0.6))) backToLens = true; }
           if (tooSmall || (strict && (backToLens || lostTarget))) { if (this.debugFrames) this.frameScan.push({ az, mul, lift, strict, rejected: tooSmall ? small : (lostTarget ? 'lostTarget' : 'backToLens') }); continue; }
           anyOk = true;
           n += scenery; if (!tgtSeen && framed.some(f => f.id === c.target)) n -= 2;
           const toCam = out.pos.clone().sub(T); const facing = dirAt(tg.yaw, 1, 0); const front = (toCam.x * facing.x + toCam.z * facing.z) / (Math.hypot(toCam.x, toCam.z) || 1);
           let faceCost = 0; if (facesMatter) { const tf = framed.find(f => f.id === c.target); if (tf && this.inShot(out.pos, out.look, tf.p, tf.g)) faceCost = (1 - front) * 0.9;
             for (const f of framed) { if (!f.speaks || f.id === c.target) continue; if (!this.inShot(out.pos, out.look, f.p, f.g)) continue; const st3 = states.get(f.id); const fc = dirAt(st3.yaw, 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.6; } }
-          const cost = Math.abs(az) / 900 + lift * 0.16 + (mul - 1) * 0.9 + this.lensCrowding(out.pos, selfs) * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(1.6, hog * 2.4);
-          const score = n - cost; if (this.debugFrames) this.frameScan.push({ az, mul, lift, strict, n: +n.toFixed(2), backToLens, faceCost: +faceCost.toFixed(2), crowd: this.lensCrowding(out.pos, selfs), score: +score.toFixed(2) }); if (score > best.score) best = { az, mul, lift, score, n };
-          if (n === framed.length && az === 0 && mul === 1 && !lift && this.lensCrowding(out.pos, selfs) === 0) break;
+          const crowd = this.lensCrowding(out.pos, selfs);
+          const cost = Math.abs(az) / 900 + lift * 0.16 + (mul - 1) * 0.9 + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(1.6, hog * 2.4);
+          const score = n - cost; if (this.debugFrames) this.frameScan.push({ az, mul, lift, strict, n: +n.toFixed(2), backToLens, faceCost: +faceCost.toFixed(2), crowd, score: +score.toFixed(2) }); if (score > best.score) best = { az, mul, lift, score, n };
+          if (n === framed.length && az === 0 && mul === 1 && !lift && crowd === 0) break;
         } }
       }
       }
@@ -330,9 +333,10 @@ const Stage = {
     return Infinity;
   },
   seenWell(pos, look, f) {
-    const h = Math.max(0.6, f.h || 1.8); let ok = 0;
-    for (const k of [0.3, 0.55, 0.85]) { const q = f.p.clone(); q.y = f.p.y - h * 0.5 + h * k; if (this.inShot(pos, look, q, f.g)) ok++; }
-    return ok >= 2;
+    const h = Math.max(0.6, f.h || 1.8); const q = this._sw || (this._sw = new THREE.Vector3());
+    q.copy(f.p); q.y = f.p.y + h * 0.05; if (!this.inShot(pos, look, q, f.g)) return false;
+    for (const k of [0.35, -0.2]) { q.copy(f.p); q.y = f.p.y + h * k; if (this.inShot(pos, look, q, f.g)) return true; }
+    return false;
   },
   lensCrowding(pos, self) {
     const sol = this.solidsNow; if (!sol || !sol.length) return 0; let n = 0; const seen = new Set();
@@ -454,7 +458,9 @@ const Stage = {
     for (const [id, rec] of this.actors) { const ud = rec.g.userData; if (!ud.far || !ud.centered) continue; const st = states.get(id); if (!st) continue;
       const p = new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2]); const d = p.distanceTo(cam.position);
       const half = Math.tan(cam.fov * Math.PI / 360) * d; const want = Math.min(st.size, half * (rec.g.userData.indoor ? 0.1 : 0.17) / 5);
-      rec.g.scale.setScalar(Math.max(0.2, want)); }
+      const sc2 = Math.max(0.2, want); rec.g.scale.setScalar(sc2);
+      // a big low moon whose centre sits at 8 m has its bottom half buried: lift it clear of the horizon
+      const rad = (ud.discR || 0) * sc2; if (rad > 0 && rec.g.position.y < rad * 1.15) rec.g.position.y = rad * 1.15; }
   },
   updateLabels(states) {
     const W = this.canvas.clientWidth, H = this.canvas.clientHeight; const v = new THREE.Vector3(); const camPos = this.camera.position;
