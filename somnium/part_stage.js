@@ -505,7 +505,9 @@ const Stage = {
       return { pos: p, look: l }; };
     let authored = c.mode === 'fixed' && !!c.pos;
     if (authored && framed.length) { const out0 = dress(settle(pos, look)); let seen = 0, fails = false;
-      const mustSee = new Set(beat.actions.filter(x => x.actor && (x.move || x.appear || x.say)).map(x => x.actor));
+      // whoever the sentence names, not only whoever it gives something to do -- the same rule the
+      // weights use, or an authored shot keeps a framing the free search would have refused
+      const mustSee = new Set(framed.filter(f => f.w >= 1).map(f => f.id));
       for (const f of framed) { const ok = f.w < 1 ? this.inShot(out0.pos, out0.look, f.p, f.g) : this.seenWell(out0.pos, out0.look, f);
         if (ok) seen++;
         if (!ok && (f.id === c.target || mustSee.has(f.id))) fails = true;
