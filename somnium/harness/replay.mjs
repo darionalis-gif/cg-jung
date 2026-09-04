@@ -37,9 +37,25 @@ for (const id of ids) {
     rows.push({ beat: i + 1, mode: m.camera.mode, want, got: +got.toFixed(1), off, near: got < 3, ms: m.frameMs, calls: m.calls, tris: m.tris });
     if (shots.has(`${id}:${i + 1}`) || args.all) await page.screenshot({ path: path.join(outDir, `${id}-b${String(i + 1).padStart(2, '0')}.png`) });
   }
+  if (args.speed) { // play each beat through and report the fastest unscripted camera move inside it
+    for (let i = 0; i < scene.beats.length; i++) {
+      const t0 = scene.beats.slice(0, i).reduce((a, x) => a + x.dur, 0);
+      const peak = await page.evaluate(async ([start, dur]) => {
+        const St = window.__somnium.Stage; St.setTime(start); St.playing = false;
+        let prev = null, worst = 0, at = 0, t = start;
+        const stop = start + dur - 0.2;
+        while (t < stop) { t += 1 / 30; St.time = t; St.evaluate(1 / 30, false);
+          const p = St.cam.pos.clone();
+          if (prev && t - start > 1.2) { const v = p.distanceTo(prev) * 30; if (v > worst) { worst = v; at = t - start; } }
+          prev = p; }
+        return { worst: +worst.toFixed(1), at: +at.toFixed(2) };
+      }, [t0, scene.beats[i].dur]);
+      rows[i].speed = peak.worst; rows[i].speedAt = peak.at;
+    }
+  }
   const bad = rows.filter(r => r.near || r.off.length);
   console.log(`\n== ${id} (${scene.beats.length} beats)`);
-  for (const r of rows) console.log(`  b${String(r.beat).padStart(2, '0')} ${r.mode.padEnd(6)} want ${r.want === null ? 'fixed' : String(r.want).padStart(4)}  got ${String(r.got).padStart(5)}  ${String(r.ms).padStart(5)}ms ${String(r.calls).padStart(4)}calls${r.near ? '  << UNDER 3 m' : ''}${r.off.length ? '  offscreen: ' + r.off.join(',') : ''}`);
+  for (const r of rows) console.log(`  b${String(r.beat).padStart(2, '0')} ${r.mode.padEnd(6)} want ${r.want === null ? 'fixed' : String(r.want).padStart(4)}  got ${String(r.got).padStart(5)}  ${String(r.ms).padStart(5)}ms ${String(r.calls).padStart(4)}calls${r.near ? '  << UNDER 3 m' : ''}${r.off.length ? '  offscreen: ' + r.off.join(',') : ''}${r.speed !== undefined ? `  peak ${String(r.speed).padStart(5)} m/s${r.speed > 3 ? ' <<' : ''}` : ''}`);
   console.log(`  ${bad.length} beat(s) with a problem`);
 }
 console.log('\nerrors:', errs); await b.close(); server.close();

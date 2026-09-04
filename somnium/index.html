@@ -235,7 +235,7 @@ const KIND_INFO = {
   house: 'a one/two-storey house 8×7 m, 3.2 m walls and a roof (use for cottages, shops, huts, slum dwellings)', shop: 'a shopfront: a house with a big lit window and a sign (detail.text)', building: 'a multi-storey block 10×10×14 m with a window grid (apartment, hotel, school, factory, hospital, office)', tower: 'a round stone tower 22 m tall', castle: 'a small crenellated castle 4 m tall; a sand castle is size 0.12 so it stands knee-high beside the people building it', city: 'count skyline blocks scattered within radius (default 24 in 60 m); use only for a real city', room: 'an interior box width×depth×height (default 8×8×3) with a floor, a door, a window and a ceiling lamp; put the people inside it', wall: 'a wall width×height', door: 'a door 2.2 m in a frame; state open swings it', window: 'a window 1.4 m', stairs: 'ten steps rising detail.height (3 m)', corridor: 'a lit corridor width×depth×height (3×30×3)', bridge: 'a footbridge width×depth (3×20)', road: 'a road strip width×depth (8×120) with a centre line, flat on the ground', path: 'a footpath strip (2×60)', fence: 'a wooden fence width (8 m)', tent: 'a canvas tent 2.4 m (size 1-2; an aid station or a big tent is a house)', grave: 'a headstone', church: 'a church 14 m with a spire', elevator: 'an elevator car', ladder: 'a ladder detail.height (4 m)',
   tree: 'a tree 5-7 m', forest: 'count trees within radius (30 in 25 m)', bush: 'a bush 1.3 m', flower: 'count flowers within radius', field: 'a flat patch radius (30 m) with tufts; also a beach, a lawn, a meadow', mountain: 'three snow-capped peaks 40-80 m (place 150+ m away)', hill: 'a rounded hill radius (20 m); put forests and houses beside it, not on it', rock: 'a boulder 1.3 m', cliff: 'a rock face width×height×depth (40×30×20)', cave: 'a dark cave mouth 6 m in a rock shell; put the actors in front of or inside the mouth', pit: 'a hole in the ground radius (1.5 m) and detail.height deep (4 m), dimly lit inside; people at its bottom stand at y = -height and are only seen from a camera looking steeply down (orbit with height larger than distance)', water: 'a round pool/lake radius (15 m), flat, animated; an ocean or a sea is water with detail.open true, placed on the waterline with yaw pointing from the land out to sea, and then runs to the horizon instead of being a pond', river: 'a water strip width×depth (8×120)', cloud: 'a cloud at 12 m up, drifting', moon: 'a glowing disc exactly at pos (use y 25-60, 60-150 m away; never fogged)', sun: 'a bright disc exactly at pos', star: 'a small glowing star at pos', fire: 'a fire 1.6 m with light and flames', smoke: 'a column of smoke 6 m', lamp: 'a street lamp detail.height (4 m) with light', candle: 'a candle with a small flame',
   car: 'a car 4.2 m (wheels turn when it moves)', bus: 'a bus 10 m', truck: 'a truck 7 m (also wagon, cart)', train: 'a four-car train', plane: 'an airliner 12 m span (fly it 30+ m up)', helicopter: 'a helicopter with a spinning rotor', boat: 'a sailing boat 6 m', bike: 'a bicycle',
-  bed: 'a bed 2.1 m', table: 'a table width×depth (1.6×0.9); an extremely long table is detail.width 8-14 at size 1 (beyond that it stops reading as a table), never a big size; put food, a candle or a book on one when people are sitting at it', chair: 'a chair', sofa: 'a sofa 2 m', desk: 'a desk', mirror: 'a standing mirror 1.7 m', phone: 'a phone held at 1 m', book: 'a book', sign: 'a signpost 3 m whose board shows detail.text', tv: 'a television', computer: 'a computer', clock: 'a wall clock', key: 'a key', ring: 'a ring', balloon: 'a balloon on a string', umbrella: 'an umbrella', food: 'a plate of food', bag: 'a bag', gun: 'a rifle 0.9 m held at 1.2 m', knife: 'a blade (also axe, sword)', box: 'a box width×height×depth (1×1×1)', sphere: 'a sphere 1.2 m', cylinder: 'a column detail.height (3 m)', pyramid: 'a pyramid detail.height (3 m)', orb: 'a glowing floating orb', portal: 'a glowing ring 3 m', thing: 'a generic object 0.6 m on the ground, only for what no other kind can carry; the label does the work'
+  bed: 'a bed 2.1 m', table: 'a table width×depth (1.6×0.9); an extremely long table is detail.width 8-14 at size 1 (beyond that it stops reading as a table), never a big size; put food, a candle or a book on one when people are sitting at it', chair: 'a chair', sofa: 'a sofa 2 m', desk: 'a desk', mirror: 'a standing mirror 1.7 m', phone: 'a phone held at 1 m', book: 'a book', sign: 'a signpost 3 m whose board shows detail.text', tv: 'a television', computer: 'a computer', clock: 'a wall clock', key: 'a key', ring: 'a ring', balloon: 'a balloon on a string', umbrella: 'an umbrella', food: 'a plate of food', bag: 'a bag', gun: 'a rifle 0.9 m held at 1.2 m', knife: 'a blade (also axe, sword)', lens: 'a camera lens: a barrel with a glass front (size 0.2-0.4); use it for a lens or a telescope so it does not read as another box', box: 'a box width×height×depth (1×1×1)', sphere: 'a sphere 1.2 m', cylinder: 'a column detail.height (3 m)', pyramid: 'a pyramid detail.height (3 m)', orb: 'a glowing floating orb', portal: 'a glowing ring 3 m', thing: 'a generic object 0.6 m on the ground, only for what no other kind can carry; the label does the work'
 };
 const KINDS = Object.keys(KIND_INFO);
 const STATES = ['idle','walk','run','fly','fall','float','swim','sit','kneel','lie','shake','spin','grow','shrink','open','collapse','dance','wave','crawl','limp','push','melt','fold','pockets','yell','throw','grieve'];
@@ -296,7 +296,7 @@ Rules that matter:
 3. The dreamer is an actor with id "me" (kind person, label "me") whenever the dream is in the first person; the camera usually follows "me" (mode follow, distance 6-10, height 2-4) and cuts to fixed or wide shots for big scenery, and to orbit for a moment to be looked at. Keep whoever acts in the beat inside the frame: look at them or follow them. A fixed camera position must be outside every building, room, hill and wall and at least 3 m from any person or crowd; never look at a scene through a wall. States: melt flattens a whole figure, fold crumples only the head and face, collapse drops a figure to the ground, kneel and sit need no seat.
 4. Space is real: put the actors of a beat within a few metres of each other; a person who walks moves 1.4 m per second, a run 4 m/s; scenery is around, not under, the people. Buildings are at least 6 m apart and never straddle the road. A small town, a village, a suburb or a slum is made of house and shop actors, not building or city. Interiors: put a "room" actor around the people (width/depth/height) and set ground "floor"; when the people leave a room, vanish the room in that beat or cut to a camera outside. Underground (a cave, a hold, a cellar): keep ground "soil" or "stone" at y 0 with the people on it, sky "void", a cave actor around them, and a lamp, candle or fire for light; do not put people below y 0 except at the bottom of a pit. People stand on sand or grass next to water, never inside a water disc unless they swim. Anything the report says a person holds, carries, wears or has in their hand MUST be given carriedBy: that person's id, and then gets no pos and no move of its own — it rides in their hand wherever they go. "He had a rifle in his hand" is a gun with carriedBy the man; "the big lens on my camera" is a box with carriedBy the dreamer; a bag of money, a lamp, a rock about to be dropped, a book, an umbrella: all carriedBy. A prop with a pos of its own is a thing lying on the ground, so use pos only when the report leaves it lying somewhere. Do not stand one person directly between the camera's target and the lens, and do not put a wall, a headboard or a tall prop between them either. Someone whose face a beat is about (they speak, yell, grieve, shake or fold) needs the camera's distance in clear space in front of them: keep them at least that far from any wall of the room they are in, near the middle of the floor, not backed against the far side. People "crowded around" a table stand within 1 m of its long sides, on both sides, not in a clump beside it. A grating, a lid or a cover over a hole shares the pit's x and z, so the hole is in it; a fence set beside a pit reads as a fence next to a hole. Visitors at a bedside stand along the open side of the bed, within 1.5 m of the person lying in it, not across the room. A person lying in a bed needs a colour that separates them from it. If an actor carries the label that names where a beat happens (a mountain range called Antarctica, a hospital, a cave), some beat must actually frame it: put it within about 40 m of the people and give it a beat whose camera can see it, or leave it out. Anything the report dwells on is its own labelled actor, not a word inside another actor's label: the big lens on the camera, the dishes, the money, the teeth. Use the base sizes: a sand castle is castle at size 0.12, a tooth is tooth at size 1-2 (0.14 m at size 1; past 2 it reads as a stone, not a tooth), a puddle is water at size 0.1, a lens or a camera is box at size 0.2 with a label. People riding in a vehicle move with it: give them the same move in the same beat, with y about 1 for a car and 1.2 for a helicopter, and state sit. An aircraft that flies over a place must end its move above that place, inside the radius of the forest, field or water that names it, not somewhere else on the map. A helicopter or plane flying over scenery the report names flies at y 12-20, never 40: higher than that and the woods, the town or the water it is flying over cannot be in the same shot as the aircraft.
 5. The audience must always be able to see the actors, even in a night or underground scene: keep ambient at or above a dim grey-blue like #3a4060, sunIntensity at or above 0.4, fogDensity at or below 0.03 unless the sentence is about not being able to see, and never below-black skies. Darkness is a mood, not a blindfold.
-6. Stage transitions of place as a beat with a "blackout" effect at 0 plus "world" changes and moves, or by having the old scenery vanish and the new appear. Whatever the beat is about must be on stage for most of it: give an "appear" an "at" of 0.15 or less. Actors that are not yet in the story start hidden and get "appear"; actors that leave get "vanish" (both happen within about a quarter of the beat unless you give "for"). Hidden actors still need a pos. A crowd's yaw turns its members: point a crowd at whatever it is watching, crowded around or complaining at, not at the scenery behind it. A moon or sun is a disc at exactly its pos: put it 60-150 m away, only 15-40 m up so it hangs low over the horizon, and on the side the camera of the beats that show it will be facing (for a follow camera that is behind the actor, so a moon the dreamer walks toward goes in front of them).
+6. Stage transitions of place as a beat with a "blackout" effect at 0 plus "world" changes and moves, or by having the old scenery vanish and the new appear. Whatever the beat is about must be on stage for most of it: give an "appear" an "at" of 0.15 or less. Actors that are not yet in the story start hidden and get "appear"; actors that leave get "vanish" (both happen within about a quarter of the beat unless you give "for"). Hidden actors still need a pos. A crowd's yaw turns its members: point a crowd at whatever it is watching, crowded around or complaining at, not at the scenery behind it. A named person who stands among a crowd of the same kind must be told apart from it: give them a different color, a different wear or wearColor, or stand them a couple of metres clear. A moon or sun is a disc at exactly its pos: put it 60-150 m away, only 15-40 m up so it hangs low over the horizon, and on the side the camera of the beats that show it will be facing (for a follow camera that is behind the actor, so a moon the dreamer walks toward goes in front of them).
 7. Output ONLY the JSON object, no commentary, no markdown fences.`;
 
 /* ---------------- scene normalisation (repairs whatever Claude sends) ---------------- */
@@ -318,12 +318,13 @@ function insideAnyRoom(raw, p) {
     if (Math.abs(p[0] - q[0]) < w && Math.abs(p[2] - q[2]) < dp) return true; }
   return false;
 }
-function skyPos(p, inRoom) { let [x, y, z] = p; if (inRoom) return [x, y, z]; let h = Math.hypot(x, z); if (h < 25) { const k = 25 / Math.max(0.001, h); x *= k; z *= k; h = 25; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } return [x, clamp(y, 8, h * 0.13), z]; }
+function skyPos(p, inRoom) { let [x, y, z] = p; if (inRoom) return [x, y, z]; let h = Math.hypot(x, z); if (h < 25) { const k = 25 / Math.max(0.001, h); x *= k; z *= k; h = 25; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } if (h * 0.13 < 8) { const k = 8 / (h * 0.13); x *= k; z *= k; h *= k; }
+  return [x, clamp(y, 8, Math.max(8, h * 0.13)), z]; }
 function opt(v, a, b) { v = +v; return Number.isFinite(v) && v > 0 ? clamp(v, a, b) : 0; }
 function num(v, d, a = -1e6, b = 1e6) { v = +v; return Number.isFinite(v) ? clamp(v, a, b) : d; }
 function vec(v, d) { return Array.isArray(v) && v.length >= 3 && v.slice(0, 3).every(x => Number.isFinite(+x)) ? v.slice(0, 3).map(x => clamp(+x, -500, 500)) : d.slice(); }
 function oneOf(v, list, d) { v = String(v || '').toLowerCase().trim(); return list.includes(v) ? v : d; }
-const KIND_ALIAS = { man:'person', woman:'person', boy:'person', girl:'person', child:'person', people:'crowd', friend:'person', mother:'person', father:'person', human:'person', figure:'person', soldier:'person', dog:'animal', cat:'animal', horse:'animal', bird:'animal', fish:'animal', snake:'animal', wolf:'animal', bear:'animal', deer:'animal', cow:'animal', lion:'animal', spider:'animal', rat:'animal', chimp:'animal', monkey:'animal', rabbit:'animal', creature:'monster', demon:'monster', beast:'monster', shop:'shop', store:'shop', bakery:'shop', cafe:'shop', diner:'shop', bar:'shop', restaurant:'shop', hut:'house', cottage:'house', cabin:'house', bunkhouse:'house', shack:'house', shed:'house', barn:'house', home:'house', school:'building', hotel:'building', hospital:'building', factory:'building', apartment:'building', office:'building', sandcastle:'castle', fortress:'castle', temple:'church', street:'road', alley:'road', sidewalk:'path', trail:'path', lake:'water', pool:'water', sea:'water', ocean:'water', pond:'water', puddle:'water', stream:'river', woods:'forest', trees:'forest', jungle:'forest', garden:'field', beach:'field', meadow:'field', hole:'pit', manhole:'pit', tunnel:'corridor', hallway:'corridor', hall:'corridor', staircase:'stairs', steps:'stairs', vehicle:'car', taxi:'car', ship:'boat', airplane:'plane', jet:'plane', bicycle:'bike', couch:'sofa', cellphone:'phone', telephone:'phone', television:'tv', laptop:'computer', screen:'tv', crate:'box', chest:'box', ball:'sphere', globe:'sphere', pillar:'cylinder', column:'cylinder', light:'lamp', streetlamp:'lamp', streetlight:'lamp', torch:'candle', flame:'fire', bonfire:'fire', fog:'smoke', mist:'smoke', gate:'door', doorway:'door', object:'thing', item:'thing', grating:'fence', grate:'fence', dishes:'food', plate:'food', lens:'box', camera:'box', suitcase:'box', luggage:'box', pillow:'box', blanket:'box', paper:'book', letter:'book', money:'book', wallet:'bag', purse:'bag', stone:'rock', boulder:'rock', bones:'skeleton', spirit:'ghost', shadow:'ghost', teeth:'tooth', wave:'water', surf:'water', sand:'field', helicopter:'helicopter', chopper:'helicopter', mountains:'mountain', hills:'hill', wagon:'truck', cart:'truck', tank:'truck', bunk:'bed', mattress:'bed', bench:'sofa', counter:'table', drawer:'box', cabinet:'box', poster:'sign', picture:'sign', painting:'sign', flowers:'flower', axe:'knife', sword:'knife', rifle:'gun', pistol:'gun', flag:'sign', crown:'ring', necklace:'ring', star:'star', planet:'sphere', sunrise:'sun', moonlight:'moon' };
+const KIND_ALIAS = { man:'person', woman:'person', boy:'person', girl:'person', child:'person', people:'crowd', friend:'person', mother:'person', father:'person', human:'person', figure:'person', soldier:'person', dog:'animal', cat:'animal', horse:'animal', bird:'animal', fish:'animal', snake:'animal', wolf:'animal', bear:'animal', deer:'animal', cow:'animal', lion:'animal', spider:'animal', rat:'animal', chimp:'animal', monkey:'animal', rabbit:'animal', creature:'monster', demon:'monster', beast:'monster', shop:'shop', store:'shop', bakery:'shop', cafe:'shop', diner:'shop', bar:'shop', restaurant:'shop', hut:'house', cottage:'house', cabin:'house', bunkhouse:'house', shack:'house', shed:'house', barn:'house', home:'house', school:'building', hotel:'building', hospital:'building', factory:'building', apartment:'building', office:'building', sandcastle:'castle', fortress:'castle', temple:'church', street:'road', alley:'road', sidewalk:'path', trail:'path', lake:'water', pool:'water', sea:'water', ocean:'water', pond:'water', puddle:'water', stream:'river', woods:'forest', trees:'forest', jungle:'forest', garden:'field', beach:'field', meadow:'field', hole:'pit', manhole:'pit', tunnel:'corridor', hallway:'corridor', hall:'corridor', staircase:'stairs', steps:'stairs', vehicle:'car', taxi:'car', ship:'boat', airplane:'plane', jet:'plane', bicycle:'bike', couch:'sofa', cellphone:'phone', telephone:'phone', television:'tv', laptop:'computer', screen:'tv', crate:'box', chest:'box', ball:'sphere', globe:'sphere', pillar:'cylinder', column:'cylinder', light:'lamp', streetlamp:'lamp', streetlight:'lamp', torch:'candle', flame:'fire', bonfire:'fire', fog:'smoke', mist:'smoke', gate:'door', doorway:'door', object:'thing', item:'thing', grating:'fence', grate:'fence', dishes:'food', plate:'food', camera:'box', suitcase:'box', luggage:'box', pillow:'box', blanket:'box', paper:'book', letter:'book', money:'book', wallet:'bag', purse:'bag', stone:'rock', boulder:'rock', bones:'skeleton', spirit:'ghost', shadow:'ghost', teeth:'tooth', wave:'water', surf:'water', sand:'field', helicopter:'helicopter', chopper:'helicopter', mountains:'mountain', hills:'hill', wagon:'truck', cart:'truck', tank:'truck', bunk:'bed', mattress:'bed', bench:'sofa', counter:'table', drawer:'box', cabinet:'box', poster:'sign', picture:'sign', painting:'sign', flowers:'flower', axe:'knife', sword:'knife', rifle:'gun', pistol:'gun', flag:'sign', crown:'ring', necklace:'ring', star:'star', planet:'sphere', sunrise:'sun', moonlight:'moon' };
 function normKind(k) { k = String(k || 'thing').toLowerCase().trim().replace(/\s+/g, '_'); if (KINDS.includes(k)) return k; if (KIND_ALIAS[k]) return KIND_ALIAS[k]; const s = k.replace(/s$/, ''); if (KINDS.includes(s)) return s; if (KIND_ALIAS[s]) return KIND_ALIAS[s]; return 'thing'; }
 
 function normalizeScene(raw, dreamText) {
@@ -350,6 +351,12 @@ function normalizeScene(raw, dreamText) {
       const dx = a.pos[0] - w.pos[0], dz = a.pos[2] - w.pos[2];
       const fwd = dx * sn + dz * cs; if (fwd <= 1.5) continue;
       a.pos[0] -= sn * (fwd + 1.5); a.pos[2] -= cs * (fwd + 1.5); } }
+  // someone at the bottom of a pit has to be inside its mouth: outside it they are in solid ground
+  for (const p of actors) { if (p.kind !== 'pit') continue; const R = (p.detail.radius || 1.5) * p.size;
+    for (const a of actors) { if (a === p || a.pos[1] > -0.5) continue;
+      const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
+      const lim = Math.max(0.15, R * 0.45); if (d <= lim) continue;
+      const k = lim / d; a.pos[0] = p.pos[0] + dx * k; a.pos[2] = p.pos[2] + dz * k; } }
   const SIZE_CAP = { tooth: 2, flower: 3, candle: 2, mirror: 2, book: 2, key: 3, ring: 3, phone: 2, gun: 1.6, knife: 2 };
   for (const a of actors) { const cap = SIZE_CAP[a.kind]; if (cap && a.size > cap) a.size = cap;
     if (a.kind === 'table' && a.detail.width > 14) a.detail.width = 14; }
@@ -389,7 +396,8 @@ function normalizeScene(raw, dreamText) {
   { const pits = actors.filter(a => a.kind === 'pit');
     for (const p of pits) { const r = (p.detail.radius || 1.5) * p.size;
       const COVERS = new Set(['fence', 'road', 'path', 'field', 'water', 'sign', 'bridge', 'flower', 'fire', 'smoke', 'bush']);
-      for (const a of actors) { if (a === p || a.pos[1] < -0.5) continue; if (a.kind === 'pit' || COVERS.has(a.kind)) continue;
+      const LID = a2 => a2.pos[1] < 0.6 && ((a2.detail.height || 0) < 0.6 || a2.kind === 'box');
+      for (const a of actors) { if (a === p || a.pos[1] < -0.5) continue; if (a.kind === 'pit' || COVERS.has(a.kind) || LID(a)) continue;
         const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
         const own = (a.detail.radius || 0) * a.size; if (d < r + own + 0.4) { const n = d > 0.01 ? [dx / d, dz / d] : [1, 0]; const out = r + own + 1.1; a.pos = [p.pos[0] + n[0] * out, a.pos[1], p.pos[2] + n[1] * out]; } } } }
   // a beat that arrives somewhere should show the place, not spend itself on the journey
@@ -640,6 +648,11 @@ B.cloud = a => { const g = new THREE.Group(); const m = mat(a.color, { transpare
 B.moon = a => { const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(a.color), fog: false }); const d = mesh(G.sph(5, 24), m, 0, 0, 0); g.userData.discR = 5; d.castShadow = false; g.add(d); const l = new THREE.PointLight(a.color, 400, 260, 1.2); g.add(l); g.userData.height = 5; g.userData.airborne = true; g.userData.far = true; g.userData.noColor = true; g.userData.centered = true; return g; };
 B.sun = a => { const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(a.color), fog: false }); const d = mesh(G.sph(7, 24), m, 0, 0, 0); d.castShadow = false; g.add(d); g.userData.height = 7; g.userData.airborne = true; g.userData.far = true; g.userData.noColor = true; g.userData.centered = true; return g; };
 B.star = a => { const g = new THREE.Group(); g.add(mesh(G.ico(0.4, 0), new THREE.MeshBasicMaterial({ color: new THREE.Color(a.color), fog: false }), 0, 1.5, 0)); g.userData.height = 2; g.userData.airborne = true; g.userData.pulse = true; return g; };
+B.lens = a => { const g = new THREE.Group(); const body = mat(a.color, { metal: 0.5, rough: 0.35 });
+  const barrel = mesh(G.cyl(0.5, 0.44, 1.15, 18), body, 0, 0, 0); barrel.rotation.x = Math.PI / 2; g.add(barrel);
+  g.add(mesh(G.cyl(0.54, 0.54, 0.1, 18), mat(shade(a.color, 0.5), { metal: 0.6, rough: 0.3 }), 0, 0, 0.58).rotateX(Math.PI / 2));
+  g.add(mesh(G.sph(0.42, 14), mat('#6aa8d8', { metal: 0.2, rough: 0.1, emissive: '#22405e', ei: 0.5 }), 0, 0, 0.6));
+  g.userData.height = 1.1; g.userData.airborne = true; return g; };
 B.orb = a => { const g = new THREE.Group(); g.add(mesh(G.sph(0.5, 16), mat(a.color, { emissive: a.color, ei: 0.55, transparent: true, opacity: 0.9 }), 0, 1.4, 0)); const l = new THREE.PointLight(a.color, 6, 12, 1.8); l.position.y = 1.4; g.add(l); g.userData.height = 2; g.userData.airborne = true; g.userData.pulse = true; return g; };
 B.portal = a => { const g = new THREE.Group(); g.add(mesh(G.torus(1.4, 0.15), mat(a.color, { emissive: a.color, ei: 1.2 }), 0, 1.6, 0)); g.add(mesh(new THREE.CircleGeometry(1.3, 24), mat(shade(a.color, 0.4), { emissive: a.color, ei: 0.5, transparent: true, opacity: 0.7, side: THREE.DoubleSide }), 0, 1.6, 0)); const l = new THREE.PointLight(a.color, 15, 12, 1.8); l.position.y = 1.6; g.add(l); g.userData.height = 3.2; g.userData.spinPart = g.children[0]; return g; };
 B.fire = a => { const g = new THREE.Group(); const fm = mat(a.color, { emissive: a.color, ei: 1.5, transparent: true, opacity: 0.9 }); const flames = []; for (let i = 0; i < 4; i++) { const f = mesh(G.cone(0.35 - i * 0.05, 1.0 + i * 0.2, 6), fm, (i - 1.5) * 0.18, 0.5 + i * 0.1, 0); f.castShadow = false; g.add(f); flames.push(f); } for (let i = 0; i < 3; i++) g.add(mesh(G.cyl(0.06, 0.06, 0.9, 5), mat('#3a2a1a'), 0, 0.06, 0).rotateZ(1.57).rotateX(i * 1.05)); const l = new THREE.PointLight('#ff9040', 30, 18, 1.6); l.position.y = 0.8; g.add(l); g.userData.flames = flames; g.userData.light = l; g.userData.height = 1.6; return g; };
@@ -706,7 +719,8 @@ function buildActor(a) {
   let g; try { g = (B[a.kind] || B.thing)(a); } catch (e) { console.warn('builder failed', a.kind, e); g = B.thing(a); }
   if (SOFT.has(a.kind)) g.traverse(o => { if (o.isMesh && o.geometry.type === 'CapsuleGeometry') { o.userData.solid = true; o.userData.soft = true; } });
   if (SOLID.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.material.side !== THREE.BackSide) o.userData.solid = true; });
-  if (LEAFY.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh) { o.userData.solid = true; o.userData.soft = true; } });
+  const SEETHROUGH = new Set(['tree', 'forest', 'bush', 'flower']);
+  if (LEAFY.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh) { o.userData.solid = true; o.userData.soft = true; if (!SEETHROUGH.has(a.kind)) o.userData.opaque = true; } });
   // Material.clone() drops onBeforeCompile and customProgramCacheKey, which would silently
   // strip the water shader off any ground cover that gets stencilled for a pit
   if (GROUNDCOVER.has(a.kind)) g.traverse(o => { if (o.isMesh) { const src = o.material; o.material = src.clone(); o.material.onBeforeCompile = src.onBeforeCompile; o.material.customProgramCacheKey = src.customProgramCacheKey; o.material.stencilWrite = true; o.material.stencilFunc = THREE.NotEqualStencilFunc; o.material.stencilRef = 1; } });
@@ -823,6 +837,7 @@ const Stage = {
         rider.pos = [car.pos[0] + 0.6, car.pos[1] + seat, car.pos[2]]; rider.yaw = car.yaw;
         if (rider.state === 'idle' || rider.state === 'walk') rider.state = 'sit'; } }
     { const held = new Map(); for (const a of S.actors) if (a.carriedBy) { const l = held.get(a.carriedBy) || []; l.push(a.id); held.set(a.carriedBy, l); }
+    for (const [id, rec] of this.actors) { const ai = rec.g.userData.aimed; if (!ai) continue; const st0 = out.get(id); if (st0) st0.pos = ai.slice(); }
     for (const a of S.actors) { if (!a.carriedBy) continue; const it = out.get(a.id), by = out.get(a.carriedBy); if (!it || !by) continue;
       const slot = (held.get(a.carriedBy) || []).indexOf(a.id);
       const r = by.yaw * Math.PI / 180, side = [0.25, -0.25, 0.05, -0.05][slot % 4], fwd = [0.1, 0.1, 0.36, 0.36][slot % 4];
@@ -842,7 +857,9 @@ const Stage = {
     for (const a of S.actors) { const st = out.get(a.id); if (!st || a.kind !== 'person' || st.state !== 'sit') continue;
       for (const v of S.actors) { if (!VEHICLE.has(v.kind)) continue; const vs = out.get(v.id); if (!vs || vs.op < 0.3) continue;
         const rr = 2.4 * vs.size; if (Math.hypot(st.pos[0] - vs.pos[0], st.pos[2] - vs.pos[2]) > rr) continue;
-        const top = vs.pos[1] + ((SEAT[v.kind] || 1) + 0.45) * vs.size;
+        const vr = this.actors.get(v.id); let hull = (SEAT[v.kind] || 1) * vs.size;
+        if (vr) { const hb = this.solidBox ? new THREE.Box3().setFromObject(vr.g) : null; if (hb && Number.isFinite(hb.max.y)) hull = Math.max(hull, hb.max.y - vs.pos[1] - 0.35); }
+        const top = vs.pos[1] + hull;
         if (st.pos[1] < top) st.pos = [st.pos[0], top, st.pos[2]]; } }
     for (const st of out.values()) if (st.moving && st.state === 'idle') st.state = st.moving > 2.5 ? 'run' : 'walk';
     return out;
@@ -1016,11 +1033,13 @@ const Stage = {
     // frame the whole group that acts in this beat, not only the target
     let groupC = null, groupR = 0; { const active = beat.actions.filter(x => x.actor && (x.move || x.say || x.appear || (x.state && x.state !== 'idle'))).map(x => x.actor); const ids = [...new Set(active.concat([c.target]))]; const pts = []; for (const id of ids) { const st = states.get(id); const r2 = this.actors.get(id); if (!st || st.op < 0.3 || !r2 || r2.g.userData.big || r2.g.userData.flat) continue; if (r2.g.userData.members && id !== c.target) continue; if (Math.abs(st.pos[1] - T.y) > 3) continue; pts.push(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])); } if (pts.length > 1) { groupC = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(pts.length); for (const p of pts) groupR = Math.max(groupR, Math.hypot(p.x - groupC.x, p.z - groupC.z)); if (groupR > 7 || groupR < 1.2) { groupC = null; groupR = 0; } } }
     const dirAt = (deg, d, h) => new THREE.Vector3(Math.sin(deg * Math.PI / 180) * d, h, Math.cos(deg * Math.PI / 180) * d);
+    { const sm0 = this.smoothYaw === undefined ? tg.yaw : this.smoothYaw; const d0 = ((tg.yaw - sm0 + 540) % 360) - 180; this.smoothYaw = snap ? tg.yaw : sm0 + d0 * Math.min(1, dt * 1.5); }
+    const yawS = this.smoothYaw;
     if (c.mode === 'fixed' && c.pos) { pos = new THREE.Vector3(...c.pos); look = Array.isArray(c.lookAt) ? new THREE.Vector3(...c.lookAt) : (typeof c.lookAt === 'string' && states.get(c.lookAt) ? new THREE.Vector3(...states.get(c.lookAt).pos).add(new THREE.Vector3(0, 1, 0)) : eye); }
     else if (c.mode === 'pov') { pos = T.clone().add(new THREE.Vector3(0, Math.max(0.5, hgt * 0.88), 0)); look = pos.clone().add(dirAt(tg.yaw, 10, -0.5)); }
-    else if (c.mode === 'orbit') { const ang = c.angle + tg.yaw + local * 18; const dist = groupC ? Math.min(c.distance * 1.45, Math.max(c.distance, groupR * 1.8 + 3)) : c.distance; const ctr = groupC ? T.clone().lerp(groupC, 0.6) : T; pos = ctr.clone().add(dirAt(ang, dist, c.height + (dist - c.distance) * 0.2)); look = groupC ? new THREE.Vector3(ctr.x, eye.y, ctr.z) : eye; }
-    else if (c.mode === 'wide') { const extent = Math.max(groupR * 2, (rec ? rec.g.userData.baseHeight : 1.8) * 2); const floorD = Math.min(clamp(extent * 2.6, 10, 22), c.distance * 1.15); pos = T.clone().add(dirAt(c.angle + tg.yaw, Math.max(c.distance, floorD), Math.max(c.height, floorD * 0.32) + local * 0.2)); look = groupC ? new THREE.Vector3(groupC.x, eye.y, groupC.z) : eye; }
-    else { const sm = this.smoothYaw === undefined ? tg.yaw : this.smoothYaw; const d = ((tg.yaw - sm + 540) % 360) - 180; this.smoothYaw = snap ? tg.yaw : sm + d * Math.min(1, dt * 1.5); const dist = groupC ? Math.min(c.distance * 1.45, Math.max(c.distance, groupR * 1.6 + 3)) : c.distance; pos = T.clone().add(dirAt(this.smoothYaw + c.angle, dist, c.height + local * 0.05 + (dist - c.distance) * 0.25)); look = groupC ? new THREE.Vector3(lerp(T.x, groupC.x, 0.5), eye.y, lerp(T.z, groupC.z, 0.5)) : eye; }
+    else if (c.mode === 'orbit') { const ang = c.angle + yawS + local * 18; const dist = groupC ? Math.min(c.distance * 1.45, Math.max(c.distance, groupR * 1.8 + 3)) : c.distance; const ctr = groupC ? T.clone().lerp(groupC, 0.6) : T; pos = ctr.clone().add(dirAt(ang, dist, c.height + (dist - c.distance) * 0.2)); look = groupC ? new THREE.Vector3(ctr.x, eye.y, ctr.z) : eye; }
+    else if (c.mode === 'wide') { const extent = Math.max(groupR * 2, (rec ? rec.g.userData.baseHeight : 1.8) * 2); const floorD = Math.min(clamp(extent * 2.6, 10, 22), c.distance * 1.15); pos = T.clone().add(dirAt(c.angle + yawS, Math.max(c.distance, floorD), Math.max(c.height, floorD * 0.32) + local * 0.2)); look = groupC ? new THREE.Vector3(groupC.x, eye.y, groupC.z) : eye; }
+    else { const dist = groupC ? Math.min(c.distance * 1.45, Math.max(c.distance, groupR * 1.6 + 3)) : c.distance; pos = T.clone().add(dirAt(yawS + c.angle, dist, c.height + local * 0.05 + (dist - c.distance) * 0.25)); look = groupC ? new THREE.Vector3(lerp(T.x, groupC.x, 0.5), eye.y, lerp(T.z, groupC.z, 0.5)) : eye; }
     const lookRec = typeof c.lookAt === 'string' ? this.actors.get(c.lookAt) : null;
     const selfs = [rec && rec.g, lookRec && lookRec.g].filter(Boolean);
     const settle = (p0, l0) => { let p = p0.clone(), look2 = l0.clone();
@@ -1044,10 +1063,10 @@ const Stage = {
     { const low = [], high = []; for (const x of beat.actions) { if (!x.actor) continue; const st = states.get(x.actor); const r2 = this.actors.get(x.actor); if (!st || st.op < 0.3 || !r2 || r2.g.userData.flat || r2.g.userData.big) continue; const climbing = beat.actions.some(q => q.actor === x.actor && q.move && q.move[1] > -1); (st.pos[1] < -1 && !climbing ? low : high).push(st); }
       if (low.length && high.length) { const c0 = low.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(low.length);
         look2 = new THREE.Vector3(c0.x, c0.y + 1.2, c0.z);
-        if (high.length) { const h0 = high.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(high.length); look2.lerp(new THREE.Vector3(h0.x, h0.y + 1, h0.z), 0.3); }
+        if (high.length) { const h0 = high.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(high.length); look2.lerp(new THREE.Vector3(h0.x, h0.y + 1, h0.z), facesMatter ? 0.5 : 0.3); }
         const off = p.clone().sub(look2); const want = Math.hypot(c.distance || 8, c.height || 3);
         let span = 0; for (const st of low.concat(high)) span = Math.max(span, look2.distanceTo(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])));
-        const len = clamp(Math.min(off.length(), want), Math.max(3, span * 2.1), Math.max(3, want * 1.5)); const flat = Math.hypot(off.x, off.z) || 0.001;
+        const len = clamp(Math.min(off.length(), want), Math.max(3, span * (facesMatter ? 2.6 : 2.1)), Math.max(3, want * 1.5)); const flat = Math.hypot(off.x, off.z) || 0.001;
         let depth = 4, rad = 1.6; for (const rr of this.actors.values()) { if (rr.a.kind !== 'pit') continue; const q = rr.a.pos; if (Math.hypot(q[0] - look2.x, q[2] - look2.z) > 6) continue; depth = (rr.a.detail.height || 4) * rr.a.size; rad = (rr.a.detail.radius || 1.5) * rr.a.size; }
         const pitch = clamp(Math.atan2(depth, Math.max(0.4, rad)) + 0.12, Math.PI / 180 * 58, Math.PI / 180 * 80); p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
     // a beat flying over something must show what it flies over, not empty sky
@@ -1090,7 +1109,12 @@ const Stage = {
       const flat0 = Math.hypot(pos.x - look.x, pos.z - look.z); const maxUp = look.y + Math.max(0.6, flat0 * 0.21);
       if (pos.y > maxUp) pos.y = maxUp;
     }
-    const drifted = this.framePick && this.framePick.settled && Math.abs(settle(this.turnShot(pos, look, this.framePick.az, this.framePick.mul), look).pos.distanceTo(look) - this.framePick.settled) > this.framePick.settled * 0.3;
+    let drifted = false;
+    if (this.framePick && this.framePick.settled && this.time - (this.framePick.at || 0) > 1.2) {
+      const now = settle(this.turnShot(pos, look, this.framePick.az, this.framePick.mul), look);
+      if (Math.abs(now.pos.distanceTo(look) - this.framePick.settled) > this.framePick.settled * 0.3) drifted = true;
+      else for (const f of framed) { if (f.w < 1) continue; if (!this.seenWell(now.pos, now.look, f, false)) { drifted = true; break; } }
+    }
     if (!authored && (snap || !this.framePick || this.framePick.beat !== this.lastBeat || drifted)) {
       let best = { az: 0, mul: 1, score: -1 }; if (this.debugFrames) this.frameScan = [];
       const off0 = pos.distanceTo(look);
@@ -1113,7 +1137,7 @@ const Stage = {
               const mb = new THREE.Box3(new THREE.Vector3(wp.x - 0.3, bb0.min.y, wp.z - 0.3), new THREE.Vector3(wp.x + 0.3, bb0.min.y + h1, wp.z + 0.3));
               bodies.push({ id: bid, box: mb, h: h1, yaw: bs.yaw }); } continue; }
           bodies.push({ id: bid, box: bb0.clone(), h: Math.max(0.6, bb0.max.y - bb0.min.y), yaw: bs.yaw }); }
-        for (const o of (this.solidsNow || [])) { if (o.userData.soft || this.isOwn(o, selfs)) continue;
+        for (const o of (this.solidsNow || [])) { if ((o.userData.soft && !o.userData.opaque) || this.isOwn(o, selfs)) continue;
           const bx2 = this.solidBox(o); if (bx2.distanceToPoint(look) > 22) continue;
           const h2 = bx2.max.y - bx2.min.y; if (!(h2 > 0.5) || bx2.max.x - bx2.min.x > 3 || bx2.max.z - bx2.min.z > 3) continue;
           bodies.push({ id: '#solid', box: bx2, h: Math.min(h2, 4), yaw: 0 }); } }
@@ -1173,17 +1197,30 @@ const Stage = {
       }
       }
       best = tiers.find(t => t.has) || best;
+      if (drifted && this.framePick && this.framePick.beat === this.lastBeat) {
+        const keep = this.frameScanScoreOf(tiers, this.framePick);
+        if (keep !== null && best.score - keep < 0.5) { best = { az: this.framePick.az, mul: this.framePick.mul, lift: this.framePick.lift, score: keep, has: true }; } }
       if (!anyOk && framed.length) { best = { az: 0, mul: 1, score: -1 }; for (const az of azList) { const cand = this.turnShot(pos, look, az, 1); const out = settle(cand, look); let n = 0; for (const f of framed) if (this.inShot(out.pos, out.look, f.p, f.g)) n += f.w; if (n > best.score) best = { az, mul: 1, lift: 0, score: n }; } }
-      this.framePick = { beat: this.lastBeat, az: best.az, mul: best.mul, lift: best.lift || 0 };
+      this.framePick = { beat: this.lastBeat, az: best.az, mul: best.mul, lift: best.lift || 0, at: this.time };
       { const o2 = settle(this.turnShot(pos, look, best.az, best.mul), look); this.framePick.settled = o2.pos.distanceTo(look); }
     } else if (authored) { this.framePick = { beat: this.lastBeat, az: 0, mul: 1, lift: 0 };
     }
-    if (this.framePick.az || this.framePick.mul !== 1) pos = this.turnShot(pos, look, this.framePick.az, this.framePick.mul);
-    if (this.framePick.lift) pos = pos.clone().setY(pos.y + this.framePick.lift);
-    { const out = settle(pos, look); pos = out.pos; look = out.look; }
+    { const sm = this.framePick; if (sm.smAz === undefined || snap) { sm.smAz = sm.az; sm.smMul = sm.mul; sm.smLift = sm.lift || 0; }
+      else { const kf = 1 - Math.exp(-dt * 2.2); sm.smAz += (((sm.az - sm.smAz + 540) % 360) - 180) * kf; sm.smMul += (sm.mul - sm.smMul) * kf; sm.smLift += ((sm.lift || 0) - sm.smLift) * kf; } }
+    if (this.framePick.smAz || this.framePick.smMul !== 1) pos = this.turnShot(pos, look, this.framePick.smAz, this.framePick.smMul);
+    if (this.framePick.smLift) pos = pos.clone().setY(pos.y + this.framePick.smLift);
+    { const out = settle(pos, look); pos = out.pos; look = out.look;
+      if (c.mode !== 'pov' && !(c.mode === 'fixed' && c.pos)) { const want0 = Math.hypot(c.distance || 8, c.height || 3) * 1.35;
+        const got0 = pos.distanceTo(look); if (got0 > want0) pos = look.clone().lerp(pos, want0 / got0); } }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
-    if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f); }
+    if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + (tg.moving || 0) * 0.8) * dt;
+      if (step > cap) pos = this._lastAim.clone().lerp(pos, cap / step); }
+    this._lastAim = (this._lastAim || new THREE.Vector3()).copy(pos);
+    if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k);
+      const was = this.cam.pos.clone(); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f);
+      if (local > 1 && dt > 0) { const moved = this.cam.pos.distanceTo(was), lim = (3 + (tg.moving || 0) * 1.6) * dt;
+        if (moved > lim) this.cam.pos.copy(was.lerp(this.cam.pos, lim / moved)); } }
     const hh = this.user.on ? 0 : 0.035; const drift = new THREE.Vector3(Math.sin(this.time * 0.7) * hh + Math.sin(this.time * 1.9) * hh * 0.4, Math.sin(this.time * 0.9 + 1) * hh * 0.7, Math.cos(this.time * 0.5) * hh);
     if (this.quake > 0) { this.quake -= dt; const q = Math.min(1, this.quake) * 0.25; this.camera.position.copy(this.cam.pos).add(new THREE.Vector3((Math.random() - 0.5) * q, (Math.random() - 0.5) * q, (Math.random() - 0.5) * q)); } else this.camera.position.copy(this.cam.pos).add(drift);
     const camDist = this.camera.position.distanceTo(this.cam.look); this.three.fog.density = Math.min(this.three.fog.density, 0.9 / Math.max(4, camDist));
@@ -1199,6 +1236,10 @@ const Stage = {
     this._ray = this._ray || new THREE.Raycaster(); const r = this._ray; r.set(look, dir); r.near = 0.3; r.far = len; const hits = r.intersectObjects(this.solidsNow || [], false);
     for (const h of hits) { if (self && this.isOwn(h.object, self)) continue; if (h.object.userData.soft && len - h.distance > Math.max(1.2, len * 0.4)) continue; return h.distance; }
     return Infinity;
+  },
+  frameScanScoreOf(tiers, pick) {
+    for (const t of tiers) if (t.has && t.az === pick.az && t.mul === pick.mul && (t.lift || 0) === (pick.lift || 0)) return t.score;
+    return null;
   },
   seenWell(pos, look, f, strictLow) {
     const h = Math.max(0.6, f.h || 1.8); const q = this._sw || (this._sw = new THREE.Vector3());
@@ -1223,7 +1264,7 @@ const Stage = {
     const w = this._v2 || (this._v2 = new THREE.Vector3()); let extra = 0;
     for (let step = 0; step < 4; step++) {
       let hit = false;
-      for (const o of sol) { if (this.isOwn(o, self)) continue; if (o.userData.soft) continue; if (this.solidBox(o).distanceToPoint(pos) < 1.45) { hit = true; break; } }
+      for (const o of sol) { if (this.isOwn(o, self)) continue; if (o.userData.soft && !o.userData.opaque) continue; if (this.solidBox(o).distanceToPoint(pos) < 1.45) { hit = true; break; } }
       if (!hit) break;
       pos = pos.clone().add(dir.clone().multiplyScalar(0.9)); extra += 0.9; if (extra > 3.6) break;
     }
@@ -1258,6 +1299,8 @@ const Stage = {
     const flat = new THREE.Vector3(off.x, 0, off.z); let fl = flat.length(); if (fl < 0.001) { flat.set(0, 0, 1); fl = 1; }
     const hx = flat.x / fl, hz = flat.z / fl; const el0 = Math.asin(clamp(off.y / len, -0.95, 0.95));
     let best = null, bestR = -1;
+    { const prev = this._unblockDir; if (prev) { const cand = look.clone().add(prev.clone().multiplyScalar(len));
+        if (cand.y >= 0.35 && reach(prev, len) >= len - 0.05 && free(cand)) return cand; } }
     for (const el of [el0, el0 + 0.22, el0 + 0.45, el0 + 0.75, 1.1]) {
       const ch = Math.cos(el), cy = Math.sin(el);
       for (const az of [0, 28, -28, 56, -56, 90, -90, 124, -124, 156, -156, 180]) {
@@ -1265,7 +1308,7 @@ const Stage = {
         const d = new THREE.Vector3(rx * ch, cy, rz * ch); const cand = look.clone().add(d.clone().multiplyScalar(len));
         if (cand.y < 0.35) continue;
         const rr = reach(d, len);
-        if (rr >= len - 0.05 && free(cand)) return cand;
+        if (rr >= len - 0.05 && free(cand)) { this._unblockDir = d.clone(); return cand; }
         if (rr > bestR) { bestR = rr; best = d; }
       }
     }
@@ -1277,6 +1320,7 @@ const Stage = {
   },
 
   occluded(from, to, self) {
+    { const rm = this.roomAround(to); if (rm && !this.roomAround(from)) return true; }
     // a figure below the ground can only be seen down a hole: if the line of sight crosses
     // ground level outside every pit mouth, the earth (which is no collider) is in the way
     if (to.y < -0.3 && from.y > 0.15 && this.pits && this.pits.length) {
@@ -1303,7 +1347,7 @@ const Stage = {
       if (camRoom) { const b = camRoom.box; const f = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion); f.y = 0; f.normalize();
         let t = 1e6; for (const [lo, hi, o, dd] of [[b.min.x, b.max.x, cam.position.x, f.x], [b.min.z, b.max.z, cam.position.z, f.z]]) { if (Math.abs(dd) < 1e-4) continue; for (const tt of [(hi - o) / dd, (lo - o) / dd]) if (tt > 0.5 && tt < t) t = tt; }
         if (t < 1e5) { const q = cam.position.clone().add(f.multiplyScalar(Math.max(1.5, t - 0.6))); q.y = b.min.y + (b.max.y - b.min.y) * 0.72;
-          a.pos = [+q.x.toFixed(2), +q.y.toFixed(2), +q.z.toFixed(2)]; const st2 = this.states && this.states.get(a.id); if (st2) st2.pos = a.pos.slice(); rec.g.position.copy(q); rec.g.userData.indoor = true; }
+          const aq = [+q.x.toFixed(2), +q.y.toFixed(2), +q.z.toFixed(2)]; rec.g.userData.aimed = aq; const st2 = this.states && this.states.get(a.id); if (st2) st2.pos = aq.slice(); rec.g.position.copy(q); rec.g.userData.indoor = true; }
         continue; }
       if (this.roomAround(new THREE.Vector3(a.pos[0], Math.min(a.pos[1], 2), a.pos[2]))) continue;
       const dir = fwd.clone().add(up.clone().multiplyScalar(rise)).normalize();
@@ -1315,9 +1359,10 @@ const Stage = {
       const far = cam.position.clone().add(flatF.multiplyScalar(900)); far.y = cam.position.y - drop;
       const hy = far.project(cam).y; const lo = Math.min(0.62, hy + 0.1), hi = Math.max(lo + 0.05, Math.min(0.72, hy + 0.42));
       for (let k = 0; k < 16; k++) { const ndc = p.clone().project(cam); if (ndc.y >= lo && ndc.y <= hi) break; p.y += (ndc.y > hi ? -1 : 1) * Math.max(1.2, Math.abs(ndc.y - (ndc.y > hi ? hi : lo)) * 26); if (p.y < 8) { p.y = 8; break; } if (p.y > 260) { p.y = 260; break; } }
-      a.pos = [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)];
-      const st = this.states && this.states.get(a.id); if (st) st.pos = a.pos.slice();
-      rec.g.position.set(a.pos[0], a.pos[1], a.pos[2]);
+      const aimed = [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)];
+      rec.g.userData.aimed = aimed;
+      const st = this.states && this.states.get(a.id); if (st) st.pos = aimed.slice();
+      rec.g.position.set(aimed[0], aimed[1], aimed[2]);
     }
   },
 

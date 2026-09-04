@@ -101,6 +101,7 @@ const Stage = {
         rider.pos = [car.pos[0] + 0.6, car.pos[1] + seat, car.pos[2]]; rider.yaw = car.yaw;
         if (rider.state === 'idle' || rider.state === 'walk') rider.state = 'sit'; } }
     { const held = new Map(); for (const a of S.actors) if (a.carriedBy) { const l = held.get(a.carriedBy) || []; l.push(a.id); held.set(a.carriedBy, l); }
+    for (const [id, rec] of this.actors) { const ai = rec.g.userData.aimed; if (!ai) continue; const st0 = out.get(id); if (st0) st0.pos = ai.slice(); }
     for (const a of S.actors) { if (!a.carriedBy) continue; const it = out.get(a.id), by = out.get(a.carriedBy); if (!it || !by) continue;
       const slot = (held.get(a.carriedBy) || []).indexOf(a.id);
       const r = by.yaw * Math.PI / 180, side = [0.25, -0.25, 0.05, -0.05][slot % 4], fwd = [0.1, 0.1, 0.36, 0.36][slot % 4];
@@ -120,7 +121,9 @@ const Stage = {
     for (const a of S.actors) { const st = out.get(a.id); if (!st || a.kind !== 'person' || st.state !== 'sit') continue;
       for (const v of S.actors) { if (!VEHICLE.has(v.kind)) continue; const vs = out.get(v.id); if (!vs || vs.op < 0.3) continue;
         const rr = 2.4 * vs.size; if (Math.hypot(st.pos[0] - vs.pos[0], st.pos[2] - vs.pos[2]) > rr) continue;
-        const top = vs.pos[1] + ((SEAT[v.kind] || 1) + 0.45) * vs.size;
+        const vr = this.actors.get(v.id); let hull = (SEAT[v.kind] || 1) * vs.size;
+        if (vr) { const hb = this.solidBox ? new THREE.Box3().setFromObject(vr.g) : null; if (hb && Number.isFinite(hb.max.y)) hull = Math.max(hull, hb.max.y - vs.pos[1] - 0.35); }
+        const top = vs.pos[1] + hull;
         if (st.pos[1] < top) st.pos = [st.pos[0], top, st.pos[2]]; } }
     for (const st of out.values()) if (st.moving && st.state === 'idle') st.state = st.moving > 2.5 ? 'run' : 'walk';
     return out;
@@ -294,11 +297,13 @@ const Stage = {
     // frame the whole group that acts in this beat, not only the target
     let groupC = null, groupR = 0; { const active = beat.actions.filter(x => x.actor && (x.move || x.say || x.appear || (x.state && x.state !== 'idle'))).map(x => x.actor); const ids = [...new Set(active.concat([c.target]))]; const pts = []; for (const id of ids) { const st = states.get(id); const r2 = this.actors.get(id); if (!st || st.op < 0.3 || !r2 || r2.g.userData.big || r2.g.userData.flat) continue; if (r2.g.userData.members && id !== c.target) continue; if (Math.abs(st.pos[1] - T.y) > 3) continue; pts.push(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])); } if (pts.length > 1) { groupC = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(pts.length); for (const p of pts) groupR = Math.max(groupR, Math.hypot(p.x - groupC.x, p.z - groupC.z)); if (groupR > 7 || groupR < 1.2) { groupC = null; groupR = 0; } } }
     const dirAt = (deg, d, h) => new THREE.Vector3(Math.sin(deg * Math.PI / 180) * d, h, Math.cos(deg * Math.PI / 180) * d);
+    { const sm0 = this.smoothYaw === undefined ? tg.yaw : this.smoothYaw; const d0 = ((tg.yaw - sm0 + 540) % 360) - 180; this.smoothYaw = snap ? tg.yaw : sm0 + d0 * Math.min(1, dt * 1.5); }
+    const yawS = this.smoothYaw;
     if (c.mode === 'fixed' && c.pos) { pos = new THREE.Vector3(...c.pos); look = Array.isArray(c.lookAt) ? new THREE.Vector3(...c.lookAt) : (typeof c.lookAt === 'string' && states.get(c.lookAt) ? new THREE.Vector3(...states.get(c.lookAt).pos).add(new THREE.Vector3(0, 1, 0)) : eye); }
     else if (c.mode === 'pov') { pos = T.clone().add(new THREE.Vector3(0, Math.max(0.5, hgt * 0.88), 0)); look = pos.clone().add(dirAt(tg.yaw, 10, -0.5)); }
-    else if (c.mode === 'orbit') { const ang = c.angle + tg.yaw + local * 18; const dist = groupC ? Math.min(c.distance * 1.45, Math.max(c.distance, groupR * 1.8 + 3)) : c.distance; const ctr = groupC ? T.clone().lerp(groupC, 0.6) : T; pos = ctr.clone().add(dirAt(ang, dist, c.height + (dist - c.distance) * 0.2)); look = groupC ? new THREE.Vector3(ctr.x, eye.y, ctr.z) : eye; }
-    else if (c.mode === 'wide') { const extent = Math.max(groupR * 2, (rec ? rec.g.userData.baseHeight : 1.8) * 2); const floorD = Math.min(clamp(extent * 2.6, 10, 22), c.distance * 1.15); pos = T.clone().add(dirAt(c.angle + tg.yaw, Math.max(c.distance, floorD), Math.max(c.height, floorD * 0.32) + local * 0.2)); look = groupC ? new THREE.Vector3(groupC.x, eye.y, groupC.z) : eye; }
-    else { const sm = this.smoothYaw === undefined ? tg.yaw : this.smoothYaw; const d = ((tg.yaw - sm + 540) % 360) - 180; this.smoothYaw = snap ? tg.yaw : sm + d * Math.min(1, dt * 1.5); const dist = groupC ? Math.min(c.distance * 1.45, Math.max(c.distance, groupR * 1.6 + 3)) : c.distance; pos = T.clone().add(dirAt(this.smoothYaw + c.angle, dist, c.height + local * 0.05 + (dist - c.distance) * 0.25)); look = groupC ? new THREE.Vector3(lerp(T.x, groupC.x, 0.5), eye.y, lerp(T.z, groupC.z, 0.5)) : eye; }
+    else if (c.mode === 'orbit') { const ang = c.angle + yawS + local * 18; const dist = groupC ? Math.min(c.distance * 1.45, Math.max(c.distance, groupR * 1.8 + 3)) : c.distance; const ctr = groupC ? T.clone().lerp(groupC, 0.6) : T; pos = ctr.clone().add(dirAt(ang, dist, c.height + (dist - c.distance) * 0.2)); look = groupC ? new THREE.Vector3(ctr.x, eye.y, ctr.z) : eye; }
+    else if (c.mode === 'wide') { const extent = Math.max(groupR * 2, (rec ? rec.g.userData.baseHeight : 1.8) * 2); const floorD = Math.min(clamp(extent * 2.6, 10, 22), c.distance * 1.15); pos = T.clone().add(dirAt(c.angle + yawS, Math.max(c.distance, floorD), Math.max(c.height, floorD * 0.32) + local * 0.2)); look = groupC ? new THREE.Vector3(groupC.x, eye.y, groupC.z) : eye; }
+    else { const dist = groupC ? Math.min(c.distance * 1.45, Math.max(c.distance, groupR * 1.6 + 3)) : c.distance; pos = T.clone().add(dirAt(yawS + c.angle, dist, c.height + local * 0.05 + (dist - c.distance) * 0.25)); look = groupC ? new THREE.Vector3(lerp(T.x, groupC.x, 0.5), eye.y, lerp(T.z, groupC.z, 0.5)) : eye; }
     const lookRec = typeof c.lookAt === 'string' ? this.actors.get(c.lookAt) : null;
     const selfs = [rec && rec.g, lookRec && lookRec.g].filter(Boolean);
     const settle = (p0, l0) => { let p = p0.clone(), look2 = l0.clone();
@@ -322,10 +327,10 @@ const Stage = {
     { const low = [], high = []; for (const x of beat.actions) { if (!x.actor) continue; const st = states.get(x.actor); const r2 = this.actors.get(x.actor); if (!st || st.op < 0.3 || !r2 || r2.g.userData.flat || r2.g.userData.big) continue; const climbing = beat.actions.some(q => q.actor === x.actor && q.move && q.move[1] > -1); (st.pos[1] < -1 && !climbing ? low : high).push(st); }
       if (low.length && high.length) { const c0 = low.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(low.length);
         look2 = new THREE.Vector3(c0.x, c0.y + 1.2, c0.z);
-        if (high.length) { const h0 = high.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(high.length); look2.lerp(new THREE.Vector3(h0.x, h0.y + 1, h0.z), 0.3); }
+        if (high.length) { const h0 = high.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(high.length); look2.lerp(new THREE.Vector3(h0.x, h0.y + 1, h0.z), facesMatter ? 0.5 : 0.3); }
         const off = p.clone().sub(look2); const want = Math.hypot(c.distance || 8, c.height || 3);
         let span = 0; for (const st of low.concat(high)) span = Math.max(span, look2.distanceTo(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])));
-        const len = clamp(Math.min(off.length(), want), Math.max(3, span * 2.1), Math.max(3, want * 1.5)); const flat = Math.hypot(off.x, off.z) || 0.001;
+        const len = clamp(Math.min(off.length(), want), Math.max(3, span * (facesMatter ? 2.6 : 2.1)), Math.max(3, want * 1.5)); const flat = Math.hypot(off.x, off.z) || 0.001;
         let depth = 4, rad = 1.6; for (const rr of this.actors.values()) { if (rr.a.kind !== 'pit') continue; const q = rr.a.pos; if (Math.hypot(q[0] - look2.x, q[2] - look2.z) > 6) continue; depth = (rr.a.detail.height || 4) * rr.a.size; rad = (rr.a.detail.radius || 1.5) * rr.a.size; }
         const pitch = clamp(Math.atan2(depth, Math.max(0.4, rad)) + 0.12, Math.PI / 180 * 58, Math.PI / 180 * 80); p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
     // a beat flying over something must show what it flies over, not empty sky
@@ -368,7 +373,12 @@ const Stage = {
       const flat0 = Math.hypot(pos.x - look.x, pos.z - look.z); const maxUp = look.y + Math.max(0.6, flat0 * 0.21);
       if (pos.y > maxUp) pos.y = maxUp;
     }
-    const drifted = this.framePick && this.framePick.settled && Math.abs(settle(this.turnShot(pos, look, this.framePick.az, this.framePick.mul), look).pos.distanceTo(look) - this.framePick.settled) > this.framePick.settled * 0.3;
+    let drifted = false;
+    if (this.framePick && this.framePick.settled && this.time - (this.framePick.at || 0) > 1.2) {
+      const now = settle(this.turnShot(pos, look, this.framePick.az, this.framePick.mul), look);
+      if (Math.abs(now.pos.distanceTo(look) - this.framePick.settled) > this.framePick.settled * 0.3) drifted = true;
+      else for (const f of framed) { if (f.w < 1) continue; if (!this.seenWell(now.pos, now.look, f, false)) { drifted = true; break; } }
+    }
     if (!authored && (snap || !this.framePick || this.framePick.beat !== this.lastBeat || drifted)) {
       let best = { az: 0, mul: 1, score: -1 }; if (this.debugFrames) this.frameScan = [];
       const off0 = pos.distanceTo(look);
@@ -391,7 +401,7 @@ const Stage = {
               const mb = new THREE.Box3(new THREE.Vector3(wp.x - 0.3, bb0.min.y, wp.z - 0.3), new THREE.Vector3(wp.x + 0.3, bb0.min.y + h1, wp.z + 0.3));
               bodies.push({ id: bid, box: mb, h: h1, yaw: bs.yaw }); } continue; }
           bodies.push({ id: bid, box: bb0.clone(), h: Math.max(0.6, bb0.max.y - bb0.min.y), yaw: bs.yaw }); }
-        for (const o of (this.solidsNow || [])) { if (o.userData.soft || this.isOwn(o, selfs)) continue;
+        for (const o of (this.solidsNow || [])) { if ((o.userData.soft && !o.userData.opaque) || this.isOwn(o, selfs)) continue;
           const bx2 = this.solidBox(o); if (bx2.distanceToPoint(look) > 22) continue;
           const h2 = bx2.max.y - bx2.min.y; if (!(h2 > 0.5) || bx2.max.x - bx2.min.x > 3 || bx2.max.z - bx2.min.z > 3) continue;
           bodies.push({ id: '#solid', box: bx2, h: Math.min(h2, 4), yaw: 0 }); } }
@@ -451,17 +461,30 @@ const Stage = {
       }
       }
       best = tiers.find(t => t.has) || best;
+      if (drifted && this.framePick && this.framePick.beat === this.lastBeat) {
+        const keep = this.frameScanScoreOf(tiers, this.framePick);
+        if (keep !== null && best.score - keep < 0.5) { best = { az: this.framePick.az, mul: this.framePick.mul, lift: this.framePick.lift, score: keep, has: true }; } }
       if (!anyOk && framed.length) { best = { az: 0, mul: 1, score: -1 }; for (const az of azList) { const cand = this.turnShot(pos, look, az, 1); const out = settle(cand, look); let n = 0; for (const f of framed) if (this.inShot(out.pos, out.look, f.p, f.g)) n += f.w; if (n > best.score) best = { az, mul: 1, lift: 0, score: n }; } }
-      this.framePick = { beat: this.lastBeat, az: best.az, mul: best.mul, lift: best.lift || 0 };
+      this.framePick = { beat: this.lastBeat, az: best.az, mul: best.mul, lift: best.lift || 0, at: this.time };
       { const o2 = settle(this.turnShot(pos, look, best.az, best.mul), look); this.framePick.settled = o2.pos.distanceTo(look); }
     } else if (authored) { this.framePick = { beat: this.lastBeat, az: 0, mul: 1, lift: 0 };
     }
-    if (this.framePick.az || this.framePick.mul !== 1) pos = this.turnShot(pos, look, this.framePick.az, this.framePick.mul);
-    if (this.framePick.lift) pos = pos.clone().setY(pos.y + this.framePick.lift);
-    { const out = settle(pos, look); pos = out.pos; look = out.look; }
+    { const sm = this.framePick; if (sm.smAz === undefined || snap) { sm.smAz = sm.az; sm.smMul = sm.mul; sm.smLift = sm.lift || 0; }
+      else { const kf = 1 - Math.exp(-dt * 2.2); sm.smAz += (((sm.az - sm.smAz + 540) % 360) - 180) * kf; sm.smMul += (sm.mul - sm.smMul) * kf; sm.smLift += ((sm.lift || 0) - sm.smLift) * kf; } }
+    if (this.framePick.smAz || this.framePick.smMul !== 1) pos = this.turnShot(pos, look, this.framePick.smAz, this.framePick.smMul);
+    if (this.framePick.smLift) pos = pos.clone().setY(pos.y + this.framePick.smLift);
+    { const out = settle(pos, look); pos = out.pos; look = out.look;
+      if (c.mode !== 'pov' && !(c.mode === 'fixed' && c.pos)) { const want0 = Math.hypot(c.distance || 8, c.height || 3) * 1.35;
+        const got0 = pos.distanceTo(look); if (got0 > want0) pos = look.clone().lerp(pos, want0 / got0); } }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
-    if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f); }
+    if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + (tg.moving || 0) * 0.8) * dt;
+      if (step > cap) pos = this._lastAim.clone().lerp(pos, cap / step); }
+    this._lastAim = (this._lastAim || new THREE.Vector3()).copy(pos);
+    if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k);
+      const was = this.cam.pos.clone(); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f);
+      if (local > 1 && dt > 0) { const moved = this.cam.pos.distanceTo(was), lim = (3 + (tg.moving || 0) * 1.6) * dt;
+        if (moved > lim) this.cam.pos.copy(was.lerp(this.cam.pos, lim / moved)); } }
     const hh = this.user.on ? 0 : 0.035; const drift = new THREE.Vector3(Math.sin(this.time * 0.7) * hh + Math.sin(this.time * 1.9) * hh * 0.4, Math.sin(this.time * 0.9 + 1) * hh * 0.7, Math.cos(this.time * 0.5) * hh);
     if (this.quake > 0) { this.quake -= dt; const q = Math.min(1, this.quake) * 0.25; this.camera.position.copy(this.cam.pos).add(new THREE.Vector3((Math.random() - 0.5) * q, (Math.random() - 0.5) * q, (Math.random() - 0.5) * q)); } else this.camera.position.copy(this.cam.pos).add(drift);
     const camDist = this.camera.position.distanceTo(this.cam.look); this.three.fog.density = Math.min(this.three.fog.density, 0.9 / Math.max(4, camDist));
@@ -477,6 +500,10 @@ const Stage = {
     this._ray = this._ray || new THREE.Raycaster(); const r = this._ray; r.set(look, dir); r.near = 0.3; r.far = len; const hits = r.intersectObjects(this.solidsNow || [], false);
     for (const h of hits) { if (self && this.isOwn(h.object, self)) continue; if (h.object.userData.soft && len - h.distance > Math.max(1.2, len * 0.4)) continue; return h.distance; }
     return Infinity;
+  },
+  frameScanScoreOf(tiers, pick) {
+    for (const t of tiers) if (t.has && t.az === pick.az && t.mul === pick.mul && (t.lift || 0) === (pick.lift || 0)) return t.score;
+    return null;
   },
   seenWell(pos, look, f, strictLow) {
     const h = Math.max(0.6, f.h || 1.8); const q = this._sw || (this._sw = new THREE.Vector3());
@@ -501,7 +528,7 @@ const Stage = {
     const w = this._v2 || (this._v2 = new THREE.Vector3()); let extra = 0;
     for (let step = 0; step < 4; step++) {
       let hit = false;
-      for (const o of sol) { if (this.isOwn(o, self)) continue; if (o.userData.soft) continue; if (this.solidBox(o).distanceToPoint(pos) < 1.45) { hit = true; break; } }
+      for (const o of sol) { if (this.isOwn(o, self)) continue; if (o.userData.soft && !o.userData.opaque) continue; if (this.solidBox(o).distanceToPoint(pos) < 1.45) { hit = true; break; } }
       if (!hit) break;
       pos = pos.clone().add(dir.clone().multiplyScalar(0.9)); extra += 0.9; if (extra > 3.6) break;
     }
@@ -536,6 +563,8 @@ const Stage = {
     const flat = new THREE.Vector3(off.x, 0, off.z); let fl = flat.length(); if (fl < 0.001) { flat.set(0, 0, 1); fl = 1; }
     const hx = flat.x / fl, hz = flat.z / fl; const el0 = Math.asin(clamp(off.y / len, -0.95, 0.95));
     let best = null, bestR = -1;
+    { const prev = this._unblockDir; if (prev) { const cand = look.clone().add(prev.clone().multiplyScalar(len));
+        if (cand.y >= 0.35 && reach(prev, len) >= len - 0.05 && free(cand)) return cand; } }
     for (const el of [el0, el0 + 0.22, el0 + 0.45, el0 + 0.75, 1.1]) {
       const ch = Math.cos(el), cy = Math.sin(el);
       for (const az of [0, 28, -28, 56, -56, 90, -90, 124, -124, 156, -156, 180]) {
@@ -543,7 +572,7 @@ const Stage = {
         const d = new THREE.Vector3(rx * ch, cy, rz * ch); const cand = look.clone().add(d.clone().multiplyScalar(len));
         if (cand.y < 0.35) continue;
         const rr = reach(d, len);
-        if (rr >= len - 0.05 && free(cand)) return cand;
+        if (rr >= len - 0.05 && free(cand)) { this._unblockDir = d.clone(); return cand; }
         if (rr > bestR) { bestR = rr; best = d; }
       }
     }
@@ -555,6 +584,7 @@ const Stage = {
   },
 
   occluded(from, to, self) {
+    { const rm = this.roomAround(to); if (rm && !this.roomAround(from)) return true; }
     // a figure below the ground can only be seen down a hole: if the line of sight crosses
     // ground level outside every pit mouth, the earth (which is no collider) is in the way
     if (to.y < -0.3 && from.y > 0.15 && this.pits && this.pits.length) {
@@ -581,7 +611,7 @@ const Stage = {
       if (camRoom) { const b = camRoom.box; const f = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion); f.y = 0; f.normalize();
         let t = 1e6; for (const [lo, hi, o, dd] of [[b.min.x, b.max.x, cam.position.x, f.x], [b.min.z, b.max.z, cam.position.z, f.z]]) { if (Math.abs(dd) < 1e-4) continue; for (const tt of [(hi - o) / dd, (lo - o) / dd]) if (tt > 0.5 && tt < t) t = tt; }
         if (t < 1e5) { const q = cam.position.clone().add(f.multiplyScalar(Math.max(1.5, t - 0.6))); q.y = b.min.y + (b.max.y - b.min.y) * 0.72;
-          a.pos = [+q.x.toFixed(2), +q.y.toFixed(2), +q.z.toFixed(2)]; const st2 = this.states && this.states.get(a.id); if (st2) st2.pos = a.pos.slice(); rec.g.position.copy(q); rec.g.userData.indoor = true; }
+          const aq = [+q.x.toFixed(2), +q.y.toFixed(2), +q.z.toFixed(2)]; rec.g.userData.aimed = aq; const st2 = this.states && this.states.get(a.id); if (st2) st2.pos = aq.slice(); rec.g.position.copy(q); rec.g.userData.indoor = true; }
         continue; }
       if (this.roomAround(new THREE.Vector3(a.pos[0], Math.min(a.pos[1], 2), a.pos[2]))) continue;
       const dir = fwd.clone().add(up.clone().multiplyScalar(rise)).normalize();
@@ -593,9 +623,10 @@ const Stage = {
       const far = cam.position.clone().add(flatF.multiplyScalar(900)); far.y = cam.position.y - drop;
       const hy = far.project(cam).y; const lo = Math.min(0.62, hy + 0.1), hi = Math.max(lo + 0.05, Math.min(0.72, hy + 0.42));
       for (let k = 0; k < 16; k++) { const ndc = p.clone().project(cam); if (ndc.y >= lo && ndc.y <= hi) break; p.y += (ndc.y > hi ? -1 : 1) * Math.max(1.2, Math.abs(ndc.y - (ndc.y > hi ? hi : lo)) * 26); if (p.y < 8) { p.y = 8; break; } if (p.y > 260) { p.y = 260; break; } }
-      a.pos = [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)];
-      const st = this.states && this.states.get(a.id); if (st) st.pos = a.pos.slice();
-      rec.g.position.set(a.pos[0], a.pos[1], a.pos[2]);
+      const aimed = [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)];
+      rec.g.userData.aimed = aimed;
+      const st = this.states && this.states.get(a.id); if (st) st.pos = aimed.slice();
+      rec.g.position.set(aimed[0], aimed[1], aimed[2]);
     }
   },
 
