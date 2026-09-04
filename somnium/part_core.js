@@ -22,6 +22,7 @@ const KIND_INFO = {
 const KINDS = Object.keys(KIND_INFO);
 const STATES = ['idle','walk','run','fly','fall','float','swim','sit','kneel','lie','shake','spin','grow','shrink','open','collapse','dance','wave','crawl','limp','push','melt','fold','pockets','yell','throw','grieve'];
 const WEAR = new Set(['coat', 'raincoat', 'jacket', 'uniform', 'cloak', 'dress', 'skirt', 'gown', 'hat', 'cap']);
+const FACE_STATE = new Set(['yell', 'grieve', 'wave', 'fold', 'shake', 'pockets']);
 const AIRBORNE_STATES = new Set(['fly', 'float', 'fall', 'swim']);
 const FACED = new Set(['person', 'crowd', 'animal', 'monster', 'ghost', 'skeleton']);
 const VEHICLE = new Set(['car', 'bus', 'truck', 'train', 'plane', 'helicopter', 'boat', 'bike']);

@@ -240,6 +240,7 @@ const KIND_INFO = {
 const KINDS = Object.keys(KIND_INFO);
 const STATES = ['idle','walk','run','fly','fall','float','swim','sit','kneel','lie','shake','spin','grow','shrink','open','collapse','dance','wave','crawl','limp','push','melt','fold','pockets','yell','throw','grieve'];
 const WEAR = new Set(['coat', 'raincoat', 'jacket', 'uniform', 'cloak', 'dress', 'skirt', 'gown', 'hat', 'cap']);
+const FACE_STATE = new Set(['yell', 'grieve', 'wave', 'fold', 'shake', 'pockets']);
 const AIRBORNE_STATES = new Set(['fly', 'float', 'fall', 'swim']);
 const FACED = new Set(['person', 'crowd', 'animal', 'monster', 'ghost', 'skeleton']);
 const VEHICLE = new Set(['car', 'bus', 'truck', 'train', 'plane', 'helicopter', 'boat', 'bike']);
@@ -769,7 +770,7 @@ const Stage = {
             if (Math.min(Math.abs(needX), Math.abs(needZ)) < 6) { rec.g.worldToLocal(wantW); m.position.x = wantW.x; m.position.z = wantW.z; }
             break; } }
         // every member pushed off the same box lands on one line: spread them along it again
-        const ms = rec.g.userData.members, MIN = 0.9;
+        const ms = rec.g.userData.members, MIN = 1.05;
         for (let pass = 0; pass < 6; pass++) { let moved = false;
           for (let i = 0; i < ms.length; i++) for (let j = i + 1; j < ms.length; j++) {
             const a1 = ms[i].position, b1 = ms[j].position;
@@ -898,13 +899,13 @@ const Stage = {
       T.armsX = [-0.62 + br, -0.5 - br]; T.armsZ = [0.18, -0.24]; T.fore = [-0.95, -0.75];
       T.headY = Math.sin(t * 0.42) * 0.2; T.torsoS = 1 + Math.sin(t * 1.5) * 0.012; T.hipsZ = br * 0.4; }
     else if (s === 'kneel') { const br = Math.sin(t * 1.2) * 0.035;
-      T.legs = [0.22, 1.5]; T.shins = [-1.62, -1.5]; T.y = -0.35; T.ground = true;
+      T.legs = [-0.05, 1.5]; T.shins = [-2.5, -1.5]; T.y = -0.35; T.ground = true;
       T.armsX = [-0.78 + br, -0.55 - br * 0.6]; T.armsZ = [0.2, -0.3]; T.fore = [-0.95, -0.6];
       T.bodyX = 0.22 + br * 0.5; T.hipsZ = 0.05; T.headY = Math.sin(t * 0.5) * 0.22; T.torsoS = 1 + Math.sin(t * 1.5) * 0.014; }
     else if (s === 'lie') { const br = Math.sin(t * 0.9) * 0.03;
       T.bodyX = -1.5; T.y = 0.2 - 0.96 + 0.18; T.ground = true;
-      T.legs = [0.1, -0.16]; T.shins = [-0.12, -0.32];
-      T.armsX = [-0.18 + br, -0.34 - br]; T.armsZ = [0.4, -0.28]; T.fore = [-0.25, -0.55];
+      T.legs = [0.06, -0.09]; T.shins = [0, -0.05];
+      T.armsX = [-0.18 + br, -0.34 - br]; T.armsZ = [0.12, -0.1]; T.fore = [-0.12, -0.22];
       T.headX = 0.24; T.headZ = 0.12; T.torsoS = 1 + Math.sin(t * 1.2) * 0.016; keepHead = false; }
     else if (s === 'collapse') { const p = easeInOut(window); T.ground = p > 0.6; T.bodyX = -1.5 * p; T.y = (0.2 - 0.96 - 0.02) * p; T.legs = [0.5 * p, 0.2 * p]; T.shins = [-0.6 * p, -0.3 * p]; T.armsX = [-0.6 * p, -0.9 * p]; T.headX = 0.5 * p; keepHead = false; }
     else if (s === 'shake') { T.armsX = [-0.9, -0.9]; T.fore = [-1.2, -1.2]; T.armsZ = [0.3, -0.3]; T.bodyX = 0.18; T.legs = [0.12, -0.12]; T.shins = [-0.15, -0.15]; }
@@ -913,12 +914,14 @@ const Stage = {
     else if (s === 'dance') { const v = 0.5 + 0.5 * Math.sin(phase * 3.7); T.y = Math.abs(Math.sin(t * 6)) * 0.12; T.armsZ = [1.1 + v * 1.3 + Math.sin(t * 6) * 0.5, -(0.9 + (1 - v) * 1.5) - Math.sin(t * 6 + 1) * 0.5]; T.fore = [-0.6, -0.6]; T.legs = [Math.sin(t * 6) * 0.2, -Math.sin(t * 6) * 0.2]; T.hipsZ = Math.sin(t * 6) * 0.12; }
     else if (s === 'wave') { T.armsZ = [0.08, -2.7]; T.armsX = [0, -0.2]; T.fore = [-0.25, -0.3 + Math.sin(t * 8) * 0.5]; T.headY = 0; }
     else if (s === 'melt') { const p = window; T.ground = true; T.torsoS = Math.max(0.05, 1 - p); T.y = -0.9 * p; T.armsZ = [0.8 * p, -0.8 * p]; }
-    else if (s === 'fold') { const p = window; T.headS = Math.max(0.15, 1 - p * 0.85); T.headX = p * 0.28; T.headZ = Math.sin(p * 6) * 0.3 * p; T.armsX = [-1.6 * p, -1.6 * p]; T.fore = [-0.9 * p, -0.9 * p]; T.bodyX = 0.35 * p; keepHead = false; }
-    else if (s === 'throw') { // wind up, then a whole-body cast: the thrown thing leaves on its own move
+    else if (s === 'fold') { const p = window; T.headS = Math.max(0.45, 1 - p * 0.55); T.headX = p * 0.28; T.headZ = Math.sin(p * 6) * 0.3 * p; T.armsX = [-1.6 * p, -1.6 * p]; T.fore = [-0.9 * p, -0.9 * p]; T.bodyX = 0.35 * p; keepHead = false; }
+    else if (s === 'throw') { // wind up, cast, then recover: the pose must not freeze once the stone is gone
       const c0 = clamp(window * 2.4, 0, 1), sw2 = c0 < 0.4 ? c0 / 0.4 : 1 - (c0 - 0.4) / 0.6;
-      T.armsX = [-2.5 + c0 * 3.6, -0.5 + sw2 * 0.5]; T.fore = [-0.4 - sw2 * 0.7, -0.5];
-      T.armsZ = [0.2, -0.3]; T.bodyX = -0.2 + c0 * 0.55; T.hipsZ = 0.1 - c0 * 0.2;
-      T.legs = [0.35 - c0 * 0.5, -0.3 + c0 * 0.4]; T.shins = [-0.2, -0.25]; T.headX = -0.1; }
+      const rec0 = clamp((window - 0.45) / 0.35, 0, 1), k = 1 - rec0, br = Math.sin(t * 1.2) * 0.04;
+      T.armsX = [(-2.5 + c0 * 3.6) * k + br, (-0.5 + sw2 * 0.5) * k - br]; T.fore = [(-0.4 - sw2 * 0.7) * k - 0.3 * rec0, -0.5 * k - 0.3 * rec0];
+      T.armsZ = [0.2, -0.3]; T.bodyX = (-0.2 + c0 * 0.55) * k; T.hipsZ = (0.1 - c0 * 0.2) * k + br * 0.6;
+      T.legs = [(0.35 - c0 * 0.5) * k, (-0.3 + c0 * 0.4) * k]; T.shins = [-0.2 * k, -0.25 * k];
+      T.headX = -0.1 * k; T.headY = Math.sin(t * 0.5) * 0.2 * rec0; T.torsoS = 1 + Math.sin(t * 1.6) * 0.015; }
     else if (s === 'grieve') { // head down, shoulders in, a slow rock: dejection with a body to it
       const br = Math.sin(t * 0.8) * 0.05;
       T.headX = 0.55 + br; T.headZ = Math.sin(t * 0.45) * 0.08;
@@ -944,7 +947,7 @@ const Stage = {
     // apply
     for (let i = 0; i < 2; i++) { L.legs[i].rotation.x = P.legs[i]; L.shins[i].rotation.x = P.shins[i]; L.arms[i].rotation.x = P.armsX[i]; L.arms[i].rotation.z = P.armsZ[i]; L.fore[i].rotation.x = P.fore[i]; }
     g.userData.armSwing = [P.armsX[0], P.armsX[1]];
-    L.head.rotation.set(P.headX, P.headY, P.headZ); L.head.scale.set(1 + (1 - P.headS) * 0.5, P.headS, 1 + (1 - P.headS) * 0.3);
+    L.head.rotation.set(P.headX, P.headY, P.headZ); L.head.scale.set(1 + (1 - P.headS) * 0.35, P.headS, 1 + (1 - P.headS) * 0.2);
     L.torso.scale.set(1 + (1 - P.torsoS) * 0.5, P.torsoS, 1 + (1 - P.torsoS) * 0.5); L.hips.rotation.set(P.bodyX, 0, P.bodyZ + P.hipsZ); L.hips.position.y = 0.96 + P.y;
     if (s === 'shake') { // a tremor the blend cannot swallow: arms, head and hips out of step
       const q = t * 19, jitter = Math.sin(q) * 0.42, roll = Math.sin(q * 0.62 + 1.1) * 0.1;
@@ -1010,8 +1013,17 @@ const Stage = {
     { const room = this.roomAround(look2); if (room) { const b = room.box; const pad = 0.45;
         if (p.x < b.min.x + pad || p.x > b.max.x - pad || p.z < b.min.z + pad || p.z > b.max.z - pad || p.y > b.max.y - 0.3) {
           const d = p.clone().sub(look2); const dl = d.length() || 1; d.divideScalar(dl);
-          let t = dl; for (const [lo, hi, o, dd] of [[b.min.x + pad, b.max.x - pad, look2.x, d.x], [b.min.z + pad, b.max.z - pad, look2.z, d.z], [-1e6, b.max.y - 0.3, look2.y, d.y]]) { if (Math.abs(dd) < 1e-4) continue; const t1 = (hi - o) / dd, t2 = (lo - o) / dd; for (const tt of [t1, t2]) if (tt > 0.2 && tt < t) t = tt; }
-          p = look2.clone().add(d.multiplyScalar(Math.max(1.2, t - 0.15)));
+          const reach = dir => { let t = dl; for (const [lo, hi, o, dd] of [[b.min.x + pad, b.max.x - pad, look2.x, dir.x], [b.min.z + pad, b.max.z - pad, look2.z, dir.z], [-1e6, b.max.y - 0.3, look2.y, dir.y]]) { if (Math.abs(dd) < 1e-4) continue; const t1 = (hi - o) / dd, t2 = (lo - o) / dd; for (const tt of [t1, t2]) if (tt > 0.2 && tt < t) t = tt; } return t; };
+          let t = reach(d), dBest = d;
+          // a wall behind the subject used to walk the camera into their back; swing round the room instead
+          const near = Math.max(1.2, (rec ? rec.g.userData.baseHeight * 1.6 : 2.9));
+          if (t - 0.15 < Math.min(dl, near * 1.35)) { const flat = Math.hypot(d.x, d.z) || 1e-4;
+            for (let k = 1; k <= 11; k++) { const ang = (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 8);
+              const cx = Math.cos(ang), sx = Math.sin(ang);
+              const nd = new THREE.Vector3(d.x * cx - d.z * sx, d.y, d.x * sx + d.z * cx);
+              const nt = reach(nd); if (nt > t + 0.25) { t = nt; dBest = nd; if (t - 0.15 >= Math.min(dl, near * 1.35)) break; } } }
+          p = look2.clone().add(dBest.multiplyScalar(Math.max(near, t - 0.15)));
+          this.wallSqueeze = Math.max(this.wallSqueeze || 0, clamp((near - (t - 0.15)) / 4, 0, 1));
         } } }
     // part of the beat is happening below the ground: look2 down into the hole instead of across it
     { const low = [], high = []; for (const x of beat.actions) { if (!x.actor) continue; const st = states.get(x.actor); const r2 = this.actors.get(x.actor); if (!st || st.op < 0.3 || !r2 || r2.g.userData.flat || r2.g.userData.big) continue; const climbing = beat.actions.some(q => q.actor === x.actor && q.move && q.move[1] > -1); (st.pos[1] < -1 && !climbing ? low : high).push(st); }
@@ -1034,7 +1046,7 @@ const Stage = {
     // frame the actors the sentence names, not only the camera's target: try the shot, then a few wider or turned variants
     const framed = [];
     const cut = beat.actions.some(x => x.effect === 'blackout');
-    for (const x of beat.actions) { if (!x.actor) continue; if (cut && !x.appear && !x.say && !x.move) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; const weight = (x.say || x.move || x.appear || (x.state && x.state !== 'idle')) ? 1 : (FACED.has(r2.a.kind) ? 0.7 : 0.35); const prev = framed.find(q => q.id === x.actor); if (prev) { prev.w = Math.max(prev.w, weight); prev.speaks = prev.speaks || !!x.say; continue; } const shrink = ['sit', 'lie', 'crouch', 'kneel', 'crawl'].includes(st2.state) ? 0.55 : 1; framed.push({ id: x.actor, g: r2.g, w: weight, faced: FACED.has(r2.a.kind), speaks: !!x.say, h: r2.g.userData.baseHeight * (st2.size / r2.a.size) * shrink, p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
+    for (const x of beat.actions) { if (!x.actor) continue; if (cut && !x.appear && !x.say && !x.move) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; const weight = (x.say || x.move || x.appear || (x.state && x.state !== 'idle')) ? 1 : (FACED.has(r2.a.kind) ? 0.7 : 0.35); const prev = framed.find(q => q.id === x.actor); if (prev) { prev.w = Math.max(prev.w, weight); prev.speaks = prev.speaks || !!x.say || FACE_STATE.has(x.state); continue; } const shrink = ['sit', 'lie', 'crouch', 'kneel', 'crawl'].includes(st2.state) ? 0.55 : 1; framed.push({ id: x.actor, g: r2.g, w: weight, faced: FACED.has(r2.a.kind), speaks: !!x.say || FACE_STATE.has(x.state), h: r2.g.userData.baseHeight * (st2.size / r2.a.size) * shrink, p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
     let authored = c.mode === 'fixed' && !!c.pos;
     if (authored && framed.length) { const out0 = settle(pos, look); let seen = 0, fails = false;
       const mustSee = new Set(beat.actions.filter(x => x.actor && (x.move || x.appear || x.say)).map(x => x.actor));
@@ -1046,13 +1058,14 @@ const Stage = {
           const vA = out0.pos.clone().sub(new THREE.Vector3(sA.pos[0], sA.pos[1], sA.pos[2]));
           if ((vA.x * fcA.x + vA.z * fcA.z) / (Math.hypot(vA.x, vA.z) || 1) < 0.2) fails = true; } }
       if (seen === 0 || fails) authored = false; }
-    const speakerHere = beat.actions.some(x => x.say && FACED.has(((this.actors.get(x.actor) || {}).a || {}).kind));
-    const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && (tg.moving || 0) < 0.3 && beat.actions.some(x => x.actor === c.target && (x.say || (x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
+    const speakerHere = beat.actions.some(x => (x.say || FACE_STATE.has(x.state)) && FACED.has(((this.actors.get(x.actor) || {}).a || {}).kind));
+    const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state) || ((tg.moving || 0) < 0.3 && x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
     if (facesMatter && c.mode !== 'pov' && !(c.mode === 'fixed' && c.pos)) {
       const flat0 = Math.hypot(pos.x - look.x, pos.z - look.z); const maxUp = look.y + Math.max(0.6, flat0 * 0.21);
       if (pos.y > maxUp) pos.y = maxUp;
     }
-    if (!authored && (snap || !this.framePick || this.framePick.beat !== this.lastBeat)) {
+    const drifted = this.framePick && this.framePick.settled && Math.abs(settle(this.turnShot(pos, look, this.framePick.az, this.framePick.mul), look).pos.distanceTo(look) - this.framePick.settled) > this.framePick.settled * 0.3;
+    if (!authored && (snap || !this.framePick || this.framePick.beat !== this.lastBeat || drifted)) {
       let best = { az: 0, mul: 1, score: -1 }; if (this.debugFrames) this.frameScan = [];
       const off0 = pos.distanceTo(look);
       const underground = framed.some(f => { const st3 = states.get(f.id); return st3 && st3.pos[1] < -1; });
@@ -1073,7 +1086,11 @@ const Stage = {
             for (const m of mem.slice(0, 14)) { m.getWorldPosition(wp);
               const mb = new THREE.Box3(new THREE.Vector3(wp.x - 0.3, bb0.min.y, wp.z - 0.3), new THREE.Vector3(wp.x + 0.3, bb0.min.y + h1, wp.z + 0.3));
               bodies.push({ id: bid, box: mb, h: h1, yaw: bs.yaw }); } continue; }
-          bodies.push({ id: bid, box: bb0.clone(), h: Math.max(0.6, bb0.max.y - bb0.min.y), yaw: bs.yaw }); } }
+          bodies.push({ id: bid, box: bb0.clone(), h: Math.max(0.6, bb0.max.y - bb0.min.y), yaw: bs.yaw }); }
+        for (const o of (this.solidsNow || [])) { if (o.userData.soft || this.isOwn(o, selfs)) continue;
+          const bx2 = this.solidBox(o); if (bx2.distanceToPoint(look) > 22) continue;
+          const h2 = bx2.max.y - bx2.min.y; if (!(h2 > 0.5) || bx2.max.x - bx2.min.x > 14 || bx2.max.z - bx2.min.z > 14) continue;
+          bodies.push({ id: '#solid', box: bx2, h: Math.min(h2, 4), yaw: 0 }); } }
       // one sweep, three verdicts: a shot that keeps both the speaker's face and the target beats
       // one that keeps only the face, which beats whatever is left
       const tiers = [{ az: 0, mul: 1, lift: 0, score: -1e9, has: false }, { az: 0, mul: 1, lift: 0, score: -1e9, has: false }, { az: 0, mul: 1, lift: 0, score: -1e9, has: false }];
@@ -1091,12 +1108,22 @@ const Stage = {
 
             if (f.w >= 1) { const d0 = f.p.distanceTo(out.pos); const apparent = (f.h || 1.8) / Math.max(1, d0); if (f.speaks && apparent < 0.15) tinyTalk += 0.15 - apparent; if (f.faced && (f.h || 0) > 1 && apparent < 0.06) { tiny += 0.06 - apparent; if (this.debugFrames) small = f.id + ' small ' + apparent.toFixed(3) + ' @' + d0.toFixed(1); } if (d0 < 1.9) { tooSmall = true; if (this.debugFrames) small = f.id + ' near ' + d0.toFixed(1); } } }
           const lostTarget = !tgtSeen && framed.some(f => f.id === c.target && f.w >= 1);
-          for (const b of bodies) { if (b.id === c.target) continue;
-            const d1 = Math.max(0.6, b.box.distanceToPoint(out.pos)); const cov = b.h / d1 / 0.933; if (cov <= 0.35) continue;
+          for (const b of bodies) {
+            const bc = b.box.getCenter(this._bc2 || (this._bc2 = new THREE.Vector3()));
+            const fwd0 = out.look.clone().sub(out.pos); if (bc.sub(out.pos).dot(fwd0) <= 0) continue;
+            const d1 = Math.max(0.6, b.box.distanceToPoint(out.pos)); const cov = b.h / d1 / 0.933; if (cov <= (b.id === c.target ? 0.55 : 0.35)) continue;
             const sp = framed.find(q => q.id === b.id && q.speaks);
             if (sp) { const fcb = dirAt(b.yaw, 1, 0); const vb = out.pos.clone().sub(b.box.getCenter(this._bc || (this._bc = new THREE.Vector3())));
               if ((vb.x * fcb.x + vb.z * fcb.z) / (Math.hypot(vb.x, vb.z) || 1) > 0.2) continue; }
-            hog += (cov - 0.35) * (cov - 0.35) * 2.2; sawHog = true; }
+            const over = cov - (b.id === c.target ? 0.55 : 0.35); hog += over * 0.3 + over * over * 1.9; sawHog = true; }
+          let stacked = 0;
+          for (let i2 = 0; i2 < framed.length; i2++) { const f1 = framed[i2]; if (f1.w < 1 || !f1.seen) continue;
+            for (let j2 = i2 + 1; j2 < framed.length; j2++) { const f2 = framed[j2]; if (f2.w < 1 || !f2.seen) continue;
+              const v1 = f1.p.clone().sub(out.pos), v2 = f2.p.clone().sub(out.pos);
+              const l1 = v1.length(), l2 = v2.length(); if (l1 < 0.1 || l2 < 0.1) continue;
+              if (Math.abs(l1 - l2) < 1.2) continue;
+              const cosA = v1.dot(v2) / (l1 * l2); if (cosA < 0.9976) continue;
+              stacked += 1; } }
           let against = 0; if (towards.length) { const toCam0 = out.pos.clone().sub(out.look); toCam0.y = 0; toCam0.normalize();
             for (const t0 of towards) against = Math.max(against, Math.max(0, -(t0.x * toCam0.x + t0.z * toCam0.z))); }
           let backToLens = false;
@@ -1108,7 +1135,7 @@ const Stage = {
           let faceCost = 0; if (facesMatter) { const tf = framed.find(f => f.id === c.target); if (tf && tf.seen) faceCost = (1 - front) * 0.9;
             for (const f of framed) { if (!f.speaks || f.id === c.target || !f.seen) continue; const st3 = states.get(f.id); const fc = dirAt(this.faceYaw(f.id, st3), 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.6; } }
           const crowd = this.lensCrowding(out.pos, selfs);
-          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * 0.9 + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(3.2, hog * 2.4) + Math.min(1.0, tiny * 12) + against * 0.8;
+          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * 0.9 + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(3.2, hog * 2.4) + Math.min(1.0, tiny * 12) + against * 0.8 + Math.min(1.6, stacked * 0.9);
           const score = n - cost; if (this.debugFrames) this.frameScan.push({ az, mul, lift, n: +n.toFixed(2), backToLens, lostTarget, faceCost: +faceCost.toFixed(2), crowd, score: +score.toFixed(2) });
           const cand2 = { az, mul, lift, score, n, has: true };
           if (!backToLens && !lostTarget && score > tiers[0].score) tiers[0] = cand2;
@@ -1121,12 +1148,14 @@ const Stage = {
       best = tiers.find(t => t.has) || best;
       if (!anyOk && framed.length) { best = { az: 0, mul: 1, score: -1 }; for (const az of azList) { const cand = this.turnShot(pos, look, az, 1); const out = settle(cand, look); let n = 0; for (const f of framed) if (this.inShot(out.pos, out.look, f.p, f.g)) n += f.w; if (n > best.score) best = { az, mul: 1, lift: 0, score: n }; } }
       this.framePick = { beat: this.lastBeat, az: best.az, mul: best.mul, lift: best.lift || 0 };
+      { const o2 = settle(this.turnShot(pos, look, best.az, best.mul), look); this.framePick.settled = o2.pos.distanceTo(look); }
     } else if (authored) { this.framePick = { beat: this.lastBeat, az: 0, mul: 1, lift: 0 };
     }
     if (this.framePick.az || this.framePick.mul !== 1) pos = this.turnShot(pos, look, this.framePick.az, this.framePick.mul);
     if (this.framePick.lift) pos = pos.clone().setY(pos.y + this.framePick.lift);
     { const out = settle(pos, look); pos = out.pos; look = out.look; }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
+    { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
     if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f); }
     const hh = this.user.on ? 0 : 0.035; const drift = new THREE.Vector3(Math.sin(this.time * 0.7) * hh + Math.sin(this.time * 1.9) * hh * 0.4, Math.sin(this.time * 0.9 + 1) * hh * 0.7, Math.cos(this.time * 0.5) * hh);
     if (this.quake > 0) { this.quake -= dt; const q = Math.min(1, this.quake) * 0.25; this.camera.position.copy(this.cam.pos).add(new THREE.Vector3((Math.random() - 0.5) * q, (Math.random() - 0.5) * q, (Math.random() - 0.5) * q)); } else this.camera.position.copy(this.cam.pos).add(drift);
@@ -1280,7 +1309,7 @@ const Stage = {
     const acting = new Set(curBeat ? curBeat.actions.filter(x => x.actor).map(x => x.actor) : []);
     const placed = [], pts = [];
     for (const [id, rec] of this.actors) { const st = states.get(id); const lbl = rec.lbl; const text = st.say ? `${rec.a.label || rec.a.kind}: “${st.say}”` : rec.a.label; if (!this.labelsOn || !text || st.op < 0.05 || id === povId) { lbl.hidden = true; continue; } const top = rec.g.userData.centered ? rec.g.userData.baseHeight * (st.size / rec.a.size) + 1 : rec.g.userData.baseHeight * (st.size / rec.a.size) + 0.25; const under = st.pos[1] < -0.5; v.set(st.pos[0], st.pos[1] + (under ? Math.min(top, 12) * 0.45 : Math.min(top, 12)), st.pos[2]); const dist = v.distanceTo(camPos); const isTarget = id === curTarget; const rank = st.say ? 0 : (isTarget ? 1 : (acting.has(id) ? 2 : 3));
-      if (!rec.g.userData.far && rank > 2 && dist > 38) { lbl.hidden = true; continue; } if (!rec.g.userData.far && rank > 2 && this.occluded(camPos, v, rec.g)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } if (v.y < -0.72 || v.y > 0.9) { lbl.hidden = true; continue; } const vx0 = v.x, vy0 = v.y; v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.78); if (rank > 1 && (Math.abs(v.x - vx0) > 0.07 || Math.abs(v.y - vy0) > 0.07)) { lbl.hidden = true; continue; } lbl.hidden = false; lbl.textContent = text; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = Math.max(44 + (lbl.offsetHeight || 20) / 2, (1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; pts.push({ id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H }); placed.push({ lbl, id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank }); }
+      if (!rec.g.userData.far && rank > 2 && dist > 38) { lbl.hidden = true; continue; } if (!rec.g.userData.far && rank > 2 && this.occluded(camPos, v, rec.g)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } if (v.y < -0.72 || v.y > 0.9) { lbl.hidden = true; continue; } const vx0 = v.x, vy0 = v.y; v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.78); if (rank > 1 && (Math.abs(v.x - vx0) > 0.07 || Math.abs(v.y - vy0) > 0.07)) { lbl.hidden = true; continue; } lbl.hidden = false; lbl.textContent = text; lbl.style.maxWidth = Math.min(340, W * 0.42).toFixed(0) + 'px'; lbl.style.whiteSpace = text.length > 46 ? 'normal' : 'nowrap'; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = Math.max(44 + Math.max(lbl.offsetHeight, 22) / 2, (1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; pts.push({ id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H }); placed.push({ lbl, id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank }); }
     // a crowded frame keeps the labels of whoever is acting; the scenery gives up its name
     placed.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
     const cap = 6; if (placed.length > cap) { let keep = cap; while (keep < placed.length && placed[keep].rank <= 2) keep++; for (const p of placed.slice(keep)) p.lbl.hidden = true; placed.length = keep; }
@@ -1372,7 +1401,9 @@ const App = {
   renderChat() { const d = this.cur, el = $('#chatLog'); if (!d) { el.innerHTML = ''; return; } el.innerHTML = (d.chat.length ? '' : '<div class="msg system">Ask the director for changes to this staging. Every request is sent with the dream and the current script, and the stage is rebuilt from the answer.</div>') + d.chat.map(m => `<div class="msg ${m.role}">${m.role === 'director' ? '<div class="from">Director</div>' : ''}${esc(m.text)}</div>`).join('') + (this.undo.length ? '<div class="msg system"><button class="btn small" id="undoBtn">Undo the last change</button></div>' : ''); el.scrollTop = el.scrollHeight; const u = $('#undoBtn'); if (u) u.addEventListener('click', () => this.undoLast()); },
   renderExamples() { $('#examples').innerHTML = EXAMPLES.map((e, i) => `<button data-i="${i}"><b>${esc(e.seriesName)} · #${e.num}${e.scene ? ' · staged' : ''}</b>${esc(e.text.slice(0, 110))}…</button>`).join(''); $$('#examples button').forEach(b => b.addEventListener('click', () => this.openExample(EXAMPLES[+b.dataset.i]))); },
   renderLib() { const el = $('#lib'); el.innerHTML = this.dreams.length ? this.dreams.map(d => `<button data-id="${d.id}" class="${this.cur && this.cur.id === d.id ? 'cur' : ''}"><div class="t">${esc(d.title)}</div><div class="d">${new Date(d.at).toLocaleDateString()} · ${d.scene ? d.scene.beats.length + ' beats' : 'not staged'} · ${esc(d.text.slice(0, 60))}…</div></button>`).join('') : '<p class="hint">None yet. Dreams you stage are kept in this browser.</p>'; $$('#lib button').forEach(b => b.addEventListener('click', () => { const d = this.dreams.find(x => x.id === b.dataset.id); if (d) this.open(d); })); },
-  renderPicker() { const p = $('#dreamPick'); const cur = this.cur ? this.cur.id : ''; p.innerHTML = (this.dreams.length ? `<optgroup label="Your dreams">${this.dreams.map(d => `<option value="d:${d.id}" ${d.id === cur ? 'selected' : ''}>${esc(d.title)}</option>`).join('')}</optgroup>` : '') + `<optgroup label="Real dreams (DreamBank)">${EXAMPLES.map(e => `<option value="e:${e.id}" ${'ex-' + e.id === cur ? 'selected' : ''}>${esc((e.scene && e.scene.title) || (e.seriesName + ' #' + e.num))}${e.scene ? '' : ' (not yet staged)'}</option>`).join('')}</optgroup>`; },
+  renderPicker() { const p = $('#dreamPick'); const cur = this.cur ? this.cur.id : '';
+    const known = this.dreams.some(d => d.id === cur) || EXAMPLES.some(e => 'ex-' + e.id === cur);
+    const orphan = !known && this.cur ? `<option value="" selected>${esc(this.cur.scene.title)}</option>` : ''; p.innerHTML = orphan + (this.dreams.length ? `<optgroup label="Your dreams">${this.dreams.map(d => `<option value="d:${d.id}" ${d.id === cur ? 'selected' : ''}>${esc(d.title)}</option>`).join('')}</optgroup>` : '') + `<optgroup label="Real dreams (DreamBank)">${EXAMPLES.map(e => `<option value="e:${e.id}" ${'ex-' + e.id === cur ? 'selected' : ''}>${esc((e.scene && e.scene.title) || (e.seriesName + ' #' + e.num))}${e.scene ? '' : ' (not yet staged)'}</option>`).join('')}</optgroup>`; },
   bind() {
     $$('#side .tabs button').forEach(b => b.addEventListener('click', () => this.tab(b.dataset.tab)));
     $('#newDream').addEventListener('click', () => { $('#dreamText').value = ''; this.pendingSrc = null; this.tab('write'); $('#dreamText').focus(); });
