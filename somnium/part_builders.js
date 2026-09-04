@@ -168,7 +168,7 @@ const WATER_UNIFORMS = { uTime: { value: 0 } };
 function waterMaterial(color) { const m = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.25, metalness: 0.3, transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); m.customProgramCacheKey = () => 'somnium-water';
   m.onBeforeCompile = sh => { sh.uniforms.uTime = WATER_UNIFORMS.uTime; m.userData.sh = sh;
     sh.vertexShader = 'uniform float uTime;\nvarying float vWave;\n' + sh.vertexShader.replace('#include <begin_vertex>',
-      '#include <begin_vertex>\n float w1 = sin(position.x * 0.55 - uTime * 1.9);\n float w2 = sin(position.y * 0.78 + uTime * 1.35);\n float w3 = sin((position.x + position.y) * 0.31 - uTime * 0.8);\n vWave = w1 * 0.5 + w2 * 0.35 + w3 * 0.4;\n transformed.z += max(vWave, -0.45) * 0.16;');
+      '#include <begin_vertex>\n float w1 = sin(position.x * 0.55 - uTime * 1.9);\n float w2 = sin(position.y * 0.78 + uTime * 1.35);\n float w3 = sin((position.x + position.y) * 0.31 - uTime * 0.8);\n vWave = w1 * 0.5 + w2 * 0.35 + w3 * 0.4;\n transformed.z += max(vWave, 0.0) * 0.2;');
     sh.fragmentShader = 'varying float vWave;\n' + sh.fragmentShader.replace('#include <color_fragment>',
       '#include <color_fragment>\n diffuseColor.rgb *= 1.0 + vWave * 0.3;\n diffuseColor.rgb += vec3(0.10, 0.13, 0.15) * smoothstep(0.55, 1.15, vWave);'); }; m.userData.water = true; return m; }
 B.water = a => { const g = new THREE.Group(); const R = a.detail.radius || 15;
