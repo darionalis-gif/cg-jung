@@ -201,7 +201,7 @@ B.thing = a => { const g = new THREE.Group(); const t = mesh(G.dod(0.32), mat(a.
 
 const SOFT = new Set(['person', 'crowd', 'monster', 'skeleton', 'ghost']);
 // things a camera must not hide the subject behind, even though an actor may walk through them
-const LEAFY = new Set(['tree', 'forest', 'bush', 'sign', 'flower', 'fence']);
+const LEAFY = new Set(['tree', 'forest', 'bush', 'sign', 'flower', 'fence', 'lamp', 'grave', 'ladder']);
 // flat ground cover has to be cut where a pit is, exactly as the ground plane is
 const GROUNDCOVER = new Set(['road', 'path', 'field', 'water', 'river']);
 const SOLID = new Set(['house', 'shop', 'building', 'tower', 'castle', 'church', 'wall', 'hill', 'mountain', 'rock', 'cliff', 'cave', 'tent', 'bus', 'train', 'truck']);
@@ -211,7 +211,7 @@ function buildActor(a) {
   if (SOLID.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o.material.side !== THREE.BackSide) o.userData.solid = true; });
   if (LEAFY.has(a.kind)) g.traverse(o => { if (o.isMesh && !o.isInstancedMesh) { o.userData.solid = true; o.userData.soft = true; } });
   if (GROUNDCOVER.has(a.kind)) g.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.stencilWrite = true; o.material.stencilFunc = THREE.NotEqualStencilFunc; o.material.stencilRef = 1; } });
-  const PROP = new Set(['food', 'book', 'phone', 'key', 'ring', 'gun', 'knife', 'box', 'bag', 'tooth', 'clock', 'sphere', 'thing', 'orb', 'balloon', 'umbrella', 'computer', 'tv']);
+  const PROP = new Set(['food', 'book', 'phone', 'key', 'ring', 'gun', 'knife', 'box', 'bag', 'tooth', 'clock', 'sphere', 'thing', 'orb', 'balloon', 'umbrella', 'computer', 'tv', 'candle', 'mirror', 'flower']);
   if (PROP.has(a.kind)) { g.updateMatrixWorld(true); const bx = new THREE.Box3().setFromObject(g); if (Number.isFinite(bx.min.y) && bx.min.y > 0.05) g.userData.propBase = bx.min.y; }
   if (!g.userData.noScale) g.scale.setScalar(a.size); else g.scale.setScalar(1);
   g.userData.actor = a; g.userData.baseHeight = (g.userData.height || 1.8) * (g.userData.noScale ? 1 : a.size);

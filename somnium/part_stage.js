@@ -57,8 +57,9 @@ const Stage = {
           for (const bx of boxes) { if (wx < bx.min.x - 0.3 || wx > bx.max.x + 0.3 || wz < bx.min.z - 0.3 || wz > bx.max.z + 0.3) continue;
             const cx = (bx.min.x + bx.max.x) / 2, cz = (bx.min.z + bx.max.z) / 2; const dx = wx - cx, dz = wz - cz;
             const outX = (bx.max.x - bx.min.x) / 2 + 0.55, outZ = (bx.max.z - bx.min.z) / 2 + 0.55;
-            const sx = rec.g.scale.x || 1; const needX = Math.sign(dx || 1) * outX - dx, needZ = Math.sign(dz || 1) * outZ - dz;
-            if (Math.abs(needX) <= Math.abs(needZ)) { if (Math.abs(needX) < 6) m.position.x += needX / sx; } else if (Math.abs(needZ) < 6) m.position.z += needZ / sx;
+            const needX = Math.sign(dx || 1) * outX - dx, needZ = Math.sign(dz || 1) * outZ - dz;
+            const wantW = new THREE.Vector3(base.x + (Math.abs(needX) <= Math.abs(needZ) ? needX : 0), base.y, base.z + (Math.abs(needX) <= Math.abs(needZ) ? 0 : needZ));
+            if (Math.min(Math.abs(needX), Math.abs(needZ)) < 6) { rec.g.worldToLocal(wantW); m.position.x = wantW.x; m.position.z = wantW.z; }
             break; } } } } this.applyWorld(scene.world); const mid0 = scene.beats[0] ? scene.beats[0].dur * 0.5 : 0; this.setTime(mid0); this.aimSkyLive(); this.setTime(0); this.playing = true;
   },
   setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
@@ -68,7 +69,7 @@ const Stage = {
     const out = new Map(); const S = this.scene;
     for (const a of S.actors) out.set(a.id, { pos: a.pos.slice(), yaw: a.yaw, size: a.size, color: a.color, op: a.hidden ? 0 : 1, state: 'idle', say: null, moving: 0, window: 0, colorC: null });
     for (const b of S.beats) { if (t < b.start) break; for (const x of b.actions) { if (!x.actor) continue; const st = out.get(x.actor); if (!st) continue; const a0 = b.start + x.at * b.dur, a1 = Math.min(b.start + b.dur, a0 + x.for * b.dur); const p = a1 > a0 ? clamp((t - a0) / (a1 - a0), 0, 1) : (t >= a0 ? 1 : 0); if (t < a0) continue; const e = easeInOut(p);
-        if (x.move) { const from = st.pos, to = x.move; let np = [lerp(from[0], to[0], e), lerp(from[1], to[1], e), lerp(from[2], to[2], e)]; const dist = Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]); if (x.path === 'arc') np[1] += Math.sin(p * Math.PI) * Math.min(dist * 0.3, 6); if (x.path === 'circle') { const cx = (from[0] + to[0]) / 2, cz = (from[2] + to[2]) / 2, r = Math.hypot(from[0] - cx, from[2] - cz), a00 = Math.atan2(from[2] - cz, from[0] - cx); np[0] = cx + Math.cos(a00 + p * Math.PI) * r; np[2] = cz + Math.sin(a00 + p * Math.PI) * r; } if (p < 1 && dist > 0.05) { st.moving = dist / Math.max(0.5, a1 - a0); if (x.yaw === undefined && dist > 0.2) { const dx = (x.path === 'circle' ? np[0] - st.lastPos?.[0] : to[0] - from[0]) || 0, dz = (x.path === 'circle' ? np[2] - st.lastPos?.[2] : to[2] - from[2]) || 0; if (Math.hypot(dx, dz) > 0.01) st.yaw = Math.atan2(dx, dz) * 180 / Math.PI; } } else st.moving = 0; st.lastPos = np; if (p >= 1) st.pos = to.slice(); else st.pos = np; }
+        if (x.move) { const from = st.pos, to = x.move; let np = [lerp(from[0], to[0], e), lerp(from[1], to[1], e), lerp(from[2], to[2], e)]; const dist = Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]); if (x.path === 'arc' && AIRBORNE_STATES.has(x.state || st.state)) np[1] += Math.sin(p * Math.PI) * Math.min(dist * 0.3, 6); if (x.path === 'circle') { const cx = (from[0] + to[0]) / 2, cz = (from[2] + to[2]) / 2, r = Math.hypot(from[0] - cx, from[2] - cz), a00 = Math.atan2(from[2] - cz, from[0] - cx); np[0] = cx + Math.cos(a00 + p * Math.PI) * r; np[2] = cz + Math.sin(a00 + p * Math.PI) * r; } if (p < 1 && dist > 0.05) { st.moving = dist / Math.max(0.5, a1 - a0); if (x.yaw === undefined && dist > 0.2) { const dx = (x.path === 'circle' ? np[0] - st.lastPos?.[0] : to[0] - from[0]) || 0, dz = (x.path === 'circle' ? np[2] - st.lastPos?.[2] : to[2] - from[2]) || 0; if (Math.hypot(dx, dz) > 0.01) st.yaw = Math.atan2(dx, dz) * 180 / Math.PI; } } else st.moving = 0; st.lastPos = np; if (p >= 1) st.pos = to.slice(); else st.pos = np; }
         if (x.yaw !== undefined) { const d = ((x.yaw - st.yaw + 540) % 360) - 180; st.yaw = st.yaw + d * e; }
         if (x.size !== undefined) st.size = lerp(st.size, x.size, e);
         if (x.color) { st.colorC = [st.color, x.color, e]; if (p >= 1) st.color = x.color; }
@@ -91,6 +92,11 @@ const Stage = {
       const r = by.yaw * Math.PI / 180, side = 0.34 * (a.id.length % 2 ? 1 : -1);
       it.pos = [by.pos[0] + Math.cos(r) * side + Math.sin(r) * 0.18, by.pos[1] + 0.95 * (by.size || 1), by.pos[2] - Math.sin(r) * side + Math.cos(r) * 0.18];
       it.yaw = by.yaw; it.op = Math.min(it.op, by.op) > 0.02 ? Math.max(it.op, by.op * 0.999) : it.op; }
+    // a person lying where a bed stands lies on it, not on the floor under it
+    for (const a of S.actors) { const st = out.get(a.id); if (!st || st.state !== 'lie' || a.kind !== 'person') continue;
+      for (const b2 of S.actors) { if (b2.kind !== 'bed') continue; const bs = out.get(b2.id); if (!bs || bs.op < 0.3) continue;
+        const w = 1.7 * bs.size, d = 2.2 * bs.size;
+        if (Math.abs(st.pos[0] - bs.pos[0]) < w && Math.abs(st.pos[2] - bs.pos[2]) < d && st.pos[1] < bs.pos[1] + 0.6 * bs.size) { st.pos = [st.pos[0], bs.pos[1] + 0.62 * bs.size, st.pos[2]]; st.yaw = bs.yaw; } } }
     for (const st of out.values()) if (st.moving && st.state === 'idle') st.state = st.moving > 2.5 ? 'run' : 'walk';
     return out;
   },
@@ -247,7 +253,8 @@ const Stage = {
     for (const x of beat.actions) { if (!x.actor) continue; if (cut && !x.appear && !x.say && !x.move) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; const weight = (x.say || x.move || (x.state && x.state !== 'idle')) ? 1 : 0.35; const prev = framed.find(q => q.id === x.actor); if (prev) { prev.w = Math.max(prev.w, weight); continue; } framed.push({ id: x.actor, g: r2.g, w: weight, faced: FACED.has(r2.a.kind), speaks: !!x.say, h: r2.g.userData.baseHeight * (st2.size / r2.a.size), p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
     let authored = c.mode === 'fixed' && !!c.pos;
     if (authored && framed.length) { const out0 = settle(pos, look); let seen = 0; for (const f of framed) if (this.inShot(out0.pos, out0.look, f.p, f.g)) seen++; if (seen === 0) authored = false; }
-    const facesMatter = FACED.has((rec && rec.a.kind) || '') && (tg.moving || 0) < 0.3 && beat.actions.some(x => x.actor === c.target && (x.say || (x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state))));
+    const speakerHere = beat.actions.some(x => x.say && FACED.has(((this.actors.get(x.actor) || {}).a || {}).kind));
+    const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && (tg.moving || 0) < 0.3 && beat.actions.some(x => x.actor === c.target && (x.say || (x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
     if (!authored && (snap || !this.framePick || this.framePick.beat !== this.lastBeat)) {
       let best = { az: 0, mul: 1, score: -1 };
       const underground = framed.some(f => { const st3 = states.get(f.id); return st3 && st3.pos[1] < -1; });
@@ -263,7 +270,7 @@ const Stage = {
           n += scenery;
           const toCam = out.pos.clone().sub(T); const facing = dirAt(tg.yaw, 1, 0); const front = (toCam.x * facing.x + toCam.z * facing.z) / (Math.hypot(toCam.x, toCam.z) || 1);
           let faceCost = 0; if (facesMatter) { const tf = framed.find(f => f.id === c.target); if (tf && this.inShot(out.pos, out.look, tf.p, tf.g)) faceCost = (1 - front) * 0.9;
-            for (const f of framed) { if (!f.speaks || f.id === c.target) continue; if (!this.inShot(out.pos, out.look, f.p, f.g)) continue; const st3 = states.get(f.id); const fc = dirAt(st3.yaw, 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.3; } }
+            for (const f of framed) { if (!f.speaks || f.id === c.target) continue; if (!this.inShot(out.pos, out.look, f.p, f.g)) continue; const st3 = states.get(f.id); const fc = dirAt(st3.yaw, 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.6; } }
           const cost = Math.abs(az) / 900 + (mul - 1) * 0.9 + this.lensCrowding(out.pos, selfs) * 0.7 + Math.min(1.4, faceCost);
           const score = n - cost; if (score > best.score) best = { az, mul, score, n };
           if (n === framed.length && az === 0 && mul === 1 && this.lensCrowding(out.pos, selfs) === 0) break;
@@ -372,6 +379,12 @@ const Stage = {
     const vhalf = cam.fov * Math.PI / 360; const rise = Math.tan(vhalf) * 0.2;
     for (const rec of sky) {
       const a = rec.a; if (a.hidden) continue; const D = Math.max(70, Math.hypot(a.pos[0], a.pos[2]));
+      const camRoom = this.roomAround(cam.position);
+      if (camRoom) { const b = camRoom.box; const f = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion); f.y = 0; f.normalize();
+        let t = 1e6; for (const [lo, hi, o, dd] of [[b.min.x, b.max.x, cam.position.x, f.x], [b.min.z, b.max.z, cam.position.z, f.z]]) { if (Math.abs(dd) < 1e-4) continue; for (const tt of [(hi - o) / dd, (lo - o) / dd]) if (tt > 0.5 && tt < t) t = tt; }
+        if (t < 1e5) { const q = cam.position.clone().add(f.multiplyScalar(Math.max(1.5, t - 0.6))); q.y = b.min.y + (b.max.y - b.min.y) * 0.72;
+          a.pos = [+q.x.toFixed(2), +q.y.toFixed(2), +q.z.toFixed(2)]; const st2 = this.states && this.states.get(a.id); if (st2) st2.pos = a.pos.slice(); rec.g.position.copy(q); rec.g.userData.indoor = true; }
+        continue; }
       if (this.roomAround(new THREE.Vector3(a.pos[0], Math.min(a.pos[1], 2), a.pos[2]))) continue;
       const dir = fwd.clone().add(up.clone().multiplyScalar(rise)).normalize();
       const p = cam.position.clone().add(dir.multiplyScalar(D));
@@ -388,7 +401,7 @@ const Stage = {
     if (!this.scene) return; const cam = this.camera;
     for (const [id, rec] of this.actors) { const ud = rec.g.userData; if (!ud.far || !ud.centered) continue; const st = states.get(id); if (!st) continue;
       const p = new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2]); const d = p.distanceTo(cam.position);
-      const half = Math.tan(cam.fov * Math.PI / 360) * d; const want = Math.min(st.size, half * 0.17 / 5);
+      const half = Math.tan(cam.fov * Math.PI / 360) * d; const want = Math.min(st.size, half * (rec.g.userData.indoor ? 0.1 : 0.17) / 5);
       rec.g.scale.setScalar(Math.max(0.2, want)); }
   },
   updateLabels(states) {

@@ -21,6 +21,7 @@ const KIND_INFO = {
 };
 const KINDS = Object.keys(KIND_INFO);
 const STATES = ['idle','walk','run','fly','fall','float','swim','sit','kneel','lie','shake','spin','grow','shrink','open','collapse','dance','wave','crawl','limp','push','melt','fold'];
+const AIRBORNE_STATES = new Set(['fly', 'float', 'fall', 'swim']);
 const FACED = new Set(['person', 'crowd', 'animal', 'monster', 'ghost', 'skeleton']);
 const VEHICLE = new Set(['car', 'bus', 'truck', 'train', 'plane', 'helicopter', 'boat', 'bike']);
 const SEAT = { car: 0.9, bus: 1.2, truck: 1.4, train: 1.3, plane: 2.6, helicopter: 1.7, boat: 0.9, bike: 0.8 };
