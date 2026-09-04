@@ -554,10 +554,12 @@ const Stage = {
     if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + Math.min(tg.moving || 0, 8) * 0.8) * dt;
       if (step > cap) pos = this._lastAim.clone().lerp(pos, cap / step); }
     this._lastAim = (this._lastAim || new THREE.Vector3()).copy(pos);
-    if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k);
+    if (snap) { this.cam.pos.copy(pos); this.cam.look.copy(look); this._lastCamOff = null; this._lastOff = null; } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k);
       const was = this.cam.pos.clone(); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f);
-      if (local > 1 && dt > 0) { const moved = this.cam.pos.distanceTo(was), lim = (3 + (tg.moving || 0) * 1.6) * dt;
-        if (moved > lim) this.cam.pos.copy(was.lerp(this.cam.pos, lim / moved)); } }
+      if (local > 1 && dt > 0 && this._lastCamOff) { const o2 = this.cam.pos.clone().sub(this.cam.look);
+        const moved = o2.distanceTo(this._lastCamOff), lim = 3.2 * dt;
+        if (moved > lim) { o2.copy(this._lastCamOff).lerp(o2, lim / moved); this.cam.pos.copy(this.cam.look).add(o2); } }
+      this._lastCamOff = (this._lastCamOff || new THREE.Vector3()).copy(this.cam.pos).sub(this.cam.look); }
     const hh = this.user.on ? 0 : 0.035; const drift = new THREE.Vector3(Math.sin(this.time * 0.7) * hh + Math.sin(this.time * 1.9) * hh * 0.4, Math.sin(this.time * 0.9 + 1) * hh * 0.7, Math.cos(this.time * 0.5) * hh);
     if (this.quake > 0) { this.quake -= dt; const q = Math.min(1, this.quake) * 0.25; this.camera.position.copy(this.cam.pos).add(new THREE.Vector3((Math.random() - 0.5) * q, (Math.random() - 0.5) * q, (Math.random() - 0.5) * q)); } else this.camera.position.copy(this.cam.pos).add(drift);
     const camDist = this.camera.position.distanceTo(this.cam.look); this.three.fog.density = Math.min(this.three.fog.density, 0.9 / Math.max(4, camDist));

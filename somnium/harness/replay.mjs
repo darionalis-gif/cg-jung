@@ -46,12 +46,17 @@ for (const id of ids) {
         const stop = start + dur - 0.2;
         while (t < stop) { t += 1 / 30; St.time = t; St.evaluate(1 / 30, false);
           const p = St.cam.pos.clone();
-          const L = St.cam.look.clone();
-          if (prev && t - start > 1.2) { // an orbit's arc is scripted; a jump is the part that changes the radius or the look point
-            const r1 = prev.p.distanceTo(prev.L), r2 = p.distanceTo(L);
-            const v = (Math.abs(r2 - r1) + L.distanceTo(prev.L)) * 30;
+          const L = St.cam.look.clone(); const o = p.clone().sub(L);
+          if (prev && t - start > 1.2) {
+            // a scripted orbit turns at ~18 deg/s and a follow shot travels with its subject:
+            // a whip is what changes the radius, the height, or the bearing faster than that
+            const r1 = prev.o.length(), r2 = o.length();
+            const a1 = Math.atan2(prev.o.x, prev.o.z), a2 = Math.atan2(o.x, o.z);
+            let da = Math.abs(((a2 - a1 + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+            da = Math.max(0, da - 22 * Math.PI / 180 / 30);
+            const v = (Math.abs(r2 - r1) + Math.abs(o.y - prev.o.y) + da * r2) * 30;
             if (v > worst) { worst = v; at = t - start; } }
-          prev = { p, L }; }
+          prev = { o }; }
         return { worst: +worst.toFixed(1), at: +at.toFixed(2) };
       }, [t0, scene.beats[i].dur]);
       rows[i].speed = peak.worst; rows[i].speedAt = peak.at;
