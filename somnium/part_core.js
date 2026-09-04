@@ -124,6 +124,9 @@ function normalizeScene(raw, dreamText) {
       detail: { species: String(d.species || d.animal || '').toLowerCase(), text: typeof d.text === 'string' ? d.text.slice(0, 40) : '', count: opt(d.count, 1, 40), radius: opt(d.radius, 0.5, 300), width: opt(d.width, 0.3, 300), depth: opt(d.depth, 0.3, 300), height: opt(d.height, 0.3, 300), open: !!d.open, wear: WEAR.has(String(d.wear || '').toLowerCase()) ? String(d.wear).toLowerCase() : '', wearColor: hex(d.wearColor, null), second: hex(d.second, null), skin: hex(d.skin, null), hair: hex(d.hair, null) }
     };
   });
+  const SIZE_CAP = { tooth: 2, flower: 3, candle: 2, mirror: 2, book: 2, key: 3, ring: 3, phone: 2, gun: 1.6, knife: 2 };
+  for (const a of actors) { const cap = SIZE_CAP[a.kind]; if (cap && a.size > cap) a.size = cap;
+    if (a.kind === 'table' && a.detail.width > 14) a.detail.width = 14; }
   for (const a of actors) { if (a.carriedBy && (a.carriedBy === a.id || !actors.some(q => q.id === a.carriedBy))) a.carriedBy = ''; }
   if (!actors.length) actors.push({ id: 'me', kind: 'person', label: 'me', color: '#6b7ba8', size: 1, pos: [0, 0, 0], yaw: 0, hidden: false, glow: false, ghost: false, detail: {} });
   let beats = Array.isArray(s.beats) ? s.beats.filter(b => b && typeof b === 'object') : [];
