@@ -180,7 +180,15 @@ B.helicopter = a => { const g = new THREE.Group(); const m = mat(a.color, { roug
 B.boat = a => { const g = new THREE.Group(); const hull = mesh(G.cyl(1.4, 0.6, 6, 8), mat(a.color), 0, 0.6, 0); hull.rotation.x = Math.PI / 2; hull.scale.set(1, 1, 0.8); g.add(hull); g.add(mesh(G.cyl(0.06, 0.06, 6, 6), mat('#5a3d22'), 0, 3.6, 0)); g.add(mesh(G.plane(2.6, 3.2), mat(a.detail.second || '#f0ecd8', { side: THREE.DoubleSide }), 0.02, 4.6, -0.6).rotateY(1.57)); g.userData.height = 6.5; g.userData.bob = true; return g; };
 B.bike = a => { const g = new THREE.Group(); const m = mat(a.color); wheels(g, mat('#222'), [[0, 0.55], [0, -0.55]], 0.35); g.add(mesh(G.box(0.05, 0.06, 1.0), m, 0, 0.6, 0), mesh(G.box(0.05, 0.6, 0.06), m, 0, 0.7, -0.2), mesh(G.box(0.5, 0.05, 0.05), m, 0, 1.0, 0.5)); g.userData.height = 1; return g; };
 B.bed = a => { const g = new THREE.Group(); g.add(mesh(G.box(1.6, 0.35, 2.1), mat(shade(a.color, 0.6)), 0, 0.3, 0)); g.add(mesh(G.box(1.5, 0.2, 2.0), mat(a.color), 0, 0.55, 0)); g.add(mesh(G.box(1.2, 0.15, 0.5), mat('#f4f1ea'), 0, 0.72, -0.7)); g.add(mesh(G.box(1.6, 0.9, 0.08), mat(shade(a.color, 0.5)), 0, 0.6, -1.06)); g.userData.height = 1; return g; };
-B.table = a => { const g = new THREE.Group(); const w = a.detail.width || (a.size > 2 ? 1.6 * a.size : 1.6), d = a.detail.depth || 0.9; if (a.size > 2) g.userData.noScale = true; const m = mat(a.color); g.add(mesh(G.box(w, 0.06, d), m, 0, 0.75, 0)); for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(mesh(G.box(0.06, 0.72, 0.06), m, sx * (w / 2 - 0.08), 0.36, sz * (d / 2 - 0.08))); g.userData.height = 0.8; return g; };
+B.table = a => { const g = new THREE.Group(); const w = a.detail.width || (a.size > 2 ? 1.6 * a.size : 1.6), d = a.detail.depth || 0.9; if (a.size > 2) g.userData.noScale = true;
+  const m = mat(a.color), top = mat(shade(a.color, 1.12)), leg = mat(shade(a.color, 0.72));
+  g.add(mesh(G.box(w, 0.08, d), top, 0, 0.76, 0));
+  // a long table needs an apron and legs along its length, or it reads as a strip on the floor
+  for (const sz of [-1, 1]) g.add(mesh(G.box(w, 0.14, 0.05), m, 0, 0.64, sz * (d / 2 - 0.05)));
+  const pairs = Math.max(2, Math.min(14, Math.round(w / 2.2) + 1));
+  for (let i = 0; i < pairs; i++) { const x = pairs === 1 ? 0 : -w / 2 + 0.1 + (w - 0.2) * i / (pairs - 1);
+    for (const sz of [-1, 1]) g.add(mesh(G.box(0.07, 0.72, 0.07), leg, x, 0.36, sz * (d / 2 - 0.08))); }
+  g.userData.height = 0.84; return g; };
 B.desk = a => { const g = B.table({ ...a, detail: { width: 1.4, depth: 0.7 } }); g.add(mesh(G.box(0.5, 0.5, 0.6), mat(shade(a.color, 0.7)), 0.4, 0.25, 0)); return g; };
 B.chair = a => { const g = new THREE.Group(); const m = mat(a.color); g.add(mesh(G.box(0.45, 0.05, 0.45), m, 0, 0.45, 0), mesh(G.box(0.45, 0.5, 0.05), m, 0, 0.72, -0.2)); for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(mesh(G.box(0.04, 0.45, 0.04), m, sx * 0.19, 0.22, sz * 0.19)); g.userData.height = 1; return g; };
 B.sofa = a => { const g = new THREE.Group(); const m = mat(a.color); g.add(mesh(G.box(2, 0.45, 0.9), m, 0, 0.3, 0), mesh(G.box(2, 0.5, 0.25), m, 0, 0.75, -0.33), mesh(G.box(0.25, 0.3, 0.9), m, -0.9, 0.65, 0), mesh(G.box(0.25, 0.3, 0.9), m, 0.9, 0.65, 0)); g.userData.height = 1; return g; };
