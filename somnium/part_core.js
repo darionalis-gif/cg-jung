@@ -241,7 +241,9 @@ function normalizeScene(raw, dreamText) {
       if (x.state !== 'lie' || !x.actor) continue; const a = actors.find(q => q.id === x.actor); if (!a || a.kind !== 'person') continue;
       let best = null, bd = 1e9;
       for (const bed of beds) { const d = Math.hypot(a.pos[0] - bed.pos[0], a.pos[2] - bed.pos[2]); if (d < bd) { bd = d; best = bed; } }
-      if (best && bd > 0.8 * best.size) { a.pos[0] = best.pos[0]; a.pos[2] = best.pos[2]; a.pos[1] = Math.max(a.pos[1], best.pos[1] + 0.62 * best.size); a.yaw = best.yaw; } } }
+      // the mattress is at 0.65 of a bed's own height and a lying body sits a little above its own
+      // origin: 0.62 floated her clear of it. And the pillow end is the head end.
+      if (best && bd > 0.8 * best.size) { a.pos[0] = best.pos[0]; a.pos[2] = best.pos[2] - 0.12 * best.size; a.pos[1] = Math.max(a.pos[1], best.pos[1] + 0.44 * best.size); a.yaw = best.yaw; } } }
   // an aircraft above about 22 m cannot share a frame with the ground it flies over
   { const low = actors.some(a => ['forest', 'field', 'water', 'city', 'hill', 'road', 'river'].includes(a.kind) && a.pos[1] < 6);
     if (low) { const CAP = 22;
