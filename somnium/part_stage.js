@@ -118,6 +118,19 @@ const Stage = {
               if (Math.abs(nx) <= Math.abs(nz)) A.a.pos[0] += nx; else A.a.pos[2] += nz;
               moved = true; break; } }
           if (!moved) break; }
+        // and whatever the de-clump moved, it must not have moved them through a wall: this is how
+        // the second of "M & F 20-25" ended up five metres outside the room she is talking in
+        { const rooms = []; for (const [, r5] of this.actors) { if (r5.a.kind !== 'room' && r5.a.kind !== 'corridor') continue; rooms.push(new THREE.Box3().setFromObject(r5.g)); }
+          if (rooms.length) for (const A of solo) { const pad = 0.6;
+            if (rooms.some(b5 => A.a.pos[0] > b5.min.x && A.a.pos[0] < b5.max.x && A.a.pos[2] > b5.min.z && A.a.pos[2] < b5.max.z)) continue;
+            let best = null, bd = 1e9;
+            for (const b5 of rooms) { const cx = (b5.min.x + b5.max.x) / 2, cz = (b5.min.z + b5.max.z) / 2;
+              const d5 = Math.hypot(A.a.pos[0] - cx, A.a.pos[2] - cz); if (d5 < bd) { bd = d5; best = b5; } }
+            if (!best) continue;
+            const reach = Math.hypot(best.max.x - best.min.x, best.max.z - best.min.z) * 0.75;
+            if (bd > reach) continue; // properly somewhere else, not shoved through the wall
+            A.a.pos[0] = clamp(A.a.pos[0], best.min.x + pad, best.max.x - pad);
+            A.a.pos[2] = clamp(A.a.pos[2], best.min.z + pad, best.max.z - pad); } }
         for (const r2 of solo) r2.g.position.set(r2.a.pos[0], r2.a.pos[1], r2.a.pos[2]); }
       } this.applyWorld(scene.world); const mid0 = scene.beats[0] ? scene.beats[0].dur * 0.5 : 0; this.setTime(mid0); this.aimSkyLive(); this.setTime(0); this.playing = true;
   },
@@ -477,7 +490,9 @@ const Stage = {
         const off = p.clone().sub(look2); const want = Math.hypot(c.distance || 8, c.height || 3);
         let span = 0; for (const q of shown) span = Math.max(span, look2.distanceTo(q));
         const len = clamp(Math.min(off.length(), want), Math.max(3, span * (facesMatter ? 2.6 : 2.1)), Math.max(3, want * 1.5)); const flat = Math.hypot(off.x, off.z) || 0.001;
-        const pitch = rimOnly ? Math.PI / 180 * 52 : clamp(need + 0.12, Math.PI / 180 * 50, Math.PI / 180 * (need <= Math.PI / 180 * 62 ? 64 : 88));
+        const rimFaces = beat.actions.some(x => x.actor && (x.say || FACE_STATE.has(x.state)) && high.some(q => q === states.get(x.actor)));
+        const ceil = rimOnly ? 52 : (need <= Math.PI / 180 * 62 ? 64 : (rimFaces ? 74 : 88));
+        const pitch = rimOnly ? Math.PI / 180 * 52 : clamp(need + 0.12, Math.PI / 180 * 50, Math.PI / 180 * ceil);
         steep = !rimOnly;
         p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
     // a beat flying over something must show what it flies over, not empty sky

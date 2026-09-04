@@ -123,7 +123,7 @@ function normalizeScene(raw, dreamText) {
       id, kind, label: typeof a.label === 'string' ? a.label.slice(0, 60) : (kind === 'thing' ? id : ''),
       color: hex(a.color, DEFAULT_COLOR[kind] || '#9a9ab0'), size: num(a.size, 1, 0.05, 80), pos: vec(a.pos, [0, 0, 0]), yaw: num(a.yaw, 0),
       hidden: !!a.hidden, glow: !!a.glow, ghost: !!a.ghost, carriedBy: typeof a.carriedBy === 'string' ? a.carriedBy.toLowerCase().replace(/[^a-z0-9_]+/g, '_') : '', ...((kind === 'moon' || kind === 'sun') ? { pos: skyPos(vec(a.pos, [0, 30, -110]), insideAnyRoom(raw, vec(a.pos, [0, 30, -110]))) } : {}),
-      detail: { species: String(d.species || d.animal || '').toLowerCase(), text: typeof d.text === 'string' ? d.text.slice(0, 40) : '', count: opt(d.count, 1, 40), radius: opt(d.radius, 0.5, 300), width: opt(d.width, 0.3, 300), depth: opt(d.depth, 0.3, 300), height: opt(d.height, 0.3, 300), open: !!d.open, wear: WEAR.has(String(d.wear || '').toLowerCase()) ? String(d.wear).toLowerCase() : '', wearColor: hex(d.wearColor, null), second: hex(d.second, null), skin: hex(d.skin, null), hair: hex(d.hair, null) }
+      detail: { species: String(d.species || d.animal || '').toLowerCase(), text: typeof d.text === 'string' ? d.text.slice(0, 40) : '', count: opt(d.count, 1, 90), radius: opt(d.radius, 0.5, 300), width: opt(d.width, 0.3, 300), depth: opt(d.depth, 0.3, 300), height: opt(d.height, 0.3, 300), open: !!d.open, wear: WEAR.has(String(d.wear || '').toLowerCase()) ? String(d.wear).toLowerCase() : '', wearColor: hex(d.wearColor, null), second: hex(d.second, null), skin: hex(d.skin, null), hair: hex(d.hair, null) }
     };
   });
   // open water covers the half-plane ahead of its waterline: nobody stands out at sea unless they swim
@@ -147,6 +147,16 @@ function normalizeScene(raw, dreamText) {
       const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
       const lim = Math.max(0.15, R * 0.45); if (d <= lim) continue;
       const k = lim / d; a.pos[0] = p.pos[0] + dx * k; a.pos[2] = p.pos[2] + dz * k; } }
+  // "heavily wooded timberland" written as 55 trees over a 60 m radius is one tree per two hundred
+  // square metres, which renders as parkland. Fill it to a wood's density, and if that would take
+  // more trees than the frame can carry, draw the same trees over less ground.
+  for (const a of actors) { if (a.kind !== 'forest') continue;
+    const R = a.detail.radius || 25; let n = a.detail.count || 30;
+    const want = Math.PI * R * R / 55;
+    if (n < want) n = Math.min(90, Math.round(want));
+    a.detail.count = n;
+    const fit = Math.sqrt(n * 55 / Math.PI);
+    if (fit < R) a.detail.radius = Math.round(fit * 10) / 10; }
   const SIZE_CAP = { tooth: 2, flower: 3, candle: 2, mirror: 2, book: 2, key: 3, ring: 3, phone: 2, gun: 1.6, knife: 2 };
   for (const a of actors) { const cap = SIZE_CAP[a.kind]; if (cap && a.size > cap) a.size = cap;
     if (a.kind === 'table' && a.detail.width > 14) a.detail.width = 14; }
@@ -286,7 +296,13 @@ function normalizeScene(raw, dreamText) {
         if (!a || a.kind !== 'person' || a.pos[1] < -0.5) continue;
         const dx = a.pos[0] - deep.pos[0], dz = a.pos[2] - deep.pos[2], d = Math.hypot(dx, dz);
         if (d <= rim + 1.6) continue;
-        const k = rim / (d || 1); a.pos[0] = deep.pos[0] + dx * k; a.pos[2] = deep.pos[2] + dz * k; } } }
+        const k = rim / (d || 1), to = [deep.pos[0] + dx * k, a.pos[1], deep.pos[2] + dz * k];
+        // walk them there in this beat rather than rewriting where they stand for the whole dream:
+        // the opening of the dream had them somewhere else, and it is still true
+        const mine = b.actions.find(x => x.actor === id && x.move);
+        if (mine) mine.move = to;
+        else { const own = b.actions.find(x => x.actor === id) || {};
+          b.actions.push({ actor: id, at: 0, for: Math.min(0.55, own.at !== undefined ? Math.max(0.2, own.at) : 0.4), move: to, path: 'line' }); } } } }
   // a rider goes where the machine goes. The vocabulary asks for the same move on both, and when
   // the script gives the helicopter one destination and the two men in it another forty metres
   // away, the beat plays with the cabin empty and its passengers hanging in the air beside it.
@@ -320,7 +336,16 @@ function normalizeScene(raw, dreamText) {
     for (const cw of actors) { if (cw.kind !== 'crowd') continue; const R = (cw.detail.radius || 5) * cw.size;
       for (const a of actors) { if (a.kind !== 'person') continue;
         const dx = a.pos[0] - cw.pos[0], dz = a.pos[2] - cw.pos[2]; const d = Math.hypot(dx, dz);
-        if (d > R + 0.5) continue;
+        // standing just outside a crowd of your own colour is as anonymous as standing in it: the
+        // medic among sixteen identical green backs is a named man nobody can pick out
+        if (d > R + 3) continue;
+        if (d > R + 0.5) { const A2 = hex2(a.color), B2 = hex2(cw.color);
+          if (Math.abs(A2[0] - B2[0]) + Math.abs(A2[1] - B2[1]) + Math.abs(A2[2] - B2[2]) < 90) {
+            const mix2 = (v, t) => Math.round(v + (t - v) * 0.55).toString(16).padStart(2, '0');
+            a.color = '#' + mix2(A2[0], 235) + mix2(A2[1], 210) + mix2(A2[2], 60);
+            if (a.detail.wear && a.detail.wearColor) { const W2 = hex2(a.detail.wearColor);
+              a.detail.wearColor = '#' + mix2(W2[0], 235) + mix2(W2[1], 205) + mix2(W2[2], 55); } }
+          continue; }
         // a named person inside the ring is behind somebody from most bearings whatever colour they
         // are, and the camera that goes looking for them ends up inside the crowd, shooting backs.
         // They stand at its edge instead: near enough to be with it, outside enough to be seen.
