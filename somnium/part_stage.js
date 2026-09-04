@@ -264,7 +264,10 @@ const Stage = {
         for (const mm of ud.hazeMats) { mm.uniforms.uHaze.value.copy(this.three.fog.color); mm.uniforms.uHazeK.value = k; } } if (ud.puffs) ud.puffs.forEach((p, i) => { const t = (τ * 0.5 + i * 0.9) % 5.4; p.position.y = 0.8 + t; p.scale.setScalar(0.35 + t * 0.1); if (p.material.opacity !== undefined) p.material.opacity = Math.max(0, 0.3 * (1 - t / 5.4)); }); if (ud.rotor) ud.rotor.rotation.y = τ * 25; if (ud.spinPart) ud.spinPart.rotation.y = τ * 1.2; if (ud.drift) rec.g.position.x += Math.sin(τ * 0.05) * 0.0; if (ud.canopy) ud.canopy.forEach(c => c.rotation.z = Math.sin(τ * 0.8) * 0.02); if (ud.trees) ud.trees.forEach((tr, i) => tr.rotation.z = Math.sin(τ * 0.7 + i) * 0.02); if (ud.pulse) rec.mats.forEach(m => { if (m.emissiveIntensity) m.emissiveIntensity = 0.8 + Math.sin(τ * 3) * 0.4; }); }
     WATER_UNIFORMS.uTime.value = τ; FLAME_UNIFORMS.uTime.value = τ;
     this.solidsNow = this.solids ? this.solids.filter(o => { let p = o; while (p) { if (p.visible === false) return false; p = p.parent; } return true; }) : [];
-    if ((this.boxTick = (this.boxTick || 0) + 1) % 12 === 1 || !this.solidBoxes) { this.solidBoxes = []; for (const o of this.solidsNow) { if (o.material && o.material.side === THREE.BackSide) continue; if (o.geometry.type === 'CapsuleGeometry') continue; const bx = new THREE.Box3().setFromObject(o); if (bx.max.x - bx.min.x > 1.5 && bx.max.z - bx.min.z > 1.5) { bx.expandByScalar(0.4); this.solidBoxes.push(bx); } } }
+    // counted in frames this refreshed every 0.2 s at sixty and every 2.4 s at five, so how well
+    // the camera could see was a function of how fast the machine was
+    const boxAge = Math.abs(this.time - (this._boxAt === undefined ? -99 : this._boxAt));
+    if (boxAge > 0.12 || !this.solidBoxes) { this._boxAt = this.time; this.boxTick = (this.boxTick || 0) + 1; this.solidBoxes = []; for (const o of this.solidsNow) { if (o.material && o.material.side === THREE.BackSide) continue; if (o.geometry.type === 'CapsuleGeometry') continue; const bx = new THREE.Box3().setFromObject(o); if (bx.max.x - bx.min.x > 1.5 && bx.max.z - bx.min.z > 1.5) { bx.expandByScalar(0.4); this.solidBoxes.push(bx); } } }
     this.updateCamera(S.beats[bi], states, dt, snap || this.cam.snap); this.cam.snap = false;
     this.updateWeather(dt, τ); this.updateEffects(dt);
     { const inside = this.roomAround(this.camera.position); for (const rec of this.actors.values()) { const cl = rec.g.userData.ceiling; if (cl) cl.visible = !!inside && inside.rec === rec; } }
@@ -407,9 +410,12 @@ const Stage = {
     if (best === null) return null; let rel = best - st.yaw * Math.PI / 180; rel = Math.atan2(Math.sin(rel), Math.cos(rel)); return Math.abs(rel) < 1.6 ? rel : null;
   },
   animate(rec, st, τ, dt, snap) {
-    const g = rec.g, ud = g.userData, s = st.state, L = ud.limbs; const sp = st.moving > 2.5 ? 11 : 6; const kind = rec.a.kind;
+    const g = rec.g, ud = g.userData, L = ud.limbs; let s = st.state; const sp = st.moving > 2.5 ? 11 : 6; const kind = rec.a.kind;
     // smooth turning
     const wantYaw = st.yaw * Math.PI / 180; if (snap || ud.visYaw === undefined) ud.visYaw = wantYaw; else { let d = wantYaw - ud.visYaw; d = Math.atan2(Math.sin(d), Math.cos(d)); ud.visYaw += d * (1 - Math.exp(-dt * 6)); } g.rotation.y = ud.visYaw;
+    // a crowd told to move in a still pose is walked; a single figure was not, so the script's
+    // "kneel and cross the beach" slid one frozen kneeling man five metres over the sand
+    if (L && st.moving > 0.35 && ['idle', 'kneel', 'sit', 'shake', 'pockets', 'fold', 'grieve', 'yell', 'wave', 'throw', 'push'].includes(s)) s = st.moving > 2.5 ? 'run' : 'walk';
     if (L) { const look = (s === 'idle' || s === 'sit' || s === 'kneel' || s === 'shake' || s === 'push' || s === 'wave' || s === 'walk' || s === 'limp' || s === 'pockets' || s === 'yell') ? this.headTarget(rec, st) : null; this.poseHuman(g, L, s, τ, dt, st.size, st.window, g.id * 0.37, st.moving, look, snap); return; }
     if (ud.members) { const ms = (s === 'walk' || s === 'run' || s === 'limp' || s === 'crawl') ? s : (st.moving > 0.05 ? 'walk' : s); ud.members.forEach(m => { const base = m.userData.basePos || (m.userData.basePos = m.position.clone()); m.position.copy(base); m.scale.setScalar(1); if (st.moving > 0.05 || ms === 'walk' || ms === 'run') m.rotation.y = 0; else m.rotation.y = m.userData.baseYaw || 0; this.poseHuman(m, m.userData.limbs, ms, τ, dt, 1, st.window, m.userData.phase, st.moving, null, snap); }); return; }
     if (ud.legs) { const mv = st.moving > 0.05 || s === 'walk' || s === 'run'; const gsp = (st.moving > 2.5 || s === 'run') ? 12 : 7; const AP = ud.animPhase === undefined ? (ud.animPhase = 0) : ud.animPhase; ud.animPhase = mv ? AP + dt * gsp : AP; const φ = ud.animPhase;
@@ -611,7 +617,7 @@ const Stage = {
       if (pos.y > maxUp) pos.y = maxUp;
     }
     let drifted = false;
-    if (this.framePick && this.framePick.settled && this.time - (this.framePick.at || 0) > 1.2) {
+    if (this.framePick && this.framePick.settled && Math.abs(this.time - (this.framePick.at || 0)) > 0.5) {
       const now = dress(settle(this.turnShot(pos, look, this.framePick.az, this.framePick.mul), look));
       if (Math.abs(now.pos.distanceTo(look) - this.framePick.settled) > this.framePick.settled * 0.3) drifted = true;
       else for (const f of framed) { if (f.w < 1) continue; if (!this.seenWell(now.pos, now.look, f, false)) { drifted = true; break; } }
