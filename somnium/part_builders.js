@@ -86,8 +86,8 @@ function humanoid(a, o = {}) {
     { const del = mesh(G.sph(upR * 1.45, 10), sleeveM, sx * pivotX * 0.94, 0.375, 0); del.scale.set(1, 0.92, 0.95); torso.add(del); }
     const up = new THREE.Group(); up.position.set(sx * pivotX, 0.38, 0); torso.add(up); const ua = mesh(G.cap(upR, 0.22, 8), sleeveM, 0, -0.15, 0); up.add(ua);
     // a ball on the pivot itself: whatever the arm swings to, the joint cannot open onto a gap
-    up.add(mesh(G.sph(upR * 1.24, 10), sleeveM, 0, 0, 0));
-    const lo = new THREE.Group(); lo.position.set(0, -0.3, 0); up.add(lo); lo.add(mesh(G.cap(loR, 0.2, 8), cuffM, 0, -0.13, 0)); lo.add(mesh(G.sph(loR * 1.2, 8), cuffM, 0, 0, 0)); lo.add(mesh(G.sph(0.05, 8), skinM, 0, -0.29, 0.01));
+    if (!o.simple) up.add(mesh(G.sph(upR * 1.24, 10), sleeveM, 0, 0, 0));
+    const lo = new THREE.Group(); lo.position.set(0, -0.3, 0); up.add(lo); lo.add(mesh(G.cap(loR, 0.2, 8), cuffM, 0, -0.13, 0)); if (!o.simple) lo.add(mesh(G.sph(loR * 1.2, 8), cuffM, 0, 0, 0)); lo.add(mesh(G.sph(0.05, 8), skinM, 0, -0.29, 0.01));
     arms.push(up); fore.push(lo);
     const th = new THREE.Group(); th.position.set(sx * 0.1, 0, 0); hips.add(th); th.add(mesh(G.cap(0.075 * S, 0.3, 8), pants, 0, -0.22, 0));
     const sh = new THREE.Group(); sh.position.set(0, -0.44, 0); th.add(sh); sh.add(mesh(G.cap(0.06 * S, 0.3, 8), pants, 0, -0.2, 0));
