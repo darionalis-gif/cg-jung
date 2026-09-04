@@ -14,4 +14,12 @@ const idem = await p.evaluate(s => { const S = window.__somnium; const a = S.App
 const total = await p.evaluate(() => window.__somnium.Stage.scene.total);
 for (const f of [0.1, 0.3, 0.5, 0.7, 0.9]) { await p.evaluate(t => { window.__somnium.Stage.setTime(t); window.__somnium.Stage.playing = false; }, f * total); await p.waitForTimeout(250); await p.screenshot({ path: `harness/out/smoke-${f}.png` }); const m = await p.evaluate(() => window.__somnium.Stage.metrics()); console.log(f, JSON.stringify(m)); }
 await p.setViewportSize({ width: 390, height: 780 }); await p.waitForTimeout(300); await p.screenshot({ path: 'harness/out/smoke-phone.png' });
+// a second scene: an authored fixed shot over a pit, the path that broke the camera settle
+{ const pit = JSON.parse(readFileSync(new URL('./smoke-scene-pit.json', import.meta.url), 'utf8'));
+  await p.evaluate(s => { const S = window.__somnium; const d = { id: 'pit', title: 'pit', text: 'pit smoke', scene: S.normalizeScene(s, 'x'), chat: [], src: null, at: Date.now() }; S.App.cur = d; S.App.open(d); }, pit);
+  const idem2 = await p.evaluate(s => { const S = window.__somnium; const a = S.App.exportScene(S.normalizeScene(s, 'x')); const b = S.App.exportScene(S.normalizeScene(JSON.parse(JSON.stringify(a)), 'x')); return JSON.stringify(a) === JSON.stringify(b) ? 'idempotent' : 'NOT idempotent'; }, pit); console.log('pit', idem2);
+  const t2 = await p.evaluate(() => window.__somnium.Stage.scene.total);
+  await p.setViewportSize({ width: 1200, height: 760 });
+  for (const f of [0.08, 0.25, 0.45, 0.62, 0.85]) { await p.evaluate(t => { window.__somnium.Stage.setTime(t); window.__somnium.Stage.playing = false; }, f * t2); await p.waitForTimeout(200); const m = await p.evaluate(() => window.__somnium.Stage.metrics()); console.log('pit', f, JSON.stringify(m)); }
+  await p.screenshot({ path: 'harness/out/smoke-pit.png' }); }
 console.log('errors:', errs); await b.close(); server.close();

@@ -66,7 +66,6 @@ function humanoid(a, o = {}) {
   if (wear === 'coat' || wear === 'raincoat' || wear === 'jacket' || wear === 'cloak' || wear === 'uniform') {
     const body = mesh(G.cap(0.185 * S, 0.34, 12), wearM, 0, 0.19, 0); body.scale.set(1.08, 1, 0.78); torso.add(body);
     const skirt = mesh(G.cyl(0.2 * S, 0.235 * S, wear === 'cloak' ? 0.62 : 0.44, 14, 1, true), wearM, 0, wear === 'cloak' ? -0.24 : -0.15, 0); skirt.scale.set(1, 1, 0.82); torso.add(skirt);
-    if (wear !== 'cloak') for (const sx of [-1, 1]) torso.add(mesh(G.cap(0.055, 0.2, 8), wearM, sx * 0.2 * S, 0.24, 0));
   } else if (wear === 'dress' || wear === 'skirt' || wear === 'gown') {
     const skirt = mesh(G.cyl(0.19 * S, 0.42 * S, 0.66, 18, 1, true), wearM, 0, -0.3, 0); torso.add(skirt); g.userData.skirt = skirt;
   }
@@ -76,9 +75,16 @@ function humanoid(a, o = {}) {
     headG.add(mesh(G.cyl(0.23, 0.23, 0.018, 16), hatM, 0, 0.18, 0));
   }
   const arms = [], fore = [], legs = [], shins = [], feet = [];
+  // a coat is a shell around the chest: arms built inside it vanish and leave the hands floating,
+  // so a coated figure hangs its sleeves outside the shell and thickens them to match
+  const coated = ['coat', 'raincoat', 'jacket', 'cloak', 'uniform'].includes(wear);
+  const sleeveM = coated ? wearM : (o.bare ? skinM : shirt), cuffM = coated ? wearM : (o.bare || o.shortSleeves ? skinM : shirt);
+  const upR = (coated ? 0.072 : 0.055) * S, loR = (coated ? 0.058 : 0.045) * S, pivotX = (coated ? 0.263 : 0.24) * S;
   for (const sx of [-1, 1]) {
-    const up = new THREE.Group(); up.position.set(sx * 0.24 * S, 0.38, 0); torso.add(up); const ua = mesh(G.cap(0.055 * S, 0.22, 8), o.bare ? skinM : shirt, 0, -0.15, 0); up.add(ua);
-    const lo = new THREE.Group(); lo.position.set(0, -0.3, 0); up.add(lo); lo.add(mesh(G.cap(0.045 * S, 0.2, 8), o.bare || o.shortSleeves ? skinM : shirt, 0, -0.13, 0)); lo.add(mesh(G.sph(0.05, 8), skinM, 0, -0.29, 0.01));
+    const up = new THREE.Group(); up.position.set(sx * pivotX, 0.38, 0); torso.add(up); const ua = mesh(G.cap(upR, 0.22, 8), sleeveM, 0, -0.15, 0); up.add(ua);
+    // a ball on the pivot itself: whatever the arm swings to, the joint cannot open onto a gap
+    up.add(mesh(G.sph(upR * 1.24, 10), sleeveM, 0, 0, 0));
+    const lo = new THREE.Group(); lo.position.set(0, -0.3, 0); up.add(lo); lo.add(mesh(G.cap(loR, 0.2, 8), cuffM, 0, -0.13, 0)); lo.add(mesh(G.sph(loR * 1.2, 8), cuffM, 0, 0, 0)); lo.add(mesh(G.sph(0.05, 8), skinM, 0, -0.29, 0.01));
     arms.push(up); fore.push(lo);
     const th = new THREE.Group(); th.position.set(sx * 0.1, 0, 0); hips.add(th); th.add(mesh(G.cap(0.075 * S, 0.3, 8), pants, 0, -0.22, 0));
     const sh = new THREE.Group(); sh.position.set(0, -0.44, 0); th.add(sh); sh.add(mesh(G.cap(0.06 * S, 0.3, 8), pants, 0, -0.2, 0));
@@ -172,22 +178,85 @@ B.cave = a => { const g = new THREE.Group(); const r = 3; const rockM = mat(a.co
 B.pit = a => { const g = new THREE.Group(); const r = a.detail.radius || 1.5; const depth = a.detail.height || 4; const shaftGeo = G.cyl(r, r * 0.8, depth, 20, 3, true); { const pos = shaftGeo.attributes.position, col = []; for (let i = 0; i < pos.count; i++) { const t = clamp((pos.getY(i) + depth / 2) / depth, 0, 1); const k = 0.18 + t * 0.82; col.push(k, k * 0.96, k * 0.9); } shaftGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); }
   const shaft = new THREE.Mesh(shaftGeo, new THREE.MeshStandardMaterial({ color: '#6a6053', vertexColors: true, roughness: 1, side: THREE.BackSide })); shaft.position.y = -depth / 2; g.add(shaft); const floor = mesh(G.cyl(r * 0.8, r * 0.8, 0.05, 20), mat('#332d27'), 0, -depth, 0); g.add(floor); const pl = new THREE.PointLight('#e8d5b6', 5, depth * 0.9, 1.5); pl.position.y = -depth * 0.45; g.add(pl); const pl2 = new THREE.PointLight('#d2bd9a', 5, depth * 0.8, 1.5); pl2.position.y = -depth * 0.85; g.add(pl2); const cut = new THREE.Mesh(new THREE.CircleGeometry(r, 32), new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, stencilWrite: true, stencilRef: 1, stencilZPass: THREE.ReplaceStencilOp, stencilFunc: THREE.AlwaysStencilFunc })); cut.rotation.x = -Math.PI / 2; cut.position.y = 0.01; cut.renderOrder = -10; g.add(cut); g.add(mesh(G.torus(r, 0.12), mat(shade(a.color === '#0a0a0c' ? '#5a5048' : a.color, 0.55)), 0, 0.05, 0).rotateX(1.57)); g.traverse(o => { if (o.isMesh && o.material && o.material.colorWrite !== false) { o.userData.solid = true; o.userData.soft = true; } }); g.userData.height = 0.2; g.userData.flat = true; return g; };
 const WATER_UNIFORMS = { uTime: { value: 0 } };
-function waterMaterial(color) { const m = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.25, metalness: 0.3, transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); m.customProgramCacheKey = () => 'somnium-water';
+// the open sea is tessellated at 5-6 m, so a pond's 11 m wave is sampled below its own period and
+// comes out as blotches: out there the swell has to be long and tall instead
+function waterMaterial(color, open) { const k = open ? [0.24, 0.33, 0.13] : [0.55, 0.78, 0.31], amp = open ? 0.45 : 0.2; const m = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.25, metalness: 0.3, transparent: true, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); m.customProgramCacheKey = () => 'somnium-water-' + (open ? 'sea' : 'pond');
   m.onBeforeCompile = sh => { sh.uniforms.uTime = WATER_UNIFORMS.uTime; m.userData.sh = sh;
     sh.vertexShader = 'uniform float uTime;\nvarying float vWave;\n' + sh.vertexShader.replace('#include <begin_vertex>',
-      '#include <begin_vertex>\n float w1 = sin(position.x * 0.55 - uTime * 1.9);\n float w2 = sin(position.y * 0.78 + uTime * 1.35);\n float w3 = sin((position.x + position.y) * 0.31 - uTime * 0.8);\n vWave = w1 * 0.5 + w2 * 0.35 + w3 * 0.4;\n transformed.z += max(vWave, 0.0) * 0.2;');
+      '#include <begin_vertex>\n float w1 = sin(position.x * ' + k[0].toFixed(3) + ' - uTime * 1.9);\n float w2 = sin(position.y * ' + k[1].toFixed(3) + ' + uTime * 1.35);\n float w3 = sin((position.x + position.y) * ' + k[2].toFixed(3) + ' - uTime * 0.8);\n vWave = w1 * 0.5 + w2 * 0.35 + w3 * 0.4;\n transformed.z += max(vWave, 0.0) * ' + amp.toFixed(3) + ';');
     sh.fragmentShader = 'varying float vWave;\n' + sh.fragmentShader.replace('#include <color_fragment>',
       '#include <color_fragment>\n diffuseColor.rgb *= 1.0 + vWave * 0.3;\n diffuseColor.rgb += vec3(0.10, 0.13, 0.15) * smoothstep(0.55, 1.15, vWave);'); }; m.userData.water = true; return m; }
+const FLAME_UNIFORMS = { uTime: { value: 0 } };
+// a cone with a hard rim is a party hat; the flame needs to end in nothing at the tip and at the
+// edges, and to lick rather than only inflate
+function flameMaterial(color, seed) { return new THREE.ShaderMaterial({
+  uniforms: { uTime: FLAME_UNIFORMS.uTime, uColor: { value: new THREE.Color(color) }, uSeed: { value: seed } },
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+  vertexShader: 'varying vec2 vUv;\nvoid main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: [
+    'uniform float uTime; uniform vec3 uColor; uniform float uSeed; varying vec2 vUv;',
+    'void main() {',
+    '  float t = uTime * 2.2 + uSeed;',
+    '  float lick = 0.5 + 0.5 * sin(vUv.x * 11.0 + t * 2.6) * sin(vUv.y * 5.5 - t * 4.2);',
+    '  float rim = sin(vUv.x * 6.2831);',
+    '  float a = smoothstep(1.0, 0.08, vUv.y) * smoothstep(0.0, 0.16, vUv.y) * (0.45 + 0.55 * lick) * (0.35 + 0.65 * abs(rim));',
+    '  vec3 col = mix(uColor, vec3(1.0, 0.94, 0.74), smoothstep(0.0, 0.5, vUv.y) * 0.6);',
+    '  col = mix(col, vec3(1.0, 0.38, 0.09), smoothstep(0.4, 1.0, vUv.y) * 0.55);',
+    '  gl_FragColor = vec4(col, a * 0.85);',
+    '}'].join('\n') }); }
+// unlit and unfogged, a sphere is a flat sticker: give it a limb, a halo, and a share of the haze
+function moonMaterial(color) { return new THREE.ShaderMaterial({
+  uniforms: { uColor: { value: new THREE.Color(color) }, uHaze: { value: new THREE.Color('#0b1020') }, uHazeK: { value: 0 } }, fog: false,
+  vertexShader: 'varying vec3 vN; varying vec3 vV;\nvoid main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+  fragmentShader: [
+    'uniform vec3 uColor; uniform vec3 uHaze; uniform float uHazeK; varying vec3 vN; varying vec3 vV;',
+    'void main() {',
+    '  float d = clamp(dot(normalize(vN), normalize(vV)), 0.0, 1.0);',
+    '  vec3 col = uColor * (0.52 + 0.48 * pow(d, 0.55));',
+    '  col *= 1.0 - 0.16 * smoothstep(0.55, 0.0, d);',
+    '  gl_FragColor = vec4(mix(col, uHaze, uHazeK), 1.0);',
+    '}'].join('\n') }); }
+function moonGlowMaterial(color) { return new THREE.ShaderMaterial({
+  uniforms: { uColor: { value: new THREE.Color(color) }, uHaze: { value: new THREE.Color('#0b1020') }, uHazeK: { value: 0 } },
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+  vertexShader: 'varying vec2 vUv;\nvoid main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: [
+    'uniform vec3 uColor; uniform vec3 uHaze; uniform float uHazeK; varying vec2 vUv;',
+    'void main() {',
+    '  float r = length(vUv - 0.5) * 2.0;',
+    '  float a = pow(clamp(1.0 - (r - 0.30) / 0.66, 0.0, 1.0), 2.8) * 0.42;',
+    '  gl_FragColor = vec4(mix(uColor, uHaze, uHazeK * 0.6), a);',
+    '}'].join('\n') }); }
+// the surf is the thing the beat is about: a static opaque band reads as a grey wedge, so the
+// foam breaks, scrolls and fades at both of its edges
+function foamMaterial(color) { const u = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uColor: { value: new THREE.Color(color) } }]); u.uTime = WATER_UNIFORMS.uTime; return new THREE.ShaderMaterial({
+  uniforms: u,
+  transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: true,
+  vertexShader: 'varying vec2 vUv;\n#include <fog_pars_vertex>\nvoid main() { vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0);\n#ifdef USE_FOG\n vFogDepth = -mv.z;\n#endif\n gl_Position = projectionMatrix * mv; }',
+  fragmentShader: [
+    'uniform float uTime; uniform vec3 uColor; varying vec2 vUv;',
+    '#include <fog_pars_fragment>',
+    'void main() {',
+    '  float x = vUv.x * 90.0;',
+    '  float b = sin(x * 0.9 - uTime * 1.7) * 0.5 + sin(x * 0.31 + uTime * 0.9) * 0.35 + sin(x * 2.3 - uTime * 2.6) * 0.2;',
+    '  float band = smoothstep(0.0, 0.34, vUv.y) * smoothstep(1.0, 0.62, vUv.y);',
+    '  float crest = smoothstep(-0.25, 0.65, b);',
+    '  float a = band * (0.16 + 0.74 * crest);',
+    '  gl_FragColor = vec4(uColor, a);',
+    '#include <fog_fragment>',
+    '}'].join('\n') }); }
 B.water = a => { const g = new THREE.Group(); const R = a.detail.radius || 15;
-  if (a.detail.open || R >= 30) { const w = Math.max(2 * R, 320), d = 520, m0 = waterMaterial(a.color);
-    const p0 = mesh(new THREE.PlaneGeometry(w, d, Math.round(w / 6), Math.round(d / 6)), m0, 0, 0.09, d / 2); p0.rotation.x = -Math.PI / 2; p0.castShadow = false; g.add(p0);
-    const foam = mesh(new THREE.PlaneGeometry(w, 5, Math.round(w / 4), 3), mat('#eef4f6', { rough: 0.35, transparent: true, opacity: 0.72 }), 0, 0.115, 2.2);
-    foam.rotation.x = -Math.PI / 2; foam.castShadow = false; foam.receiveShadow = false; g.add(foam);
+  if (a.detail.open || R >= 30) { const w = Math.max(2 * R, 320), d = 520, m0 = waterMaterial(a.color, true);
+    const p0 = mesh(new THREE.PlaneGeometry(w, d, Math.round(w / 5), Math.round(d / 5)), m0, 0, 0.09, d / 2); p0.rotation.x = -Math.PI / 2; p0.castShadow = false; g.add(p0);
+    const foam = mesh(new THREE.PlaneGeometry(w, 7, Math.round(w / 4), 1), foamMaterial('#eef4f6'), 0, 0.115, 2.6);
+    foam.rotation.x = -Math.PI / 2; foam.castShadow = false; foam.receiveShadow = false; foam.renderOrder = 2; g.add(foam);
     g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; g.userData.foam = foam; return g; }
   const p = mesh(new THREE.RingGeometry(0.001, R, 64, Math.min(64, Math.max(10, Math.round(R / 0.8)))), waterMaterial(a.color), 0, 0.09, 0); p.rotation.x = -Math.PI / 2; p.castShadow = false; g.add(p); g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; return g; };
 B.river = a => { const g = new THREE.Group(); const w = a.detail.width || 8, d = a.detail.depth || 120; const p = mesh(new THREE.PlaneGeometry(w, d, 8, 60), waterMaterial(a.color), 0, 0.09, 0); p.rotation.x = -Math.PI / 2; p.castShadow = false; g.add(p); g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; return g; };
 B.cloud = a => { const g = new THREE.Group(); const m = mat(a.color, { transparent: true, opacity: 0.85, rough: 1 }); const rnd = seeded(a.id.length + 4); for (let i = 0; i < 5; i++) { const s = mesh(G.sph(1.2 + rnd() * 1.2, 10), m, (i - 2) * 1.6, 12 + rnd() * 0.6, (rnd() - 0.5) * 1.5); s.castShadow = false; g.add(s); } g.userData.height = 14; g.userData.drift = true; g.userData.airborne = true; return g; };
-B.moon = a => { const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(a.color), fog: false }); const d = mesh(G.sph(5, 24), m, 0, 0, 0); g.userData.discR = 5; d.castShadow = false; g.add(d); const l = new THREE.PointLight(a.color, 400, 260, 1.2); g.add(l); g.userData.height = 5; g.userData.airborne = true; g.userData.far = true; g.userData.noColor = true; g.userData.centered = true; return g; };
+B.moon = a => { const g = new THREE.Group(); const m = moonMaterial(a.color); const d = mesh(G.sph(5, 32), m, 0, 0, 0); g.userData.discR = 5; d.castShadow = false; g.add(d);
+  const halo = mesh(new THREE.PlaneGeometry(31, 31), moonGlowMaterial(a.color), 0, 0, 0); halo.castShadow = false; halo.renderOrder = -2; halo.userData.billboard = true; g.add(halo);
+  const l = new THREE.PointLight(a.color, 400, 260, 1.2); g.add(l); g.userData.hazeMats = [m, halo.material]; g.userData.height = 5; g.userData.airborne = true; g.userData.far = true; g.userData.noColor = true; g.userData.centered = true; return g; };
 B.sun = a => { const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(a.color), fog: false }); const d = mesh(G.sph(7, 24), m, 0, 0, 0); d.castShadow = false; g.add(d); g.userData.height = 7; g.userData.airborne = true; g.userData.far = true; g.userData.noColor = true; g.userData.centered = true; return g; };
 B.star = a => { const g = new THREE.Group(); g.add(mesh(G.ico(0.4, 0), new THREE.MeshBasicMaterial({ color: new THREE.Color(a.color), fog: false }), 0, 1.5, 0)); g.userData.height = 2; g.userData.airborne = true; g.userData.pulse = true; return g; };
 B.lens = a => { const g = new THREE.Group(); const body = mat(a.color, { metal: 0.5, rough: 0.35 });
@@ -197,7 +266,7 @@ B.lens = a => { const g = new THREE.Group(); const body = mat(a.color, { metal: 
   g.userData.height = 1.1; g.userData.airborne = true; return g; };
 B.orb = a => { const g = new THREE.Group(); g.add(mesh(G.sph(0.5, 16), mat(a.color, { emissive: a.color, ei: 0.55, transparent: true, opacity: 0.9 }), 0, 1.4, 0)); const l = new THREE.PointLight(a.color, 6, 12, 1.8); l.position.y = 1.4; g.add(l); g.userData.height = 2; g.userData.airborne = true; g.userData.pulse = true; return g; };
 B.portal = a => { const g = new THREE.Group(); g.add(mesh(G.torus(1.4, 0.15), mat(a.color, { emissive: a.color, ei: 1.2 }), 0, 1.6, 0)); g.add(mesh(new THREE.CircleGeometry(1.3, 24), mat(shade(a.color, 0.4), { emissive: a.color, ei: 0.5, transparent: true, opacity: 0.7, side: THREE.DoubleSide }), 0, 1.6, 0)); const l = new THREE.PointLight(a.color, 15, 12, 1.8); l.position.y = 1.6; g.add(l); g.userData.height = 3.2; g.userData.spinPart = g.children[0]; return g; };
-B.fire = a => { const g = new THREE.Group(); const fm = mat(a.color, { emissive: a.color, ei: 1.5, transparent: true, opacity: 0.9 }); const flames = []; for (let i = 0; i < 4; i++) { const f = mesh(G.cone(0.35 - i * 0.05, 1.0 + i * 0.2, 6), fm, (i - 1.5) * 0.18, 0.5 + i * 0.1, 0); f.castShadow = false; g.add(f); flames.push(f); } for (let i = 0; i < 3; i++) g.add(mesh(G.cyl(0.06, 0.06, 0.9, 5), mat('#3a2a1a'), 0, 0.06, 0).rotateZ(1.57).rotateX(i * 1.05)); const l = new THREE.PointLight('#ff9040', 30, 18, 1.6); l.position.y = 0.8; g.add(l); g.userData.flames = flames; g.userData.light = l; g.userData.height = 1.6; return g; };
+B.fire = a => { const g = new THREE.Group(); const flames = []; for (let i = 0; i < 5; i++) { const f = mesh(G.cone(0.34 - i * 0.045, 0.95 + i * 0.19, 8), flameMaterial(a.color, i * 1.7), (i - 2) * 0.15, 0.48 + i * 0.1, (i % 2 ? 0.09 : -0.07)); f.castShadow = false; f.renderOrder = 6; g.add(f); f.userData.home = f.position.clone(); flames.push(f); } for (let i = 0; i < 3; i++) g.add(mesh(G.cyl(0.06, 0.06, 0.9, 5), mat('#3a2a1a'), 0, 0.06, 0).rotateZ(1.57).rotateX(i * 1.05)); const l = new THREE.PointLight('#ff9040', 30, 18, 1.6); l.position.y = 0.8; g.add(l); g.userData.flames = flames; g.userData.light = l; g.userData.height = 1.6; return g; };
 B.smoke = a => { const g = new THREE.Group(); const puffs = []; for (let i = 0; i < 7; i++) { const pm = new THREE.MeshBasicMaterial({ color: new THREE.Color(shade(a.color, 1.1)), map: blobTexture(), transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide }); const p = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), pm); p.position.set((i % 2 ? 0.35 : -0.35) * (i / 3), 0.8 + i * 0.7, 0); p.castShadow = false; p.userData.billboard = true; g.add(p); puffs.push(p); } g.userData.puffs = puffs; g.userData.height = 6; return g; };
 B.lamp = a => { const g = new THREE.Group(); const h = a.detail.height || 4; g.add(mesh(G.cyl(0.06, 0.09, h, 6), mat('#3a3a40'), 0, h / 2, 0)); g.add(mesh(G.box(0.5, 0.1, 0.5), mat('#3a3a40'), 0, h, 0)); g.add(mesh(G.sph(0.22, 10), mat(a.color, { emissive: a.color, ei: 1.5 }), 0, h - 0.2, 0)); const l = new THREE.PointLight(a.color, 25, 16, 1.5); l.position.set(0, h - 0.3, 0); l.castShadow = false; g.add(l); g.userData.height = h; return g; };
 B.candle = a => { const g = new THREE.Group(); g.add(mesh(G.cyl(0.05, 0.05, 0.3, 8), mat('#f4ecd8'), 0, 0.9, 0)); const f = mesh(G.cone(0.03, 0.12, 6), mat('#ffcc60', { emissive: '#ffb030', ei: 2 }), 0, 1.11, 0); g.add(f); const l = new THREE.PointLight('#ffb060', 6, 6, 1.8); l.position.y = 1.1; g.add(l); g.userData.flames = [f]; g.userData.height = 1.2; return g; };

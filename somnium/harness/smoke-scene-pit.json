@@ -1,0 +1,13 @@
+{"title":"Smoke 6: authored shot over a hole","mood":"probe","world":{"sky":"night","ground":"stone","fogDensity":0.01},
+"actors":[
+ {"id":"pit","kind":"pit","label":"the hole","pos":[0,0,0],"detail":{"radius":1.6,"height":4}},
+ {"id":"grate","kind":"grating","label":"the grating","pos":[0,0,0],"detail":{"width":2.4,"depth":2.4}},
+ {"id":"me","kind":"person","label":"me","color":"#5a6fa8","pos":[0,-4,0],"yaw":0},
+ {"id":"man","kind":"person","label":"the man above","color":"#8a4a4a","pos":[2.6,0,1.2],"yaw":200},
+ {"id":"lamp","kind":"lamp","label":"a street lamp","pos":[-4,0,3],"detail":{"height":4}}
+],
+"beats":[
+ {"dur":6,"text":"I am at the bottom of the hole, calling up.","camera":{"mode":"fixed","pos":[3.2,1.4,3.2],"look":[0,0,0],"target":"me"},"actions":[{"actor":"me","state":"yell","say":"I am down here."},{"actor":"man","state":"idle"}]},
+ {"dur":6,"text":"He kneels at the edge and answers.","camera":{"mode":"fixed","pos":[5,6,5],"look":[0,-2,0],"target":"man"},"actions":[{"actor":"man","state":"kneel","move":[1.2,0,0.6]},{"actor":"man","say":"Hold on.","at":0.5},{"actor":"me","state":"grieve"}]},
+ {"dur":6,"text":"I climb and he pulls me out.","camera":{"mode":"orbit","target":"me","distance":5,"height":7,"angle":40},"actions":[{"actor":"me","move":[0,4,0],"state":"crawl"},{"actor":"man","state":"push"}]}
+]}

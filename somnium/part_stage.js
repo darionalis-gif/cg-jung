@@ -46,7 +46,7 @@ const Stage = {
   load(scene) {
     this.scene = scene; this.root.clear(); this.actors.clear(); this.labelsEl.innerHTML = ''; this.lastBeat = -1; this.fx = []; this.time = 0; this.cam.snap = true; this.user.on = false; $('#resetCam').classList.remove('primary');
     for (const a of scene.actors) { const g = buildActor(a); g.position.set(a.pos[0], a.pos[1], a.pos[2]); g.rotation.y = a.yaw * Math.PI / 180; this.root.add(g); const lbl = document.createElement('div'); lbl.className = 'lbl'; lbl.textContent = a.label; lbl.hidden = !a.label; this.labelsEl.appendChild(lbl); this.actors.set(a.id, { a, g, lbl, st: null, mats: null }); }
-    for (const rec of this.actors.values()) { if (rec.g.userData.shadow) { const r = rec.g.userData.shadow; const blob = new THREE.Mesh(new THREE.CircleGeometry(r, 20), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.renderOrder = 1; this.root.add(blob); rec.blob = blob; } const mats = []; const seen = new Map(); rec.g.traverse(o => { if (o.isMesh && !o.material.userData.water) { let m = seen.get(o.material); if (!m) { m = o.material.clone(); m.userData = { ...o.material.userData, baseOpacity: o.material.opacity, baseColor: o.material.color.clone(), baseEmissive: o.material.emissive ? o.material.emissive.clone() : null }; seen.set(o.material, m); mats.push(m); } o.material = m; } }); rec.mats = mats; }
+    for (const rec of this.actors.values()) { if (rec.g.userData.shadow) { const r = rec.g.userData.shadow; const blob = new THREE.Mesh(new THREE.CircleGeometry(r, 20), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.renderOrder = 1; this.root.add(blob); rec.blob = blob; } const mats = []; const seen = new Map(); rec.g.traverse(o => { if (o.isMesh && !o.material.userData.water && !o.material.isShaderMaterial) { let m = seen.get(o.material); if (!m) { m = o.material.clone(); m.userData = { ...o.material.userData, baseOpacity: o.material.opacity, baseColor: o.material.color.clone(), baseEmissive: o.material.emissive ? o.material.emissive.clone() : null }; seen.set(o.material, m); mats.push(m); } o.material = m; } }); rec.mats = mats; }
     this.solids = []; this.waterMats = [this.waterGround.material]; this.root.traverse(o => { if (o.userData.solid) this.solids.push(o); if (o.isMesh && o.material && o.material.userData.water) this.waterMats.push(o.material); }); this.boxTick = 0; this._rooms = null;
     this.pits = []; for (const r of this.actors.values()) { if (r.a.kind !== 'pit') continue; this.pits.push({ x: r.a.pos[0], z: r.a.pos[2], r: (r.a.detail.radius || 1.5) * r.a.size + 0.2 }); }
     this.root.updateMatrixWorld(true);
@@ -213,8 +213,15 @@ const Stage = {
       this.animate(rec, st, τ, dt, snap);
     }
     // ambient animations
-    for (const rec of this.actors.values()) { const ud = rec.g.userData; if (ud.flames) { ud.flames.forEach((f, i) => { f.scale.y = 1 + Math.sin(τ * 11 + i * 2) * 0.25; f.scale.x = f.scale.z = 1 + Math.sin(τ * 9 + i) * 0.15; }); if (ud.light) ud.light.intensity = 30 + Math.sin(τ * 13) * 6; } if (ud.puffs) ud.puffs.forEach((p, i) => { const t = (τ * 0.5 + i * 0.9) % 5.4; p.position.y = 0.8 + t; p.scale.setScalar(0.35 + t * 0.1); if (p.material.opacity !== undefined) p.material.opacity = Math.max(0, 0.3 * (1 - t / 5.4)); }); if (ud.rotor) ud.rotor.rotation.y = τ * 25; if (ud.spinPart) ud.spinPart.rotation.y = τ * 1.2; if (ud.drift) rec.g.position.x += Math.sin(τ * 0.05) * 0.0; if (ud.canopy) ud.canopy.forEach(c => c.rotation.z = Math.sin(τ * 0.8) * 0.02); if (ud.trees) ud.trees.forEach((tr, i) => tr.rotation.z = Math.sin(τ * 0.7 + i) * 0.02); if (ud.pulse) rec.mats.forEach(m => { if (m.emissiveIntensity) m.emissiveIntensity = 0.8 + Math.sin(τ * 3) * 0.4; }); }
-    WATER_UNIFORMS.uTime.value = τ;
+    for (const rec of this.actors.values()) { const ud = rec.g.userData; if (ud.flames) { ud.flames.forEach((f, i) => { f.scale.y = 1 + Math.sin(τ * 11 + i * 2) * 0.25; f.scale.x = f.scale.z = 1 + Math.sin(τ * 9 + i) * 0.15;
+        // a flame leans and wanders; scaling it about its base is only breathing
+        f.rotation.z = Math.sin(τ * 3.1 + i * 1.9) * 0.17 + Math.sin(τ * 7.3 + i) * 0.06;
+        f.rotation.x = Math.sin(τ * 2.7 + i * 2.4) * 0.12;
+        const h = f.userData.home; if (h) f.position.set(h.x + Math.sin(τ * 4.1 + i * 2.2) * 0.05, h.y + Math.sin(τ * 5.5 + i) * 0.03, h.z + Math.cos(τ * 3.7 + i * 1.4) * 0.045); });
+        if (ud.light) ud.light.intensity = 30 + Math.sin(τ * 13) * 6 + Math.sin(τ * 31 + 1) * 3; }
+      if (ud.hazeMats) { const dd = rec.g.position.distanceTo(this.camera.position); const k = Math.min(0.55, 1 - Math.exp(-(this.three.fog.density || 0) * dd * 0.55));
+        for (const mm of ud.hazeMats) { mm.uniforms.uHaze.value.copy(this.three.fog.color); mm.uniforms.uHazeK.value = k; } } if (ud.puffs) ud.puffs.forEach((p, i) => { const t = (τ * 0.5 + i * 0.9) % 5.4; p.position.y = 0.8 + t; p.scale.setScalar(0.35 + t * 0.1); if (p.material.opacity !== undefined) p.material.opacity = Math.max(0, 0.3 * (1 - t / 5.4)); }); if (ud.rotor) ud.rotor.rotation.y = τ * 25; if (ud.spinPart) ud.spinPart.rotation.y = τ * 1.2; if (ud.drift) rec.g.position.x += Math.sin(τ * 0.05) * 0.0; if (ud.canopy) ud.canopy.forEach(c => c.rotation.z = Math.sin(τ * 0.8) * 0.02); if (ud.trees) ud.trees.forEach((tr, i) => tr.rotation.z = Math.sin(τ * 0.7 + i) * 0.02); if (ud.pulse) rec.mats.forEach(m => { if (m.emissiveIntensity) m.emissiveIntensity = 0.8 + Math.sin(τ * 3) * 0.4; }); }
+    WATER_UNIFORMS.uTime.value = τ; FLAME_UNIFORMS.uTime.value = τ;
     this.solidsNow = this.solids ? this.solids.filter(o => { let p = o; while (p) { if (p.visible === false) return false; p = p.parent; } return true; }) : [];
     if ((this.boxTick = (this.boxTick || 0) + 1) % 12 === 1 || !this.solidBoxes) { this.solidBoxes = []; for (const o of this.solidsNow) { if (o.material && o.material.side === THREE.BackSide) continue; if (o.geometry.type === 'CapsuleGeometry') continue; const bx = new THREE.Box3().setFromObject(o); if (bx.max.x - bx.min.x > 1.5 && bx.max.z - bx.min.z > 1.5) { bx.expandByScalar(0.4); this.solidBoxes.push(bx); } } }
     this.updateCamera(S.beats[bi], states, dt, snap || this.cam.snap); this.cam.snap = false;
@@ -383,7 +390,7 @@ const Stage = {
     else { const dist = groupC ? Math.min(c.distance * 1.45, Math.max(c.distance, groupR * 1.6 + 3)) : c.distance; pos = T.clone().add(dirAt(yawS + c.angle, dist, c.height + local * 0.05 + (dist - c.distance) * 0.25)); look = groupC ? new THREE.Vector3(lerp(T.x, groupC.x, 0.5), eye.y, lerp(T.z, groupC.z, 0.5)) : eye; }
     const lookRec = typeof c.lookAt === 'string' ? this.actors.get(c.lookAt) : null;
     const selfs = [rec && rec.g, lookRec && lookRec.g].filter(Boolean);
-    const settle = (p0, l0) => { let p = p0.clone(), look2 = l0.clone();
+    const settle = (p0, l0) => { let p = p0.clone(), look2 = l0.clone(); let steep = false;
     // the subject is inside a room: keep the camera in there with them rather than outside a shell whose front faces are culled
     { const room = this.roomAround(look2); if (room) { const b = room.box; const pad = 0.45;
         if (p.x < b.min.x + pad || p.x > b.max.x - pad || p.z < b.min.z + pad || p.z > b.max.z - pad || p.y > b.max.y - 0.3) {
@@ -403,17 +410,31 @@ const Stage = {
     // part of the beat is happening below the ground: look2 down into the hole instead of across it
     { const low = [], high = []; for (const x of beat.actions) { if (!x.actor) continue; const st = states.get(x.actor); const r2 = this.actors.get(x.actor); if (!st || st.op < 0.3 || !r2 || r2.g.userData.flat || r2.g.userData.big) continue; const climbing = beat.actions.some(q => q.actor === x.actor && q.move && q.move[1] > -1); (st.pos[1] < -1 && !climbing ? low : high).push(st); }
       if (low.length && high.length) { const c0 = low.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(low.length);
-        look2 = new THREE.Vector3(c0.x, c0.y + 1.2, c0.z);
-        if (high.length) { const h0 = high.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(high.length); look2.lerp(new THREE.Vector3(h0.x, h0.y + 1, h0.z), facesMatter ? 0.5 : 0.3); }
-        const off = p.clone().sub(look2); const want = Math.hypot(c.distance || 8, c.height || 3);
-        let span = 0; for (const st of low.concat(high)) span = Math.max(span, look2.distanceTo(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])));
-        const len = clamp(Math.min(off.length(), want), Math.max(3, span * (facesMatter ? 2.6 : 2.1)), Math.max(3, want * 1.5)); const flat = Math.hypot(off.x, off.z) || 0.001;
-        let depth = 4, rad = 1.6; for (const rr of this.actors.values()) { if (rr.a.kind !== 'pit') continue; const q = rr.a.pos; if (Math.hypot(q[0] - look2.x, q[2] - look2.z) > 6) continue; depth = (rr.a.detail.height || 4) * rr.a.size; rad = (rr.a.detail.radius || 1.5) * rr.a.size; }
-        let clear = rad; for (const st of low) clear = Math.min(clear, rad - Math.hypot(st.pos[0] - look2.x, st.pos[2] - look2.z));
+        // how steeply the hole has to be looked into is a fact about the hole's own axis and the
+        // people standing off it; measuring it against a look point already pulled toward the rim
+        // made every pit read as unlookable and threw the person at the bottom out of the shot
+        let depth = 4, rad = 1.6, ax = c0.x, az2 = c0.z;
+        for (const rr of this.actors.values()) { if (rr.a.kind !== 'pit') continue; const q = rr.a.pos; if (Math.hypot(q[0] - c0.x, q[2] - c0.z) > 6) continue; depth = (rr.a.detail.height || 4) * rr.a.size; rad = (rr.a.detail.radius || 1.5) * rr.a.size; ax = q[0]; az2 = q[2]; }
+        let strayed = 0; for (const st of low) strayed = Math.max(strayed, Math.hypot(st.pos[0] - ax, st.pos[2] - az2));
+        const clear = rad - strayed;
         const need = Math.atan2(depth, Math.max(0.35, clear));
+        const rimOnly = need > Math.PI / 180 * 80;
+        const h0 = high.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(high.length);
+        const shown = [];
         // past 80 degrees the hole cannot be looked into at all: frame the rim instead
-        if (need > Math.PI / 180 * 80 && high.length) { const h1 = high[0]; look2.set(h1.pos[0], h1.pos[1] + 1.1, h1.pos[2]); }
-        const pitch = clamp(need + 0.12, Math.PI / 180 * 50, Math.PI / 180 * (need <= Math.PI / 180 * 62 ? 64 : 80)); p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
+        if (rimOnly) { const h1 = high[0]; look2 = new THREE.Vector3(h1.pos[0], h1.pos[1] + 1.1, h1.pos[2]); shown.push(new THREE.Vector3(ax, 0, az2)); for (const st of high) shown.push(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])); }
+        else { look2 = new THREE.Vector3(c0.x, c0.y + 1.2, c0.z);
+          const want2 = new THREE.Vector3(h0.x, h0.y + 1, h0.z); const mix = facesMatter ? 0.5 : 0.3;
+          // lean toward the people at the rim, but never so far that the mouth leaves the cone
+          const reach = Math.hypot(want2.x - look2.x, want2.z - look2.z) * mix, room = Math.max(0.15, clear * 0.6);
+          look2.lerp(want2, reach > room ? mix * (room / reach) : mix);
+          for (const st of low.concat(high)) shown.push(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])); }
+        const off = p.clone().sub(look2); const want = Math.hypot(c.distance || 8, c.height || 3);
+        let span = 0; for (const q of shown) span = Math.max(span, look2.distanceTo(q));
+        const len = clamp(Math.min(off.length(), want), Math.max(3, span * (facesMatter ? 2.6 : 2.1)), Math.max(3, want * 1.5)); const flat = Math.hypot(off.x, off.z) || 0.001;
+        const pitch = rimOnly ? Math.PI / 180 * 52 : clamp(need + 0.12, Math.PI / 180 * 50, Math.PI / 180 * (need <= Math.PI / 180 * 62 ? 64 : 80));
+        steep = !rimOnly;
+        p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
     // a beat flying over something must show what it flies over, not empty sky
     { if (look2.y > 12) { let ground = false;
         for (const x of beat.actions) { if (!x.actor) continue; const r3 = this.actors.get(x.actor); const s4 = states.get(x.actor);
@@ -427,7 +448,7 @@ const Stage = {
     const selfs = [rec && rec.g, look2Rec && look2Rec.g].filter(Boolean);
     p = this.unblock(look2, p, selfs.length ? selfs : null);
       p = this.pushOffLens(p, look2, selfs);
-      return { pos: p, look: look2 };
+      return { pos: p, look: look2, steep };
     };
     // frame the actors the sentence names, not only the camera's target: try the shot, then a few wider or turned variants
     const framed = [];
@@ -437,8 +458,31 @@ const Stage = {
       if (framed.some(q => q.id === a2.id)) continue; const r4 = this.actors.get(a2.id), s5 = states.get(a2.id);
       if (!r4 || !s5 || s5.op < 0.3) continue;
       framed.push({ id: a2.id, g: r4.g, w: 0.7, faced: false, speaks: false, h: r4.g.userData.baseHeight * (s5.size / a2.size), p: new THREE.Vector3(s5.pos[0], s5.pos[1], s5.pos[2]) }); }
+    const speakerHere = beat.actions.some(x => (x.say || FACE_STATE.has(x.state)) && FACED.has(((this.actors.get(x.actor) || {}).a || {}).kind));
+    const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state) || ((tg.moving || 0) < 0.3 && x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
+    // the clamps a settled shot still has to pass. They used to run only on the pose finally chosen,
+    // after the search had already scored a different one, so the search kept electing shots the
+    // clamps then broke; every candidate is dressed the same way now and scored as it will be seen.
+    const dress = out => { let p = out.pos, l = out.look;
+      if (facesMatter && c.mode !== 'pov' && !out.steep) { const len0 = p.distanceTo(l);
+        const fl = Math.hypot(p.x - l.x, p.z - l.z); const up = l.y + Math.max(0.6, fl * 0.5);
+        if (p.y > up) { // lower the lens but keep the range the shot was framed at
+          p.y = up; const wantFlat = Math.sqrt(Math.max(0.25, len0 * len0 - (up - l.y) * (up - l.y)));
+          const nowFlat = Math.hypot(p.x - l.x, p.z - l.z) || 0.001; const k = wantFlat / nowFlat;
+          p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; } }
+      if (c.mode !== 'pov' && !out.steep && !(c.mode === 'fixed' && c.pos)) { const reach0 = Math.hypot(c.distance || 8, c.height || 3);
+        // on a wide, the distance the director asked for IS the composition: hold the shot within
+        // 15 % of it, and only let the guard dolly further out when that would lose a named actor
+        const got0 = p.distanceTo(l);
+        if (got0 > reach0 * 1.15) { const tight = l.clone().lerp(p, reach0 * 1.15 / got0);
+          let keeps = true; for (const f of framed) { if (f.w < 1) continue; if (!this.inShot(tight, l, f.p, f.g)) { keeps = false; break; } }
+          if (keeps) p = tight; else if (got0 > reach0 * 1.35) p = l.clone().lerp(p, reach0 * 1.35 / got0); }
+        const wantH = (c.distance || 8) * 1.3, minH = (c.distance || 8) * 0.7, gotH = Math.hypot(p.x - l.x, p.z - l.z);
+        if (gotH > wantH) { const k = wantH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; }
+        else if (gotH > 0.05 && gotH < minH) { const k = minH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; } }
+      return { pos: p, look: l }; };
     let authored = c.mode === 'fixed' && !!c.pos;
-    if (authored && framed.length) { const out0 = settle(pos, look); let seen = 0, fails = false;
+    if (authored && framed.length) { const out0 = dress(settle(pos, look)); let seen = 0, fails = false;
       const mustSee = new Set(beat.actions.filter(x => x.actor && (x.move || x.appear || x.say)).map(x => x.actor));
       for (const f of framed) { const ok = f.w < 1 ? this.inShot(out0.pos, out0.look, f.p, f.g) : this.seenWell(out0.pos, out0.look, f);
         if (ok) seen++;
@@ -454,7 +498,7 @@ const Stage = {
         let rescued = null;
         for (const az of [20, -20, 40, -40, 60, -60, 0]) { for (const mu of [1, 1.15, 0.85, 1.3]) {
           if (az === 0 && mu === 1) continue;
-          const t0 = settle(this.turnShot(pos, look, az, mu), look);
+          const t0 = dress(settle(this.turnShot(pos, look, az, mu), look));
           let ok2 = true;
           for (const f of framed) { const vis = f.w < 1 ? this.inShot(t0.pos, t0.look, f.p, f.g) : this.seenWell(t0.pos, t0.look, f);
             if (!vis && (f.id === c.target || mustSee.has(f.id))) { ok2 = false; break; }
@@ -469,15 +513,13 @@ const Stage = {
         if (rescued) { pos = this.turnShot(pos, look, rescued.az, rescued.mu); this.nearAuthored = false; }
         else authored = false; } }
       else this.nearAuthored = false;
-    const speakerHere = beat.actions.some(x => (x.say || FACE_STATE.has(x.state)) && FACED.has(((this.actors.get(x.actor) || {}).a || {}).kind));
-    const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state) || ((tg.moving || 0) < 0.3 && x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
     if (facesMatter && c.mode !== 'pov' && !(c.mode === 'fixed' && c.pos)) {
       const flat0 = Math.hypot(pos.x - look.x, pos.z - look.z); const maxUp = look.y + Math.max(0.6, flat0 * 0.21);
       if (pos.y > maxUp) pos.y = maxUp;
     }
     let drifted = false;
     if (this.framePick && this.framePick.settled && this.time - (this.framePick.at || 0) > 1.2) {
-      const now = settle(this.turnShot(pos, look, this.framePick.az, this.framePick.mul), look);
+      const now = dress(settle(this.turnShot(pos, look, this.framePick.az, this.framePick.mul), look));
       if (Math.abs(now.pos.distanceTo(look) - this.framePick.settled) > this.framePick.settled * 0.3) drifted = true;
       else for (const f of framed) { if (f.w < 1) continue; if (!this.seenWell(now.pos, now.look, f, false)) { drifted = true; break; } }
     }
@@ -517,7 +559,7 @@ const Stage = {
         const mulList = underground ? [1] : [...(wantsClose ? (crowded ? [0.7] : [0.6, 0.78]) : []), 1, ...(crowded ? [] : [1.2]), 1.45, 1.85].filter(m => m * already <= 1.9);
         let sawHog = false;
         for (const lift of [0, 1.3]) { if (lift && !sawHog) break; for (const mul of (mulList.length ? mulList : [1])) for (const az of azList) {
-          const cand = this.turnShot(pos, look, az, mul); if (lift) cand.y += lift; const out = settle(cand, look);
+          const cand = this.turnShot(pos, look, az, mul); if (lift) cand.y += lift; const out = dress(settle(cand, look));
           let n = 0, tgtSeen = false, tooSmall = false, small = '', tinyTalk = 0, hog = 0, tiny = 0, wallAcross = false;
           let scenery = 0;
           for (const f of framed) f.seen = f.w < 1 ? this.inShot(out.pos, out.look, f.p, f.g) : this.seenWell(out.pos, out.look, f, f.id === c.target || (facesMatter && f.faced));
@@ -569,27 +611,24 @@ const Stage = {
       if (drifted && this.framePick && this.framePick.beat === this.lastBeat) {
         const keep = this.frameScanScoreOf(tiers, this.framePick);
         if (keep !== null && best.score - keep < 0.5) { best = { az: this.framePick.az, mul: this.framePick.mul, lift: this.framePick.lift, score: keep, has: true }; } }
-      if (!anyOk && framed.length) { best = { az: 0, mul: 1, score: -1 }; for (const az of azList) { const cand = this.turnShot(pos, look, az, 1); const out = settle(cand, look); let n = 0; for (const f of framed) if (this.inShot(out.pos, out.look, f.p, f.g)) n += f.w; if (n > best.score) best = { az, mul: 1, lift: 0, score: n }; } }
+      if (!anyOk && framed.length) { best = { az: 0, mul: 1, score: -1 }; for (const az of azList) { const cand = this.turnShot(pos, look, az, 1); const out = dress(settle(cand, look)); let n = 0; for (const f of framed) if (this.inShot(out.pos, out.look, f.p, f.g)) n += f.w; if (n > best.score) best = { az, mul: 1, lift: 0, score: n }; } }
+      // an open door leaf or a wall right beside the pair hides one of them from every bearing the
+      // sweep tried: before settling for that, look from behind it
+      const poseOf = (az, mul, lift) => { const cand = this.turnShot(pos, look, az, mul); if (lift) cand.y += lift; return dress(settle(cand, look)); };
+      { const must = framed.filter(f => f.w >= 1);
+        const lost = o => { let n = 0; for (const f of must) if (!this.seenWell(o.pos, o.look, f)) n++; return n; };
+        let miss = must.length ? lost(poseOf(best.az, best.mul, best.lift)) : 0;
+        if (miss) for (const az of [115, -115, 150, -150, 180]) { const n3 = lost(poseOf(az, best.mul, best.lift));
+          if (n3 < miss) { miss = n3; best = { ...best, az }; if (!n3) break; } } }
       this.framePick = { beat: this.lastBeat, az: best.az, mul: best.mul, lift: best.lift || 0, at: this.time };
-      { const o2 = settle(this.turnShot(pos, look, best.az, best.mul), look); this.framePick.settled = o2.pos.distanceTo(look); }
+      { const o2 = poseOf(best.az, best.mul, best.lift); this.framePick.settled = o2.pos.distanceTo(o2.look); }
     } else if (authored) { this.framePick = { beat: this.lastBeat, az: 0, mul: 1, lift: 0 };
     }
     { const sm = this.framePick; if (sm.smAz === undefined || snap) { sm.smAz = sm.az; sm.smMul = sm.mul; sm.smLift = sm.lift || 0; }
       else { const kf = 1 - Math.exp(-dt * 2.2); sm.smAz += (((sm.az - sm.smAz + 540) % 360) - 180) * kf; sm.smMul += (sm.mul - sm.smMul) * kf; sm.smLift += ((sm.lift || 0) - sm.smLift) * kf; } }
     if (this.framePick.smAz || this.framePick.smMul !== 1) pos = this.turnShot(pos, look, this.framePick.smAz, this.framePick.smMul);
     if (this.framePick.smLift) pos = pos.clone().setY(pos.y + this.framePick.smLift);
-    { const out = settle(pos, look); pos = out.pos; look = out.look;
-      if (facesMatter && c.mode !== 'pov') { const len0 = pos.distanceTo(look);
-        const fl = Math.hypot(pos.x - look.x, pos.z - look.z); const up = look.y + Math.max(0.6, fl * 0.5);
-        if (pos.y > up) { // lower the lens but keep the range the shot was framed at
-          pos.y = up; const wantFlat = Math.sqrt(Math.max(0.25, len0 * len0 - (up - look.y) * (up - look.y)));
-          const nowFlat = Math.hypot(pos.x - look.x, pos.z - look.z) || 0.001; const k = wantFlat / nowFlat;
-          pos.x = look.x + (pos.x - look.x) * k; pos.z = look.z + (pos.z - look.z) * k; } }
-      if (c.mode !== 'pov' && !(c.mode === 'fixed' && c.pos)) { const want0 = Math.hypot(c.distance || 8, c.height || 3) * 1.35;
-        const got0 = pos.distanceTo(look); if (got0 > want0) pos = look.clone().lerp(pos, want0 / got0);
-        const wantH = (c.distance || 8) * 1.3, minH = (c.distance || 8) * 0.7, gotH = Math.hypot(pos.x - look.x, pos.z - look.z);
-        if (gotH > wantH) { const k = wantH / gotH; pos.x = look.x + (pos.x - look.x) * k; pos.z = look.z + (pos.z - look.z) * k; }
-        else if (gotH > 0.05 && gotH < minH) { const k = minH / gotH; pos.x = look.x + (pos.x - look.x) * k; pos.z = look.z + (pos.z - look.z) * k; } } }
+    { const out = dress(settle(pos, look)); pos = out.pos; look = out.look; }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const rm2 = this.roomAround(look); if (rm2 && pos.y > rm2.box.max.y - 0.3) pos.y = rm2.box.max.y - 0.3; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
@@ -637,7 +676,7 @@ const Stage = {
   },
   seenWell(pos, look, f, strictLow) {
     const h = Math.max(0.6, f.h || 1.8); const q = this._sw || (this._sw = new THREE.Vector3());
-    q.copy(f.p); q.y = f.p.y + h * 0.05; if (!this.inShot(pos, look, q, f.g)) return false;
+    if (!this.inShot(pos, look, f.p, f.g)) return false;
     let ok = 0; for (const k of [0.35, -0.2]) { q.copy(f.p); q.y = f.p.y + h * k; if (this.inShot(pos, look, q, f.g)) ok++; }
     return strictLow ? ok === 2 : ok > 0;
   },
