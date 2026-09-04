@@ -118,7 +118,7 @@ B.city = a => { const g = new THREE.Group(); const n = a.detail.count || 24, R =
   const im = new THREE.InstancedMesh(G.box(1, 1, 1), m, n); const M = new THREE.Matrix4(); for (let i = 0; i < n; i++) { const ang = rnd() * 6.28, d = 12 + Math.sqrt(rnd()) * R; const w = 6 + rnd() * 10, h = 8 + rnd() * rnd() * 60; M.makeScale(w, h, 6 + rnd() * 10); M.setPosition(Math.cos(ang) * d, h / 2, Math.sin(ang) * d); im.setMatrixAt(i, M); } im.castShadow = true; g.add(im); g.userData.height = 30; g.userData.big = true; g.userData.noScale = true; return g; };
 B.room = a => { const g = new THREE.Group(); const w = a.detail.width || 8, d = a.detail.depth || 8, h = a.detail.height || 3; const wm = mat(a.color, { side: THREE.BackSide }); const inner = mesh(G.box(w, h, d), wm, 0, h / 2, 0); inner.castShadow = false; g.add(inner);
   const floor = mesh(G.plane(w, d), mat(a.detail.second || shade(a.color, 0.6)), 0, 0.02, 0); floor.rotation.x = -Math.PI / 2; g.add(floor);
-  const ceil = mesh(G.plane(w, d), mat(shade(a.color, 1.05), { rough: 1 }), 0, h - 0.02, 0); ceil.rotation.x = Math.PI / 2; ceil.castShadow = false; g.add(ceil);
+  const ceil = mesh(G.plane(w, d), mat(shade(a.color, 1.05), { rough: 1 }), 0, h - 0.02, 0); ceil.rotation.x = Math.PI / 2; ceil.castShadow = false; g.add(ceil); g.userData.ceiling = ceil;
   g.add(mesh(G.box(1, 2.1, 0.08), mat(shade(a.color, 0.4)), 0, 1.05, d / 2 - 0.05));
   const win = mesh(G.box(1.4, 1.1, 0.06), mat('#bcd8ff', { emissive: '#8fb0ff', ei: 0.5 }), -w / 2 + 0.04, 1.7, 0); win.rotation.y = Math.PI / 2; g.add(win);
   const lamp = new THREE.PointLight('#ffe0b0', 20, w + d, 1.6); lamp.position.set(0, h - 0.3, 0); g.add(lamp); g.add(mesh(G.sph(0.15, 8), mat('#fff4d0', { emissive: '#fff0c0', ei: 1.5 }), 0, h - 0.3, 0));
