@@ -38,7 +38,11 @@ for (const id of ids) {
   await page.route('**/*', r => { const u = r.request().url(); if (u.includes('cdnjs.cloudflare.com') && u.endsWith('three.min.js')) return r.fulfill({ path: path.join(HERE, 'vendor', 'three.min.js'), contentType: 'application/javascript' }); if (u.includes('fonts.g')) return r.abort(); return r.continue(); });
   await page.goto(`http://127.0.0.1:${PORT}/`); await page.waitForFunction(() => window.__somnium && window.__somnium.Stage.ready, null, { timeout: 20000 });
   const load = async s => page.evaluate(x => { const S = window.__somnium; const d = { id: 'rr', title: x.title, text: '', scene: S.normalizeScene(x, ''), chat: [], src: null, at: Date.now() }; S.App.cur = d; S.App.open(d); S.Stage.playing = false; }, s);
+  // write down the scene that was actually performed, not the one the old build normalised: a
+  // critic reading scene.json beside these screenshots has to be reading the same scene
+  let usedScene = null;
   await load(scene);
+  usedScene = await page.evaluate(() => window.__somnium.App.exportScene(window.__somnium.App.cur.scene));
   const beats = scene.beats; const shots = []; let t = 0;
   for (let i = 0; i < beats.length; i++) {
     const mid = t + beats[i].dur * 0.5;
@@ -68,6 +72,8 @@ for (const id of ids) {
     edit = before.edit ? { ...before.edit } : null;
   }
   const rec = { id, ok: true, title: scene.title, genSec: before.genSec, beats: beats.length, total: +beats.reduce((s, b) => s + b.dur, 0).toFixed(0), actors: scene.actors.length, fps, errors: [...new Set(errors)].slice(0, 20), shots, edit, rerenderedFrom: IN };
+  if (usedScene) { copyFileSync(path.join(dir, 'scene.json'), path.join(dir, 'scene-as-given.json'));
+    writeFileSync(path.join(dir, 'scene.json'), JSON.stringify(usedScene, null, 1)); }
   writeFileSync(path.join(dir, 'report.json'), JSON.stringify(rec, null, 1)); summary.push(rec);
   log('rendered', id, `${beats.length} beats, ${fps} fps, ${errors.length} console lines`);
   await ctx.close();

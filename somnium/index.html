@@ -355,20 +355,6 @@ function normalizeScene(raw, dreamText) {
       const dx = a.pos[0] - w.pos[0], dz = a.pos[2] - w.pos[2];
       const fwd = dx * sn + dz * cs; if (fwd <= 1.5) continue;
       shove(a, -sn * (fwd + 1.5), -cs * (fwd + 1.5)); } }
-  // a person written just outside the room the scene is happening in stands behind its wall and is
-  // in no shot of it: pull anyone within reach of a room back inside, off the walls
-  for (const rm of actors) { if (rm.kind !== 'room' && rm.kind !== 'corridor') continue;
-    const hw = (rm.detail.width || 8) * rm.size / 2, hd = (rm.detail.depth || (rm.kind === 'corridor' ? 30 : 8)) * rm.size / 2;
-    let inside = 0; for (const a of actors) { if (a.kind !== 'person' && a.kind !== 'crowd') continue;
-      if (Math.abs(a.pos[0] - rm.pos[0]) < hw && Math.abs(a.pos[2] - rm.pos[2]) < hd) inside++; }
-    if (!inside) continue;
-    for (const a of actors) { if (a.kind !== 'person' && a.kind !== 'crowd') continue;
-      const dx = a.pos[0] - rm.pos[0], dz = a.pos[2] - rm.pos[2];
-      const ox = Math.abs(dx) - hw, oz = Math.abs(dz) - hd; if (ox < 0 && oz < 0) continue;
-      if (ox > 4 || oz > 4) continue; // properly elsewhere, not a wall's width out
-      const pad = 0.7;
-      if (ox >= 0) shove(a, rm.pos[0] + Math.sign(dx || 1) * Math.max(0, hw - pad) - a.pos[0], 0);
-      if (oz >= 0) shove(a, 0, rm.pos[2] + Math.sign(dz || 1) * Math.max(0, hd - pad) - a.pos[2]); } }
   // someone at the bottom of a pit has to be inside its mouth: outside it they are in solid ground
   for (const p of actors) { if (p.kind !== 'pit') continue; const R = (p.detail.radius || 1.5) * p.size;
     for (const a of actors) { if (a === p || a.pos[1] > -0.5) continue;
@@ -486,6 +472,43 @@ function normalizeScene(raw, dreamText) {
     if (low) { const CAP = 22;
       for (const a of actors) if (a.pos[1] > CAP) a.pos[1] = CAP;
       for (const b of beats) for (const x of b.actions) if (x.move && x.move[1] > CAP) x.move[1] = CAP; } }
+  // a person written just outside the room the scene is happening in stands behind its wall and is
+  // in no shot of it. The room is in use if anyone stands in it OR walks into it during the dream,
+  // and whoever is pulled inside takes the moves that end out there with them.
+  for (const rm of actors) { if (rm.kind !== 'room' && rm.kind !== 'corridor') continue;
+    const hw = (rm.detail.width || 8) * rm.size / 2, hd = (rm.detail.depth || (rm.kind === 'corridor' ? 30 : 8)) * rm.size / 2;
+    const inRoom = q => Math.abs(q[0] - rm.pos[0]) < hw && Math.abs(q[2] - rm.pos[2]) < hd;
+    let used = false;
+    for (const a of actors) { if (a.kind !== 'person' && a.kind !== 'crowd') continue;
+      if (inRoom(a.pos)) { used = true; break; } }
+    if (!used) for (const b of beats) { for (const x of b.actions) { if (!x.actor || !x.move) continue;
+      const a = actors.find(q => q.id === x.actor); if (!a || (a.kind !== 'person' && a.kind !== 'crowd')) continue;
+      if (inRoom(x.move)) { used = true; break; } } if (used) break; }
+    if (!used) continue;
+    const pull = q => { const dx = q[0] - rm.pos[0], dz = q[2] - rm.pos[2];
+      const ox = Math.abs(dx) - hw, oz = Math.abs(dz) - hd;
+      if (ox < 0 && oz < 0) return null; if (ox > 4 || oz > 4) return null; const pad = 0.7;
+      return [ox >= 0 ? rm.pos[0] + Math.sign(dx || 1) * Math.max(0, hw - pad) : q[0], q[1],
+              oz >= 0 ? rm.pos[2] + Math.sign(dz || 1) * Math.max(0, hd - pad) : q[2]]; };
+    for (const a of actors) { if (a.kind !== 'person' && a.kind !== 'crowd') continue; const q = pull(a.pos); if (q) a.pos = q; }
+    for (const b of beats) for (const x of b.actions) { if (!x.actor || !x.move) continue;
+      const a = actors.find(q => q.id === x.actor); if (!a || (a.kind !== 'person' && a.kind !== 'crowd')) continue;
+      const q = pull(x.move); if (q) x.move = q; } }
+  // a rider goes where the machine goes. The vocabulary asks for the same move on both, and when
+  // the script gives the helicopter one destination and the two men in it another forty metres
+  // away, the beat plays with the cabin empty and its passengers hanging in the air beside it.
+  // Someone off the ground in a seated state is in the vehicle, whatever coordinates were written;
+  // someone seated at ground level is on a chair and is left alone.
+  for (const b of beats) {
+    const vs = []; for (const x of b.actions) { if (!x.actor || !x.move) continue; const v = actors.find(q => q.id === x.actor); if (v && VEHICLE.has(v.kind)) vs.push(x.move); }
+    if (vs.length !== 1) continue; const to = vs[0];
+    const riders = b.actions.filter(x => { if (!x.actor || !x.move) return false; const a = actors.find(q => q.id === x.actor);
+      if (!a || (a.kind !== 'person' && a.kind !== 'animal')) return false;
+      if (!b.actions.some(q => q.actor === x.actor && (q.state === 'sit' || q.state === 'lie'))) return false;
+      return x.move[1] >= 0.8 || to[1] >= 3; });
+    riders.forEach((x, k) => { const dx = (k - (riders.length - 1) / 2) * 0.8;
+      x.move = [Math.round((to[0] + dx) * 1000) / 1000, Math.round((to[1] + 0.2) * 1000) / 1000, Math.round(to[2] * 1000) / 1000]; });
+  }
   return { title: typeof s.title === 'string' && s.title.trim() ? s.title.trim().slice(0, 80) : 'Untitled dream', mood: typeof s.mood === 'string' ? s.mood.slice(0, 200) : '', world, actors, beats, total: t };
 }
 function normWorld(w, base) {
@@ -987,6 +1010,10 @@ const Stage = {
             A.a.pos[0] -= dx * push; A.a.pos[2] -= dz * push; B.a.pos[0] += dx * push; B.a.pos[2] += dz * push; moved = true; }
           for (const A of solo) { if (A.a.pos[1] < -0.5) continue;
             for (const bx of boxes) { if (bx.max.y < 0.25) continue;
+              // somebody lying on a bed is not standing inside the scenery. This pass was shoving
+              // every hospital patient off their own mattress and several metres across the ward,
+              // which is where "the woman is nowhere near her bed" came from.
+              if (A.a.pos[1] > 0.35 || A.a.pos[1] >= bx.max.y - 0.25) continue;
               const wx = A.a.pos[0], wz = A.a.pos[2];
               if (wx < bx.min.x - 0.25 || wx > bx.max.x + 0.25 || wz < bx.min.z - 0.25 || wz > bx.max.z + 0.25) continue;
               const cx = (bx.min.x + bx.max.x) / 2, cz = (bx.min.z + bx.max.z) / 2;
@@ -1389,9 +1416,13 @@ const Stage = {
         // on a wide, the distance the director asked for IS the composition: hold the shot within
         // 15 % of it, and only let the guard dolly further out when that would lose a named actor
         const got0 = p.distanceTo(l);
-        if (got0 > reach0 * 1.15) { const tight = l.clone().lerp(p, reach0 * 1.15 / got0);
-          let keeps = true; for (const f of framed) { if (f.w < 1) continue; if (!this.inShot(tight, l, f.p, f.g)) { keeps = false; break; } }
-          if (keeps) p = tight; else if (got0 > reach0 * 1.35) p = l.clone().lerp(p, reach0 * 1.35 / got0); }
+        if (got0 > reach0 * 1.15) {
+          const holds = q => { for (const f of framed) { if (f.w < 1) continue; if (!this.inShot(q, l, f.p, f.g)) return false; } return true; };
+          const tight = l.clone().lerp(p, reach0 * 1.15 / got0);
+          // and when the beat simply will not fit inside the director's range, the range gives way:
+          // a bedside of three at 4 m does not become two visitors cropped off the bottom edge
+          if (holds(tight)) p = tight;
+          else if (got0 > reach0 * 1.35) { const wide = l.clone().lerp(p, reach0 * 1.35 / got0); if (holds(wide)) p = wide; } }
         const wantH = (c.distance || 8) * 1.3, minH = (c.distance || 8) * 0.7, gotH = Math.hypot(p.x - l.x, p.z - l.z);
         if (gotH > wantH) { const k = wantH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; }
         else if (gotH > 0.05 && gotH < minH) { const k = minH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; } }
@@ -1491,6 +1522,11 @@ const Stage = {
             if (f.w >= 1) { const d0 = f.p.distanceTo(out.pos); const apparent = (f.h || 1.8) / Math.max(1, d0); if (f.speaks && apparent < 0.15) tinyTalk += 0.15 - apparent; if (f.faced && (f.h || 0) > 1 && apparent < 0.06) { tiny += 0.06 - apparent; if (this.debugFrames) small = f.id + ' small ' + apparent.toFixed(3) + ' @' + d0.toFixed(1); } if (d0 < 1.9) { tooSmall = true; if (this.debugFrames) small = f.id + ' near ' + d0.toFixed(1); } } }
           const lostTarget = !tgtSeen && framed.some(f => f.id === c.target && f.w >= 1);
           let lostNamed = 0; for (const f of framed) if (f.w >= 1 && !f.seen) lostNamed++;
+          // somebody the sentence names, standing at the lens and cut off by the frame edge, is a
+          // head across the bottom of the shot: no score is worth that
+          let cropped = false; for (const f of framed) { if (f.w < 1 || f.seen) continue;
+            if (f.p.distanceTo(out.pos) < Math.max(3.2, out.pos.distanceTo(out.look) * 0.55)) { cropped = true; break; } }
+          if (cropped) { if (this.debugFrames) this.frameScan.push({ az, mul, lift, rejected: 'cropAtLens' }); continue; }
           for (const b of bodies) {
             const bc = b.box.getCenter(this._bc2 || (this._bc2 = new THREE.Vector3()));
             const fwd0 = out.look.clone().sub(out.pos); if (bc.sub(out.pos).dot(fwd0) <= 0) continue;

@@ -94,6 +94,10 @@ const Stage = {
             A.a.pos[0] -= dx * push; A.a.pos[2] -= dz * push; B.a.pos[0] += dx * push; B.a.pos[2] += dz * push; moved = true; }
           for (const A of solo) { if (A.a.pos[1] < -0.5) continue;
             for (const bx of boxes) { if (bx.max.y < 0.25) continue;
+              // somebody lying on a bed is not standing inside the scenery. This pass was shoving
+              // every hospital patient off their own mattress and several metres across the ward,
+              // which is where "the woman is nowhere near her bed" came from.
+              if (A.a.pos[1] > 0.35 || A.a.pos[1] >= bx.max.y - 0.25) continue;
               const wx = A.a.pos[0], wz = A.a.pos[2];
               if (wx < bx.min.x - 0.25 || wx > bx.max.x + 0.25 || wz < bx.min.z - 0.25 || wz > bx.max.z + 0.25) continue;
               const cx = (bx.min.x + bx.max.x) / 2, cz = (bx.min.z + bx.max.z) / 2;
@@ -496,9 +500,13 @@ const Stage = {
         // on a wide, the distance the director asked for IS the composition: hold the shot within
         // 15 % of it, and only let the guard dolly further out when that would lose a named actor
         const got0 = p.distanceTo(l);
-        if (got0 > reach0 * 1.15) { const tight = l.clone().lerp(p, reach0 * 1.15 / got0);
-          let keeps = true; for (const f of framed) { if (f.w < 1) continue; if (!this.inShot(tight, l, f.p, f.g)) { keeps = false; break; } }
-          if (keeps) p = tight; else if (got0 > reach0 * 1.35) p = l.clone().lerp(p, reach0 * 1.35 / got0); }
+        if (got0 > reach0 * 1.15) {
+          const holds = q => { for (const f of framed) { if (f.w < 1) continue; if (!this.inShot(q, l, f.p, f.g)) return false; } return true; };
+          const tight = l.clone().lerp(p, reach0 * 1.15 / got0);
+          // and when the beat simply will not fit inside the director's range, the range gives way:
+          // a bedside of three at 4 m does not become two visitors cropped off the bottom edge
+          if (holds(tight)) p = tight;
+          else if (got0 > reach0 * 1.35) { const wide = l.clone().lerp(p, reach0 * 1.35 / got0); if (holds(wide)) p = wide; } }
         const wantH = (c.distance || 8) * 1.3, minH = (c.distance || 8) * 0.7, gotH = Math.hypot(p.x - l.x, p.z - l.z);
         if (gotH > wantH) { const k = wantH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; }
         else if (gotH > 0.05 && gotH < minH) { const k = minH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; } }
@@ -598,6 +606,11 @@ const Stage = {
             if (f.w >= 1) { const d0 = f.p.distanceTo(out.pos); const apparent = (f.h || 1.8) / Math.max(1, d0); if (f.speaks && apparent < 0.15) tinyTalk += 0.15 - apparent; if (f.faced && (f.h || 0) > 1 && apparent < 0.06) { tiny += 0.06 - apparent; if (this.debugFrames) small = f.id + ' small ' + apparent.toFixed(3) + ' @' + d0.toFixed(1); } if (d0 < 1.9) { tooSmall = true; if (this.debugFrames) small = f.id + ' near ' + d0.toFixed(1); } } }
           const lostTarget = !tgtSeen && framed.some(f => f.id === c.target && f.w >= 1);
           let lostNamed = 0; for (const f of framed) if (f.w >= 1 && !f.seen) lostNamed++;
+          // somebody the sentence names, standing at the lens and cut off by the frame edge, is a
+          // head across the bottom of the shot: no score is worth that
+          let cropped = false; for (const f of framed) { if (f.w < 1 || f.seen) continue;
+            if (f.p.distanceTo(out.pos) < Math.max(3.2, out.pos.distanceTo(out.look) * 0.55)) { cropped = true; break; } }
+          if (cropped) { if (this.debugFrames) this.frameScan.push({ az, mul, lift, rejected: 'cropAtLens' }); continue; }
           for (const b of bodies) {
             const bc = b.box.getCenter(this._bc2 || (this._bc2 = new THREE.Vector3()));
             const fwd0 = out.look.clone().sub(out.pos); if (bc.sub(out.pos).dot(fwd0) <= 0) continue;
