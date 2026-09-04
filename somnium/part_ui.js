@@ -39,7 +39,12 @@ const App = {
   async direct(request) {
     const d = this.cur; if (!d || this.busy) return null; request = request.trim(); if (!request) return null; this.busy = true;
     d.chat.push({ role: 'user', text: request }); this.renderChat(); this.setBusy('Revising the staging…', 'Claude is rewriting the stage script with your request. The stage will change when it answers.');
-    try { const out = await this.ask(this.editPrompt(d, request)); const sceneRaw = out && out.scene ? out.scene : (out && out.beats ? out : null); if (!sceneRaw) throw { code: 'bad_reply', message: 'no scene in the reply' }; this.undo.push(d.scene); const t = Stage.time; d.scene = normalizeScene(sceneRaw, d.text); d.title = d.scene.title; const reply = typeof out.reply === 'string' && out.reply.trim() ? out.reply.trim() : 'Changed.'; d.chat.push({ role: 'director', text: reply }); Stage.load(d.scene); Stage.setTime(Math.min(t, d.scene.total)); Stage.playing = true; $('#stageTitle').textContent = d.title; this.renderScript(); this.renderChat(); this.renderLib(); this.save(); return d; }
+    try { let out = null, sceneRaw = null;
+      for (let attempt = 0; attempt < 2 && !sceneRaw; attempt++) {
+        const extra = attempt ? '\n\nYour last answer could not be read. Answer with ONE JSON object and nothing else: no prose before or after it, no code fence.' : '';
+        try { out = await this.ask(this.editPrompt(d, request) + extra); } catch (err) { if (attempt || (err && (err.code === 'not_granted' || err.code === 'rate_limited' || err.code === 'cancelled'))) throw err; continue; }
+        sceneRaw = out && out.scene ? out.scene : (out && out.beats ? out : null); }
+      if (!sceneRaw) throw { code: 'bad_reply', message: 'no scene in the reply' }; this.undo.push(d.scene); const t = Stage.time; d.scene = normalizeScene(sceneRaw, d.text); d.title = d.scene.title; const reply = typeof out.reply === 'string' && out.reply.trim() ? out.reply.trim() : 'Changed.'; d.chat.push({ role: 'director', text: reply }); Stage.load(d.scene); Stage.setTime(Math.min(t, d.scene.total)); Stage.playing = true; $('#stageTitle').textContent = d.title; this.renderScript(); this.renderChat(); this.renderLib(); this.save(); return d; }
     catch (e) { console.warn(e); d.chat.push({ role: 'system', text: this.errText(e) }); this.renderChat(); return null; }
     finally { this.busy = false; this.setBusy(null); }
   },

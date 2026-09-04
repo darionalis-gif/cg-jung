@@ -243,7 +243,7 @@ B.gun = a => { const g = new THREE.Group(); const m = mat(a.color, { metal: 0.7,
   g.add(mesh(G.box(0.05, 0.11, 0.1), m, 0, 1.17, -0.06));
   const sight = mesh(G.box(0.012, 0.05, 0.02), m, 0, 1.28, 0.7); g.add(sight);
   const guard = mesh(new THREE.TorusGeometry(0.035, 0.008, 6, 10), m, 0, 1.13, -0.02); guard.rotation.y = Math.PI / 2; g.add(guard);
-  g.userData.height = 1.32; g.userData.airborne = true; return g; };
+  g.userData.height = 1.32; g.userData.airborne = true; g.userData.carryTilt = [-0.95, 0.35]; return g; };
 B.knife = a => { const g = new THREE.Group(); g.add(mesh(G.box(0.03, 0.5, 0.005), mat(a.color, { metal: 0.9, rough: 0.2 }), 0, 1.35, 0), mesh(G.box(0.04, 0.2, 0.03), mat('#3a2a1a'), 0, 1.0, 0)); g.userData.height = 1.6; g.userData.airborne = true; return g; };
 B.box = a => { const g = new THREE.Group(); const w = a.detail.width || 1, h = a.detail.height || 1, d = a.detail.depth || 1; g.add(mesh(G.box(w, h, d), mat(a.color, { emissive: a.glow ? a.color : '#000', ei: 0.6 }), 0, h / 2, 0)); g.userData.height = h; return g; };
 B.sphere = a => { const g = new THREE.Group(); g.add(mesh(G.sph(0.6, 16), mat(a.color, { emissive: a.glow ? a.color : '#000', ei: 0.6 }), 0, 0.6, 0)); g.userData.height = 1.2; return g; };
@@ -272,7 +272,7 @@ function buildActor(a) {
     o.userData.solid = true; });
   // Material.clone() drops onBeforeCompile and customProgramCacheKey, which would silently
   // strip the water shader off any ground cover that gets stencilled for a pit
-  if (GROUNDCOVER.has(a.kind)) g.traverse(o => { if (o.isMesh) { const src = o.material; o.material = src.clone(); o.material.onBeforeCompile = src.onBeforeCompile; o.material.customProgramCacheKey = src.customProgramCacheKey; o.material.stencilWrite = true; o.material.stencilFunc = THREE.NotEqualStencilFunc; o.material.stencilRef = 1; } });
+  if (GROUNDCOVER.has(a.kind)) g.traverse(o => { if (o.isMesh) { o.userData.cut = true; const src = o.material; o.material = src.clone(); o.material.onBeforeCompile = src.onBeforeCompile; o.material.customProgramCacheKey = src.customProgramCacheKey; o.material.stencilWrite = true; o.material.stencilFunc = THREE.NotEqualStencilFunc; o.material.stencilRef = 1; } });
   const PROP = new Set(['food', 'book', 'phone', 'key', 'ring', 'gun', 'knife', 'box', 'bag', 'tooth', 'clock', 'sphere', 'thing', 'orb', 'balloon', 'umbrella', 'computer', 'tv', 'candle', 'mirror', 'flower']);
   if (PROP.has(a.kind)) { g.updateMatrixWorld(true); const bx = new THREE.Box3().setFromObject(g); if (Number.isFinite(bx.min.y) && bx.min.y > 0.05) g.userData.propBase = bx.min.y; }
   if (!g.userData.noScale) g.scale.setScalar(a.size); else g.scale.setScalar(1);
