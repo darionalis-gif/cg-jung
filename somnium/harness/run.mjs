@@ -64,16 +64,25 @@ for (const id of IDS) {
   await page.evaluate(() => { window.__somnium.Stage.playing = false; });
   let t = 0; const motion = [];
   for (let i = 0; i < beats.length; i++) {
-    const mid = t + beats[i].dur * 0.5;
-    await page.evaluate(m => { window.__somnium.Stage.setTime(m); window.__somnium.Stage.playing = false; }, mid); await page.waitForTimeout(250);
-    const settle = () => page.evaluate(async () => { const S = window.__somnium.Stage; let last = null;
-      for (let k = 0; k < 150; k++) { await new Promise(r => requestAnimationFrame(r));
-        const now = S.camera.position.clone().add(S.cam.look);
-        if (last && now.distanceTo(last) < 0.002) return k; last = now; } return -1; });
-    // let the camera come to rest BEFORE the first sample too: motion used to be measured from a
-    // frame taken while the shot was still being solved, so in the beats that solve slowly it was
-    // reporting camera travel rather than anything the actors did
-    const settled = await settle();
+    // a throw that is over by a quarter of the way through has recovered to a neutral stand by
+    // the middle of the beat: take the picture when the beat's own actions are happening
+    const mid = (() => { const acts = (beats[i].actions || []).filter(x => x.actor && (x.move || x.state || x.say));
+      if (!acts.length) return t + beats[i].dur * 0.5;
+      const f = acts.reduce((s2, x) => s2 + ((x.at || 0) + (x.for === undefined ? 1 : x.for) / 2), 0) / acts.length;
+      return t + beats[i].dur * Math.min(0.68, Math.max(0.32, f)); })();
+    // A viewer arrives at this second by playing into it from the cut, so that is how the picture
+    // is taken: seek to the beat's own boundary, let it cut, and play forward to the sample point.
+    // Settling at frozen time gave the shot up to ninety-six frames of easing nobody else gets,
+    // and the report described a converged pose the beat mostly never reached.
+    await page.evaluate(t0 => { const S = window.__somnium.Stage; S.setTime(t0); S.playing = false; }, t);
+    await page.waitForTimeout(120);
+    await page.evaluate(async m => { const S = window.__somnium.Stage; S.playing = true;
+      for (let k = 0; k < 4000; k++) { if (S.time >= m) break; await new Promise(r => requestAnimationFrame(r)); }
+      S.playing = false; }, mid);
+    const step = () => page.evaluate(async () => { const S = window.__somnium.Stage;
+      const a0 = S.camera.position.clone(); await new Promise(r => requestAnimationFrame(r));
+      return +S.camera.position.distanceTo(a0).toFixed(3); });
+    const settled = await step();
     const p1 = await page.evaluate(() => window.__somnium.pixels());
     await page.evaluate(() => { window.__somnium.Stage.playing = true; }); await page.waitForTimeout(700);
     const p2 = await page.evaluate(() => window.__somnium.pixels()); await page.evaluate(() => { window.__somnium.Stage.playing = false; });
@@ -81,9 +90,7 @@ for (const id of IDS) {
     // and NOT a second settle: with time frozen the lens goes on easing toward a pose the viewer
     // only reaches if the beat continues, so the still stopped being the frame anybody sees. What
     // is recorded instead is how far the lens still had to travel at the moment playback stopped.
-    const settled2 = await page.evaluate(async () => { const S = window.__somnium.Stage;
-      const a0 = S.camera.position.clone(); await new Promise(r => requestAnimationFrame(r));
-      return +S.camera.position.distanceTo(a0).toFixed(3); });
+    const settled2 = await step();
     const m = await page.evaluate(() => window.__somnium.Stage.metrics());
     const file = `beat-${String(i + 1).padStart(2, '0')}.png`; await page.screenshot({ path: path.join(dir, file) });
     shots.push({ beat: i + 1, file, start: +t.toFixed(1), dur: beats[i].dur, text: beats[i].text, motion: +diff.toFixed(2), settleFrames: [settled, settled2], metrics: m });

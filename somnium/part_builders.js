@@ -85,11 +85,11 @@ function humanoid(a, o = {}) {
   const chest = mesh(G.cap(0.17 * S, 0.3, 12), shirt, 0, 0.2, 0); chest.scale.set(1.05, 1, 0.72); torso.add(chest);
   if (!o.simple) { const neck = mesh(G.cyl(0.05, 0.06, 0.1, 8), skinM, 0, 0.43, 0); torso.add(neck); }
   const headG = new THREE.Group(); headG.position.set(0, 0.46, 0); torso.add(headG);
-  let head, hairM;
-  if (o.simple) { const hm = mergeParts([partOf(G.sph(0.125, 8), skin, 0, 0.12, 0), partOf(G.sph(0.15, 8), hair, 0, 0.175, -0.025, 1, 0.72, 1)], { transparent: a.ghost, opacity: a.ghost ? 0.45 : 1 });
-    headG.add(hm); head = hm; hairM = hm; }
-  else { head = mesh(G.sph(0.125, 16), skinM, 0, 0.12, 0); headG.add(head);
-    hairM = mesh(G.sph(0.15, 16), mat(hair, opts), 0, 0.175, -0.025); hairM.scale.set(1, 0.72, 1); headG.add(hairM); }
+  // merging the head and the hair saved one draw call and cost every crowd figure its head: the
+  // rig hands the same mesh to the poser as both skull and hair, so the hair's own squash and
+  // offset were applied to the whole thing and it floated a hand's width above the shoulders
+  const head = mesh(G.sph(0.125, o.simple ? 8 : 16), skinM, 0, 0.12, 0); headG.add(head);
+  const hairM = mesh(G.sph(0.15, o.simple ? 8 : 16), mat(hair, opts), 0, 0.175, -0.025); hairM.scale.set(1, 0.72, 1); headG.add(hairM);
   const face = [];
   if (!o.simple) { for (const sx of [-1, 1]) { const e = mesh(G.sph(0.016, 8), mat(o.eye || '#1a1a1a'), sx * 0.051, 0.137, 0.127); headG.add(e); face.push(e); }
     const mo = mesh(G.sph(0.021, 8), mat(shade(skin, 0.72)), 0, 0.097, 0.138); headG.add(mo); face.push(mo); }
@@ -333,10 +333,12 @@ B.water = a => { const g = new THREE.Group(); const R = a.detail.radius || 15;
   const p = mesh(new THREE.RingGeometry(0.001, R, 64, Math.min(64, Math.max(10, Math.round(R / 0.8)))), waterMaterial(a.color), 0, 0.09 / Math.max(0.12, Math.min(1, a.size)), 0); p.rotation.x = -Math.PI / 2; p.castShadow = false; g.add(p); g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; return g; };
 B.river = a => { const g = new THREE.Group(); const w = a.detail.width || 8, d = a.detail.depth || 120; const p = mesh(new THREE.PlaneGeometry(w, d, 8, 60), waterMaterial(a.color), 0, 0.09, 0); p.rotation.x = -Math.PI / 2; p.castShadow = false; g.add(p); g.userData.height = 0.1; g.userData.flat = true; g.userData.big = true; return g; };
 B.cloud = a => { const g = new THREE.Group(); const m = mat(a.color, { transparent: true, opacity: 0.85, rough: 1 }); const rnd = seeded(a.id.length + 4); for (let i = 0; i < 5; i++) { const s = mesh(G.sph(1.2 + rnd() * 1.2, 10), m, (i - 2) * 1.6, 12 + rnd() * 0.6, (rnd() - 0.5) * 1.5); s.castShadow = false; g.add(s); } g.userData.height = 14; g.userData.drift = true; g.userData.airborne = true; return g; };
-B.moon = a => { const g = new THREE.Group(); const m = moonMaterial(a.color); const d = mesh(G.sph(5, 32), m, 0, 0, 0); g.userData.discR = 5; d.castShadow = false; g.add(d);
+B.moon = a => { const g = new THREE.Group(); const m = moonMaterial(a.color); m.depthTest = false; m.depthWrite = false; const d = mesh(G.sph(5, 32), m, 0, 0, 0); d.renderOrder = -3; g.userData.discR = 5; d.castShadow = false; g.add(d);
   const halo = mesh(new THREE.PlaneGeometry(31, 31), moonGlowMaterial(a.color), 0, 0, 0); halo.castShadow = false; halo.renderOrder = -2; halo.userData.billboard = true; g.add(halo);
   const l = new THREE.PointLight(a.color, 400, 260, 1.2); g.add(l); g.userData.hazeMats = [m, halo.material]; g.userData.height = 5; g.userData.airborne = true; g.userData.far = true; g.userData.noColor = true; g.userData.centered = true; return g; };
-B.sun = a => { const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(a.color), fog: false }); const d = mesh(G.sph(7, 24), m, 0, 0, 0); d.castShadow = false; g.add(d); g.userData.height = 7; g.userData.airborne = true; g.userData.far = true; g.userData.noColor = true; g.userData.centered = true; return g; };
+// nothing standing on the ground is in front of the moon or the sun, and a range of hills was
+// drawing over both of them
+B.sun = a => { const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(a.color), fog: false, depthTest: false, depthWrite: false }); const d = mesh(G.sph(7, 24), m, 0, 0, 0); d.renderOrder = -3; d.castShadow = false; g.add(d); g.userData.height = 7; g.userData.airborne = true; g.userData.far = true; g.userData.noColor = true; g.userData.centered = true; return g; };
 B.star = a => { const g = new THREE.Group(); g.add(mesh(G.ico(0.4, 0), new THREE.MeshBasicMaterial({ color: new THREE.Color(a.color), fog: false }), 0, 1.5, 0)); g.userData.height = 2; g.userData.airborne = true; g.userData.pulse = true; return g; };
 B.lens = a => { const g = new THREE.Group(); const body = mat(a.color, { metal: 0.5, rough: 0.35 });
   const barrel = mesh(G.cyl(0.5, 0.44, 1.15, 18), body, 0, 0, 0); barrel.rotation.x = Math.PI / 2; g.add(barrel);

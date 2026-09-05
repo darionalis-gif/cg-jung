@@ -128,6 +128,10 @@ function normalizeScene(raw, dreamText) {
       detail: { species: String(d.species || d.animal || '').toLowerCase(), text: typeof d.text === 'string' ? d.text.slice(0, 40) : '', count: opt(d.count, 1, 90), radius: opt(d.radius, 0.5, 300), width: opt(d.width, 0.3, 300), depth: opt(d.depth, 0.3, 300), height: opt(d.height, 0.3, 300), open: !!d.open, wear: WEAR.has(String(d.wear || '').toLowerCase()) ? String(d.wear).toLowerCase() : '', wearColor: hex(d.wearColor, null), second: hex(d.second, null), skin: hex(d.skin, null), hair: hex(d.hair, null) }
     };
   });
+  // "a puddle is water at size 0.1" and the disc is fifteen metres across before it is scaled,
+  // so an occasional puddle came out three metres wide and swallowed the man walking round it
+  for (const a of actors) { if (a.kind !== 'water' || a.detail.radius || a.detail.open) continue;
+    if (a.size < 0.35) a.detail.radius = 6; }
   // open water covers the half-plane ahead of its waterline: nobody stands out at sea unless they swim
   // whatever these passes shove sideways, the beats that walk that actor somewhere have to follow it,
   // or the scene is staged fifty metres from where it is played
@@ -337,7 +341,15 @@ function normalizeScene(raw, dreamText) {
           const d = Math.hypot(a.pos[0] - tp[0], a.pos[2] - tp[2]); if (d < 4.5 || d > 60) continue;
           const ang = (w.yaw + 22) * Math.PI / 180, sn = Math.sin(ang), cs = Math.cos(ang);
           const r4 = v => Math.round(v * 10000) / 10000;
+          // whatever was written to meet them has to follow. Claude put the brother at (12, 26)
+          // and walked the dreamer to (10.3, 25.7) to speak to him; moving him and leaving the
+          // walk alone played the dream's closing exchange across thirteen metres of snow.
+          const oldX = a.pos[0], oldZ = a.pos[2];
           a.pos[0] = r4(tp[0] + sn * 8); a.pos[2] = r4(tp[2] + cs * 8);
+          { const mx = r4(tp[0] + sn * 3.2), mz = r4(tp[2] + cs * 3.2);
+            for (const b2 of beats) for (const y of b2.actions) { if (!y.move || y.actor === a.id) continue;
+              if (Math.hypot(y.move[0] - oldX, y.move[2] - oldZ) > 3.5) continue;
+              y.move = [r4(mx + (y.move[0] - oldX)), y.move[1], r4(mz + (y.move[2] - oldZ))]; } }
           // and they walk the rest of the way in, so an arrival is an arrival. Writing the move onto
           // the appear action is also what stops this pass finding them again on the next pass.
           if (!x.state || x.state === 'idle') { x.state = 'walk'; x.for = 0.6; }
@@ -345,7 +357,9 @@ function normalizeScene(raw, dreamText) {
           const q2 = at.get(a.id); if (q2) q2.p = a.pos.slice(); } }
       // two people talking look at each other. say and the face states steer the camera and nothing
       // steered the actors, so four beats of a conversation played shoulder to shoulder.
-      { const talkers = b.actions.filter(x => x.actor && x.say && (actors.find(q => q.id === x.actor) || {}).kind === 'person');
+      // ...and a beat where somebody waves, yells or folds is as much a beat between two people
+      // as one with words in it: "I stop to talk with him" left the boy with his back turned
+      { const talkers = b.actions.filter(x => x.actor && (x.say || FACE_STATE.has(x.state)) && (actors.find(q => q.id === x.actor) || {}).kind === 'person');
         if (talkers.length) { const here = id => endOf(b, id);
           for (const x of talkers) { const A = actors.find(q => q.id === x.actor); const pa = here(x.actor); if (!A || !pa) continue;
             let other = null, best = 7;
@@ -408,7 +422,7 @@ function normalizeScene(raw, dreamText) {
     // and inside the cabin, not on the roof: a fifth of a metre above the machine's own origin is
     // the top of a helicopter, which is where the last image of the dream had its two passengers
     const vk = (() => { for (const x of b.actions) { if (!x.actor || !x.move) continue; const v = actors.find(q => q.id === x.actor); if (v && VEHICLE.has(v.kind)) return v.kind; } return ''; })();
-    const seat = (vk === 'helicopter' || vk === 'plane') ? 0.95 : (vk === 'boat' ? 0.6 : 0.55);
+    const seat = (vk === 'helicopter' || vk === 'plane') ? 0.55 : (vk === 'boat' ? 0.6 : 0.55);
     const riders = b.actions.filter(x => { if (!x.actor || !x.move) return false; const a = actors.find(q => q.id === x.actor);
       if (!a || (a.kind !== 'person' && a.kind !== 'animal')) return false;
       // the seated state has to be on this very action: a beat that walks a man to the helicopter
@@ -418,6 +432,16 @@ function normalizeScene(raw, dreamText) {
     riders.forEach((x, k) => { const dx = (k - (riders.length - 1) / 2) * 0.8;
       x.move = [Math.round((to[0] + dx) * 1000) / 1000, Math.round((to[1] + seat) * 1000) / 1000, Math.round(to[2] * 1000) / 1000]; });
   }
+  // "some people out watching" embedded in a shopfront are watching from inside its wall
+  { const SOLIDK = new Set(['house', 'shop', 'building', 'tower', 'church', 'castle', 'wall', 'cave']);
+    for (const cw of actors) { if (cw.kind !== 'crowd' && cw.kind !== 'person') continue;
+      for (const f of actors) { if (!SOLIDK.has(f.kind)) continue;
+        const hw = (f.kind === 'building' ? 5 : 4) * f.size, hd = (f.kind === 'building' ? 5 : 3.5) * f.size;
+        const dx = cw.pos[0] - f.pos[0], dz = cw.pos[2] - f.pos[2];
+        if (Math.abs(dx) > hw || Math.abs(dz) > hd) continue;
+        const outX = Math.sign(dx || 1) * (hw + 1.2) - dx, outZ = Math.sign(dz || 1) * (hd + 1.2) - dz;
+        if (Math.abs(outX) <= Math.abs(outZ)) cw.pos[0] = Math.round((cw.pos[0] + outX) * 10000) / 10000;
+        else cw.pos[2] = Math.round((cw.pos[2] + outZ) * 10000) / 10000; } } }
   // a named person standing inside a crowd of their own colour cannot be found in the frame
   { const hex2 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
     // the ring has to be wide enough to hold its own count without the members inside each other,
