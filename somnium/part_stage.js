@@ -20,7 +20,7 @@ const Stage = {
     const sg = new THREE.BufferGeometry(); const sp = []; const rnd = seeded(42); for (let i = 0; i < 1600; i++) { const th = rnd() * 6.283, ph = Math.acos(rnd() * 0.95); sp.push(Math.sin(ph) * Math.cos(th) * 460, Math.cos(ph) * 460, Math.sin(ph) * Math.sin(th) * 460); } sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
     this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: '#ffffff', size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.85, fog: false })); this.three.add(this.stars);
     this.ambient = new THREE.HemisphereLight('#6a6f9a', '#202030', 1.2); this.three.add(this.ambient);
-    this.sun = new THREE.DirectionalLight('#cfd6ff', 1); this.sun.castShadow = true; this.sun.shadow.mapSize.set(1024, 1024); const sc = this.sun.shadow.camera; sc.left = sc.bottom = -40; sc.right = sc.top = 40; sc.near = 1; sc.far = 200; this.sun.shadow.bias = -0.0015; this.three.add(this.sun); this.three.add(this.sun.target);
+    this.sun = new THREE.DirectionalLight('#cfd6ff', 1); this.sun.castShadow = true; this.sun.shadow.mapSize.set(soft ? 640 : 1024, soft ? 640 : 1024); const sc = this.sun.shadow.camera; sc.left = sc.bottom = -40; sc.right = sc.top = 40; sc.near = 1; sc.far = 200; this.sun.shadow.bias = -0.0015; this.three.add(this.sun); this.three.add(this.sun.target);
     this.fill = new THREE.DirectionalLight('#dfe3ff', 0.8); this.fill.castShadow = false; this.three.add(this.fill); this.three.add(this.fill.target);
     this.groundMat = new THREE.MeshStandardMaterial({ color: '#2f4a33', roughness: 1, stencilWrite: true, stencilFunc: THREE.NotEqualStencilFunc, stencilRef: 1 }); this.ground = new THREE.Mesh(new THREE.CircleGeometry(600, 48), this.groundMat); this.ground.rotation.x = -Math.PI / 2; this.ground.receiveShadow = !soft; // the largest surface in the frame, and every actor already has a contact blob this.three.add(this.ground);
     this.waterGround = new THREE.Mesh(new THREE.PlaneGeometry(600, 600, 60, 60), waterMaterial('#1f4d6e')); this.waterGround.rotation.x = -Math.PI / 2; this.waterGround.visible = false; this.three.add(this.waterGround);
@@ -240,7 +240,7 @@ const Stage = {
     this.ambient.color.copy(amb); this.ambient.groundColor.set(shade(w.groundColor, 0.6)); this.ambient.intensity = w.sky === 'day' ? 2.4 : (w.sky === 'void' ? 2.1 : 2.0);
     this.sun.color.set(w.sunColor); this.sun.intensity = Math.max(w.sky === 'void' ? 1.15 : 0.8, w.sunIntensity * 2.4);
     this.fill.position.copy(this.camera.position); this.fill.target.position.copy(this.cam.look); this.fill.intensity = w.sky === 'day' ? 0.4 : 0.9; const d = new THREE.Vector3(...w.sunDir).normalize().multiplyScalar(80); this.sun.position.copy(this.cam.look).add(d); this.sun.target.position.copy(this.cam.look);
-    this.stars.visible = !!w.stars && w.sky !== 'day';
+    this.starsOn = !!w.stars && w.sky !== 'day'; this.stars.visible = this.starsOn && !this._shOff;
     const water = w.ground === 'water'; this.waterGround.visible = water; this.ground.visible = !water && w.ground !== 'none'; if (water) this.waterGround.material.color.set(w.groundColor); else { const c = new THREE.Color(w.groundColor); this.groundMat.color.copy(c); const tex = noiseTexture(w.groundColor, w.ground === 'floor' || w.ground === 'road' ? 0.05 : 0.14, w.ground === 'floor' ? 120 : 60); this.groundMat.map = tex; this.groundMat.color.set('#ffffff'); this.groundMat.roughness = w.ground === 'snow' ? 0.7 : (w.ground === 'floor' ? 0.6 : 1); this.groundMat.needsUpdate = true; }
     this.setWeather(w.weather); this.worldNow = w;
   },
@@ -252,7 +252,12 @@ const Stage = {
     if (this.lastFrameAt !== undefined) { const gap = now - this.lastFrameAt; if (gap > 0 && gap < 2000) { this.frameTimes.push(gap); if (this.frameTimes.length > 240) this.frameTimes.shift(); } }
     // the shadow pass draws every caster a second time. Under a software rasteriser that is the
     // single most expensive thing in the frame, and a shadow that lags by two frames is invisible.
-    this.r.shadowMap.needsUpdate = ((this._shTick = (this._shTick || 0) + 1) % 3) === 1;
+    // a sun shadow of a room's own shell is a whole shadow pass drawn for nothing: indoors the
+    // lamp does the lighting and the sun is not in the room
+    // indoors the sun casts a shadow of the room's own shell for nothing, and the sky sphere and
+    // the stars are a full screen of fill behind a ceiling nobody can see through
+    { const inside = !!this.roomAround(this.camera.position); if (inside !== !!this._shOff) { this._shOff = inside; this.sun.castShadow = !inside; this.sky.visible = !inside; this.stars.visible = !inside && !!this.starsOn; } }
+    this.r.shadowMap.needsUpdate = !this._shOff && ((this._shTick = (this._shTick || 0) + 1) % 4) === 1;
     this.lastFrameAt = now;
     this.submitTimes = this.submitTimes || []; this.submitTimes.push(performance.now() - now); if (this.submitTimes.length > 240) this.submitTimes.shift();
   },
@@ -754,7 +759,8 @@ const Stage = {
           const bx2 = this.solidBox(o); if (bx2.distanceToPoint(look) > 22) continue;
           const h2 = bx2.max.y - bx2.min.y; if (!(h2 > 0.5)) continue;
           const w2 = Math.max(bx2.max.x - bx2.min.x, bx2.max.z - bx2.min.z);
-          bodies.push({ id: '#solid', box: bx2, h: Math.min(Math.max(h2, w2), 8), yaw: 0 }); } }
+          let ow = o; while (ow.parent && ow.parent !== this.root) ow = ow.parent;
+          bodies.push({ id: '#solid', box: bx2, h: Math.min(Math.max(h2, w2), 8), yaw: 0, shell: !!(ow.userData && ow.userData.shell) }); } }
       // one sweep, three verdicts: a shot that keeps both the speaker's face and the target beats
       // one that keeps only the face, which beats whatever is left
       const tiers = [{ az: 0, mul: 1, lift: 0, score: -1e9, has: false }, { az: 0, mul: 1, lift: 0, score: -1e9, has: false }, { az: 0, mul: 1, lift: 0, score: -1e9, has: false }];
@@ -794,9 +800,13 @@ const Stage = {
             // the shell you are standing inside is not a wall across the shot. Counting the cave
             // as a body in the way charged every candidate the same forty-point maximum, which
             // flattened the whole search and left the widest shot in the cave to win on headcount
-            if (b.id === '#solid' && b.box.containsPoint(out.pos)) continue;
+            if (b.shell && b.box.containsPoint(out.pos)) continue;
+            const fwd0 = out.look.clone().sub(out.pos);
+            // a wall the lens is standing at the corner of has its centre behind the camera and
+            // half the frame in front of it: ask the nearest corner of the box, not the middle
             const bc = b.box.getCenter(this._bc2 || (this._bc2 = new THREE.Vector3()));
-            const fwd0 = out.look.clone().sub(out.pos); if (bc.sub(out.pos).dot(fwd0) <= 0) continue;
+            const nrp = b.box.clampPoint(out.pos, this._bc3 || (this._bc3 = new THREE.Vector3()));
+            if (nrp.clone().sub(out.pos).dot(fwd0) <= -0.2 && bc.sub(out.pos).dot(fwd0) <= 0) continue;
             const d1 = Math.max(0.6, b.box.distanceToPoint(out.pos)); const cov = b.h / d1 / 0.933; if (cov <= (b.id === c.target ? 0.5 : 0.22)) continue;
             const sp = framed.find(q => q.id === b.id && q.speaks);
             if (sp) { const fcb = dirAt(b.yaw, 1, 0); const vb = out.pos.clone().sub(b.box.getCenter(this._bc || (this._bc = new THREE.Vector3())));
@@ -1192,7 +1202,8 @@ const Stage = {
       lbl.style.whiteSpace = 'nowrap'; if (lbl.scrollWidth > capW) lbl.style.whiteSpace = 'normal'; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = Math.max(44 + Math.max(lbl.offsetHeight, 22) / 2, (1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; pts.push({ id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H }); placed.push({ lbl, id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank }); }
     // a crowded frame keeps the labels of whoever is acting; the scenery gives up its name
     placed.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
-    const cap = 6; if (placed.length > cap) { let keep = cap; while (keep < placed.length && placed[keep].rank <= 2) keep++; for (const p of placed.slice(keep)) p.lbl.hidden = true; placed.length = keep; }
+    // a phone-sized stage cannot carry six chips and a subtitle and still be a picture
+    const cap = W < 520 ? 3 : 6; if (placed.length > cap) { let keep = cap; while (keep < placed.length && placed[keep].rank <= 2) keep++; for (const p of placed.slice(keep)) p.lbl.hidden = true; placed.length = keep; }
     // a chip must not be painted across somebody's head
     const heads = []; { const hv = new THREE.Vector3();
       for (const [id, rec] of this.actors) { if (!FACED.has(rec.a.kind)) continue; const st2 = states.get(id); if (!st2 || st2.op < 0.3) continue;
