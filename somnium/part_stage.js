@@ -848,9 +848,12 @@ const Stage = {
         // ...but a face is not worth a wrecked shot: take it only when it costs little
         // and when the beat is about that face alone, the face is not a tie-break, it is the shot
         if (front2 < 0.15 && (faceIsSubject || faceOnly.score > (best.score || -1e9) - 7)) best = faceOnly; }
+      // and a re-solve inside a beat is a correction, not a new shot: swinging ninety degrees round
+      // the subject in the middle of one sentence reads as a mistake however well the new shot scores
       if (drifted && this.framePick && this.framePick.beat === this.lastBeat) {
         const keep = this.frameScanScoreOf(tiers, this.framePick);
-        if (keep !== null && best.score - keep < 0.5) { best = { az: this.framePick.az, mul: this.framePick.mul, lift: this.framePick.lift, score: keep, has: true }; } }
+        const swing = Math.abs(((best.az - this.framePick.az + 540) % 360) - 180);
+        if (keep !== null && (best.score - keep < 2.5 || (swing > 45 && best.score - keep < 8))) { best = { az: this.framePick.az, mul: this.framePick.mul, lift: this.framePick.lift, score: keep, has: true }; } }
       // and the last fallback, when every candidate was rejected, counted heads and nothing else --
       // which on a street lined with shops chose the bearing with a shop front over half the frame
       if (!anyOk && framed.length) { best = { az: 0, mul: 1, score: -1e9 };
@@ -917,7 +920,7 @@ const Stage = {
       const badCam = must.length && !snap ? lost(this.cam.pos, this.cam.look) : 0;
       // when the pose holds everybody and the lens does not, the answer is not another pose: it is
       // to be at this one. Cut to it.
-      if (!badPose && badCam) { if (this.cam.pos.distanceTo(pos) > 6 && !snap) this._rush = 0.7; else this._snapNow = true; }
+      if (!badPose && badCam) { if (this.cam.pos.distanceTo(pos) > 2.5 && !snap) this._rush = 0.7; else this._snapNow = true; }
       let bad = badPose;
       if (this.debugFrames) this.saveDbg = { bad, n: must.length, ids: must.map(f => f.id + (this.inShot(pos, look, f.p, f.g) ? '+' : '-')), saves: this.framePick.saves || 0 };
       // the rescue has to judge a shot the way the search does, or it elects the shots the search
@@ -934,7 +937,10 @@ const Stage = {
           else if (f.w >= 1 && dl < Math.max(2.2, reach * 0.35) && cov > 0.9) q += 5; }
         return q; };
       const mayTry = snap || this.framePick.tryAt === undefined || Math.abs(this.time - this.framePick.tryAt) > 0.3;
-      if (bad && (this.framePick.saves || 0) < 3 && mayTry) {
+      // at a cut the rescue runs to convergence in the one frame rather than a step per frame:
+      // the shot a seek lands on used to depend on how many frames the machine managed to draw
+      // before the picture was taken, so the same scene solved differently on a slower box
+      for (let it = 0; it < (snap ? 3 : 1) && bad && (this.framePick.saves || 0) < 3 && mayTry; it++) {
         this.framePick.tryAt = this.time;
         let bq = pos, bl = look, bAz = null, bMul = 1, bLift = 0;
         let bb = bad * 10 + uglier(pos, look);
@@ -952,12 +958,13 @@ const Stage = {
           // and take a big correction now rather than easing into it: easing means the frames in
           // between are the ones that lose the subject, which is the whole thing being fixed
           const jump = bq.distanceTo(pos); pos = bq; look = bl;
-          if (jump <= 4 && ((this.framePick.saves || 0) <= 1 || jump > 2)) this._snapNow = true;
-          else if (jump > 4) this._rush = 0.7; } } }
+          if (snap || jump <= 2) this._snapNow = true; else this._rush = 0.7;
+          bad = must.length ? lost(pos, look) : 0; } else break; } }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const rm2 = this.roomAround(look); if (rm2 && pos.y > rm2.box.max.y - 0.3) pos.y = rm2.box.max.y - 0.3; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
     if (this._rush > 0) this._rush = Math.max(0, this._rush - dt);
+    if (this._rush > 0.7) this._rush = 0.7;
     if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + Math.min(tg.moving || 0, 8) * 0.8) * (this._rush > 0 ? 8 : 1) * dt;
       if (step > cap) pos = this._lastAim.clone().lerp(pos, cap / step); }
     this._lastAim = (this._lastAim || new THREE.Vector3()).copy(pos);
@@ -1129,15 +1136,12 @@ const Stage = {
     const vhalf = cam.fov * Math.PI / 360; const rise = Math.tan(vhalf) * 0.2;
     for (const rec of sky) {
       const a = rec.a; if (a.hidden) continue; const D = Math.max(70, Math.hypot(a.pos[0], a.pos[2]));
-      const camRoom = this.roomAround(cam.position);
-      if (camRoom) { const b = camRoom.box; const f = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion); f.y = 0; f.normalize();
-        let t = 1e6; for (const [lo, hi, o, dd] of [[b.min.x, b.max.x, cam.position.x, f.x], [b.min.z, b.max.z, cam.position.z, f.z]]) { if (Math.abs(dd) < 1e-4) continue; for (const tt of [(hi - o) / dd, (lo - o) / dd]) if (tt > 0.5 && tt < t) t = tt; }
-        if (t < 1e5) { const q = cam.position.clone().add(f.multiplyScalar(Math.max(1.5, t - 0.6))); q.y = b.min.y + (b.max.y - b.min.y) * 0.55;
-          const aq = [+q.x.toFixed(2), +q.y.toFixed(2), +q.z.toFixed(2)]; rec.g.userData.aimed = aq; const st2 = this.states && this.states.get(a.id); if (st2) st2.pos = aq.slice(); rec.g.position.copy(q); rec.g.userData.indoor = true; }
-        continue; }
-      // a sky disc's authored x/z are arbitrary far-field numbers; when a room happened to sit over
-      // them the moon was never aimed at all and stayed eleven screen-widths off the frame
-      if (this.roomAround(this.cam.look)) continue;
+      // a moon is not visible from inside a room. Pasting the disc on the far wall made a three
+      // metre red circle standing in the hospital ward, which is not what anybody asked for and
+      // not what the director's own reply promised
+      const camRoom = this.roomAround(cam.position) || this.roomAround(this.cam.look);
+      if (camRoom) { rec.g.visible = false; rec.g.userData.indoor = true; continue; }
+      if (rec.g.userData.indoor) { rec.g.userData.indoor = false; rec.g.visible = true; }
       // and off the centre line: a disc nailed to the middle of every frame reads as a sticker on
       // the lens rather than something in the sky
       const side = ((a.pos[0] * fwd.z - a.pos[2] * fwd.x) >= 0 ? 1 : -1) * 0.42;

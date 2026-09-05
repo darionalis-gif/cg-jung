@@ -183,7 +183,28 @@ B.tent = a => { const g = new THREE.Group(); const p = mesh(G.cyl(1.9, 1.9, 4, 3
 B.grave = a => { const g = new THREE.Group(); const m = mat(a.color); g.add(mesh(G.box(0.8, 1.1, 0.15), m, 0, 0.55, 0), mesh(G.box(1.2, 0.2, 2.2), mat(shade(a.color, 0.6)), 0, 0.1, 1.1)); g.userData.height = 1.2; return g; };
 function tree(color, second, rnd) { const g = new THREE.Group(); const h = 2.5 + rnd() * 2; g.add(mesh(G.cyl(0.12, 0.2, h, 6), mat(second || '#5a3d22'), 0, h / 2, 0)); const cm = mat(color, { flat: true }); if (rnd() < 0.5) { for (let i = 0; i < 3; i++) g.add(mesh(G.cone(1.6 - i * 0.4, 1.8, 7), cm, 0, h * 0.6 + i * 1.0, 0)); } else { const c = mesh(G.ico(1.5 + rnd(), 1), cm, 0, h + 0.8, 0); c.scale.y = 1.2; g.add(c); } g.userData.height = h + 2.5; g.userData.canopy = g.children.slice(1); return g; }
 B.tree = a => { const rnd = seeded(a.id.length * 31 + 7); const g = tree(a.color, a.detail.second, rnd); return g; };
-B.forest = a => { const g = new THREE.Group(); const n = a.detail.count || 30, R = a.detail.radius || 25, rnd = seeded(n * 17 + 1); g.userData.trees = []; for (let i = 0; i < n; i++) { const t = tree(shade(a.color, 0.75 + rnd() * 0.5), a.detail.second, rnd); const ang = rnd() * 6.28, d = 3 + Math.sqrt(rnd()) * R; t.position.set(Math.cos(ang) * d, 0, Math.sin(ang) * d); t.scale.setScalar(0.8 + rnd() * 0.8); g.add(t); g.userData.trees.push(t); } g.userData.height = 6; g.userData.big = true; g.userData.noScale = true; return g; };
+// three hundred trees as three hundred little groups is nine hundred draw calls, and a dream with
+// timberland in it spent almost all of its frame there. The same wood is three instanced meshes.
+B.forest = a => { const g = new THREE.Group(); const n = Math.min(a.detail.count || 30, 120), R = a.detail.radius || 25, rnd = seeded(n * 17 + 1);
+  const trunks = [], cones = [], blobs = [];
+  for (let i = 0; i < n; i++) {
+    const h = 2.5 + rnd() * 2, ang = rnd() * 6.28, d = 3 + Math.sqrt(rnd()) * R;
+    const conifer = rnd() < 0.5, r0 = 1.5 + rnd(), sc = 0.8 + rnd() * 0.8;
+    const x = Math.cos(ang) * d, z = Math.sin(ang) * d;
+    const col = new THREE.Color(shade(a.color, 0.75 + rnd() * 0.5));
+    trunks.push({ p: [x, h / 2 * sc, z], s: [sc, h * sc, sc] });
+    if (conifer) { for (let k = 0; k < 3; k++) cones.push({ p: [x, (h * 0.6 + k) * sc, z], s: [(1.6 - k * 0.4) * sc, 1.8 * sc, (1.6 - k * 0.4) * sc], c: col }); }
+    else blobs.push({ p: [x, (h + 0.8) * sc, z], s: [r0 * sc, r0 * 1.2 * sc, r0 * sc], c: col }); }
+  const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new THREE.Vector3(), S = new THREE.Vector3();
+  const build = (geo, m, list) => { if (!list.length) return;
+    const im = new THREE.InstancedMesh(geo, m, list.length);
+    list.forEach((t, i) => { P.set(t.p[0], t.p[1], t.p[2]); S.set(t.s[0], t.s[1], t.s[2]); M.compose(P, Q, S); im.setMatrixAt(i, M); if (t.c) im.setColorAt(i, t.c); });
+    im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
+    im.castShadow = false; im.receiveShadow = false; im.frustumCulled = false; g.add(im); };
+  build(G.cyl(0.12, 0.2, 1, 6), mat(a.detail.second || '#5a3d22'), trunks);
+  build(G.cone(1, 1, 7), mat(a.color, { flat: true }), cones);
+  build(G.ico(1, 1), mat(a.color, { flat: true }), blobs);
+  g.userData.height = 6; g.userData.big = true; g.userData.noScale = true; return g; };
 B.bush = a => { const g = new THREE.Group(); const m = mat(a.color, { flat: true }); g.add(mesh(G.ico(0.7, 1), m, 0, 0.6, 0), mesh(G.ico(0.5, 1), m, 0.5, 0.45, 0.2), mesh(G.ico(0.5, 1), m, -0.4, 0.5, -0.3)); g.userData.height = 1.3; return g; };
 B.flower = a => { const g = new THREE.Group(); const n = a.detail.count || 7, R = a.detail.radius || 1.2, rnd = seeded(n * 5 + 2); for (let i = 0; i < n; i++) { const x = (rnd() - 0.5) * R * 2, z = (rnd() - 0.5) * R * 2; g.add(mesh(G.cyl(0.02, 0.02, 0.5, 4), mat('#3f7a3a'), x, 0.25, z)); g.add(mesh(G.sph(0.09, 7), mat(i % 3 ? a.color : (a.detail.second || '#f4d35e'), { emissive: a.color, ei: 0.2 }), x, 0.52, z)); } g.userData.height = 0.7; return g; };
 B.mountain = a => { const g = new THREE.Group(); const rnd = seeded(9);
