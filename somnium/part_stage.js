@@ -843,8 +843,12 @@ const Stage = {
     // with a continuous playthrough by a beat's worth of motion, and where most of the frame went
     // in occlusion raycasts. Elect the shot at the cut, then ride the subject with the same offset
     // until somebody the sentence names actually leaves the frame.
+    // ...but not before the beat's own world has arrived. A shot elected on the first frame of
+    // "then we were down in the hold" is elected before the hold exists, so it was framed on the
+    // outside of a cave that had not appeared yet and then held there for the sentence.
+    const settling = beat.actions.some(x => x.appear || x.vanish) && this.time - beat.start < 1.2;
     let holding = null;
-    if (!snap && !authored && this.shotHold && this.shotHold.beat === this.lastBeat) {
+    if (!snap && !authored && !settling && this.shotHold && this.shotHold.beat === this.lastBeat) {
       const h = this.shotHold;
       if (this.time - (h.checkAt || 0) > 0.45) { h.checkAt = this.time;
         const p2 = T.clone().add(h.off), l2 = T.clone().add(h.lookOff);
@@ -925,7 +929,10 @@ const Stage = {
             if (!f.seen && dl < Math.max(3.2, reach * 0.55)) cropAtLens += 1;
             // a body half the shot's distance away and filling the frame: whether it is cut off by
             // the edge or squarely in the middle, what is behind it is not in the shot
-            if (f.id !== c.target && dl < Math.max(2.2, reach * 0.35) && (f.h || 1.8) / Math.max(0.6, dl) > 0.9) atTheLens = true; }
+            if (f.id !== c.target && dl < Math.max(2.2, reach * 0.35) && (f.h || 1.8) / Math.max(0.6, dl) > 0.9) atTheLens = true;
+            // and the subject themselves, when they fill the frame from top to bottom: a shot is
+            // of somebody, not inside them
+            if (f.id === c.target && (f.h || 1.8) / Math.max(0.6, dl) > 1.7) atTheLens = true; }
           if (atTheLens) { if (this.debugFrames) this.frameScan.push({ az, mul, lift, rejected: 'atTheLens' }); continue; }
           for (const b of bodies) {
             // the shell you are standing inside is not a wall across the shot. Counting the cave
@@ -1044,6 +1051,7 @@ const Stage = {
     // The last word, and the cheapest check in the file: the report already knows whether the
     // person the sentence is about ended up on screen. Ask it here, of the pose that is about to
     // be rendered, and if the answer is no, go and find one where it is yes.
+    this._shotOk = true;
     if (!this.user.on) {
       const must = framed.filter(f => f.w >= 1);
       // losing the person whose face the beat is about is worth more than losing two bystanders
@@ -1066,6 +1074,7 @@ const Stage = {
       // to be at this one. Cut to it.
       if (!badPose && badCam) { if (this.cam.pos.distanceTo(pos) > 2.5 && !snap) this._rush = 0.7; else this._snapNow = true; }
       let bad = badPose;
+      this._shotOk = !bad;
       if (this.debugFrames) this.saveDbg = { bad, n: must.length, ids: must.map(f => f.id + (this.inShot(pos, look, f.p, f.g) ? '+' : '-')), saves: this.framePick.saves || 0 };
       // the rescue has to judge a shot the way the search does, or it elects the shots the search
       // refused: a body filling the frame, a wall across it, a lens inside a crowd
@@ -1116,7 +1125,10 @@ const Stage = {
           const jump = bq.distanceTo(pos); pos = bq; look = bl;
           if (snap || jump <= 2) this._snapNow = true; else this._rush = 0.7;
           bad = must.length ? lost(pos, look) : 0; } else break; } }
-      this.shotHold = { beat: this.lastBeat, off: pos.clone().sub(T), lookOff: look.clone().sub(T), checkAt: this.time };
+      // ...and only a shot worth holding. A pose the guarantee could not rescue is one to keep
+      // looking for a way out of, not one to ride for the rest of the sentence.
+      this.shotHold = this._shotOk === false ? null
+        : { beat: this.lastBeat, off: pos.clone().sub(T), lookOff: look.clone().sub(T), checkAt: this.time };
     }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const rm2 = this.roomAround(look); if (rm2 && pos.y > rm2.box.max.y - 0.3) pos.y = rm2.box.max.y - 0.3; }
