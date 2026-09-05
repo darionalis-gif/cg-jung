@@ -70,6 +70,13 @@ for (const id of IDS) {
     await page.evaluate(() => { window.__somnium.Stage.playing = true; }); await page.waitForTimeout(700);
     const p2 = await page.evaluate(() => window.__somnium.pixels()); await page.evaluate(() => { window.__somnium.Stage.playing = false; });
     const diff = p1.reduce((s, v, k) => s + Math.abs(v - p2[k]), 0) / p1.length;
+    // let the camera come to rest before reading it: the report used to be written while the shot
+    // was still being solved, so its numbers and the screenshot described different instants and
+    // every diagnosis made from the two together was chasing a ghost
+    await page.evaluate(async () => { const S = window.__somnium.Stage; let last = null;
+      for (let k = 0; k < 40; k++) { await new Promise(r => requestAnimationFrame(r));
+        const now = S.camera.position.clone().add(S.cam.look);
+        if (last && now.distanceTo(last) < 0.002) return; last = now; } });
     const m = await page.evaluate(() => window.__somnium.Stage.metrics());
     const file = `beat-${String(i + 1).padStart(2, '0')}.png`; await page.screenshot({ path: path.join(dir, file) });
     shots.push({ beat: i + 1, file, start: +t.toFixed(1), dur: beats[i].dur, text: beats[i].text, motion: +diff.toFixed(2), metrics: m });

@@ -1470,7 +1470,13 @@ const Stage = {
       T.armsZ = [0.1, 2.18 + sw * 0.5]; T.armsX = [0.05, -0.25 + sw * 0.12];
       T.fore = [-0.3, -0.45 + sw * 0.75]; T.bodyZ = sw * 0.05; T.headZ = sw * 0.06; T.headY = 0; }
     else if (s === 'melt') { const p = window; T.ground = true; T.torsoS = Math.max(0.05, 1 - p); T.y = -0.9 * p; T.armsZ = [0.8 * p, -0.8 * p]; }
-    else if (s === 'fold') { const p = window; T.headS = Math.max(0.45, 1 - p * 0.55); T.headX = p * 0.28; T.headZ = Math.sin(p * 6) * 0.3 * p; T.armsX = [-1.6 * p, -1.6 * p]; T.fore = [-0.9 * p, -0.9 * p]; T.bodyX = 0.35 * p; keepHead = false; }
+    else if (s === 'fold') { // the beat is about a face coming apart, so the face has to be in it:
+      // hands up to it, the body upright, the head still turned to whoever is watching
+      // and the head stays a head: shrunk to half and hidden behind the hands, a folding face reads
+      // as the back of somebody's skull
+      const p = window; T.headS = Math.max(0.8, 1 - p * 0.2); T.headX = p * 0.14; T.headZ = Math.sin(p * 6) * 0.22 * p;
+      T.armsX = [-1.62 * p, -1.55 * p]; T.armsZ = [0.5 * p, -0.5 * p]; T.fore = [-1.15 * p, -1.1 * p];
+      T.bodyX = 0.1 * p; T.torsoS = 1 - p * 0.04; }
     else if (s === 'throw') { // wind up, cast, then recover: the pose must not freeze once the stone is gone
       const c0 = clamp(window * 2.4, 0, 1), sw2 = c0 < 0.4 ? c0 / 0.4 : 1 - (c0 - 0.4) / 0.6;
       const rec0 = clamp((window - 0.45) / 0.35, 0, 1), k = 1 - rec0, br = Math.sin(t * 1.2) * 0.04;
