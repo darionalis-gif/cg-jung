@@ -84,8 +84,11 @@ for (const id of IDS) {
     // is taken: seek to the beat's own boundary, let it cut, and play forward to the sample point.
     // Settling at frozen time gave the shot up to ninety-six frames of easing nobody else gets,
     // and the report described a converged pose the beat mostly never reached.
-    await page.evaluate(t0 => { const S = window.__somnium.Stage; S.setTime(t0); S.playing = false; }, t);
-    await page.waitForTimeout(120);
+    await page.evaluate(t0 => { const S = window.__somnium.Stage; S.setTime(t0); S.playing = false; }, Math.max(0, t - 1.6));
+    // a fixed number of frames, not a wall-clock wait: a paused stage goes on easing its lens, its
+    // yaws and its poses, so how many idle frames the machine happened to draw decided what state
+    // playback started from -- and two runs of the same capture elected shots eight metres apart.
+    await page.evaluate(async () => { for (let k = 0; k < 3; k++) await new Promise(r => requestAnimationFrame(r)); });
     await page.evaluate(async m => { const S = window.__somnium.Stage; S.playing = true;
       for (let k = 0; k < 4000; k++) { if (S.time >= m) break; await new Promise(r => requestAnimationFrame(r)); }
       S.playing = false; }, mid);
@@ -94,15 +97,19 @@ for (const id of IDS) {
       return +S.camera.position.distanceTo(a0).toFixed(3); });
     const settled = await step();
     const p1 = await page.evaluate(() => window.__somnium.pixels());
-    await page.evaluate(() => { window.__somnium.Stage.playing = true; }); await page.waitForTimeout(700);
-    const p2 = await page.evaluate(() => window.__somnium.pixels()); await page.evaluate(() => { window.__somnium.Stage.playing = false; });
-    const diff = p1.reduce((s, v, k) => s + Math.abs(v - p2[k]), 0) / p1.length;
     // and NOT a second settle: with time frozen the lens goes on easing toward a pose the viewer
     // only reaches if the beat continues, so the still stopped being the frame anybody sees. What
     // is recorded instead is how far the lens still had to travel at the moment playback stopped.
-    const settled2 = await step();
     const m = await page.evaluate(() => window.__somnium.Stage.metrics());
     const file = `beat-${String(i + 1).padStart(2, '0')}.png`; await page.screenshot({ path: path.join(dir, file) });
+    // the motion measurement plays ON from the still, so it cannot be allowed to move the still:
+    // seven hundred milliseconds of wall clock used to advance story time by a variable amount
+    // before the metrics were read and the screenshot taken
+    await page.evaluate(async () => { const S = window.__somnium.Stage; S.playing = true;
+      for (let k = 0; k < 21; k++) await new Promise(r => requestAnimationFrame(r)); S.playing = false; });
+    const p2 = await page.evaluate(() => window.__somnium.pixels());
+    const diff = p1.reduce((s, v, k) => s + Math.abs(v - p2[k]), 0) / p1.length;
+    const settled2 = await step();
     shots.push({ beat: i + 1, file, start: +t.toFixed(1), dur: beats[i].dur, text: beats[i].text, motion: +diff.toFixed(2), settleFrames: [settled, settled2], metrics: m });
     t += beats[i].dur;
   }

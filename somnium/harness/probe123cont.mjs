@@ -50,8 +50,8 @@ for (const id of ids) {
           s -= Math.abs(fr - 0.5) * 0.25;
           if (s > bs) { bs = s; bf = fr; } }
         return t + beats[i].dur * Math.min(0.85, Math.max(0.12, bf)); })();
-      await page.evaluate(t0 => { const S = window.__somnium.Stage; S.setTime(t0); S.playing = false; }, t);
-      await page.waitForTimeout(120);
+      await page.evaluate(t0 => { const S = window.__somnium.Stage; S.setTime(t0); S.playing = false; }, Math.max(0, t - 1.6));
+      await page.evaluate(async () => { for (let k = 0; k < 3; k++) await new Promise(r => requestAnimationFrame(r)); });
       await page.evaluate(async m => { const S = window.__somnium.Stage; S.playing = true;
         for (let k = 0; k < 4000; k++) { if (S.time >= m) break; await new Promise(r => requestAnimationFrame(r)); }
         S.playing = false; }, mid);
@@ -60,7 +60,7 @@ for (const id of ids) {
         return +S.camera.position.distanceTo(a0).toFixed(3); });
       const settled = await step();
       const p1 = await page.evaluate(() => window.__somnium.pixels());
-      await page.evaluate(() => { window.__somnium.Stage.playing = true; }); await page.waitForTimeout(700);
+      await page.evaluate(async () => { const S = window.__somnium.Stage; S.playing = true; for (let k = 0; k < 21; k++) await new Promise(r => requestAnimationFrame(r)); });
       const p2 = await page.evaluate(() => window.__somnium.pixels()); await page.evaluate(() => { window.__somnium.Stage.playing = false; });
       const motion = grid(p1, p2);
       const settled2 = await step();

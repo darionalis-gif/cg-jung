@@ -20,7 +20,7 @@ const Stage = {
     const sg = new THREE.BufferGeometry(); const sp = []; const rnd = seeded(42); for (let i = 0; i < 1600; i++) { const th = rnd() * 6.283, ph = Math.acos(rnd() * 0.95); sp.push(Math.sin(ph) * Math.cos(th) * 460, Math.cos(ph) * 460, Math.sin(ph) * Math.sin(th) * 460); } sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
     this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: '#ffffff', size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.85, fog: false })); this.three.add(this.stars);
     this.ambient = new THREE.HemisphereLight('#6a6f9a', '#202030', 1.2); this.three.add(this.ambient);
-    this.sun = new THREE.DirectionalLight('#cfd6ff', 1); this.sun.castShadow = true; this.sun.shadow.mapSize.set(soft ? 640 : 1024, soft ? 640 : 1024); const sc = this.sun.shadow.camera; sc.left = sc.bottom = -40; sc.right = sc.top = 40; sc.near = 1; sc.far = 200; this.sun.shadow.bias = -0.0015; this.sun.shadow.normalBias = 0.035; this.three.add(this.sun); this.three.add(this.sun.target);
+    this.sun = new THREE.DirectionalLight('#cfd6ff', 1); this.sun.castShadow = true; this.sun.shadow.mapSize.set(soft ? 640 : 1024, soft ? 640 : 1024); const sc = this.sun.shadow.camera; sc.left = sc.bottom = -40; sc.right = sc.top = 40; sc.near = 1; sc.far = 200; this.sun.shadow.bias = -0.0006; this.sun.shadow.normalBias = 0.11; this.three.add(this.sun); this.three.add(this.sun.target);
     this.fill = new THREE.DirectionalLight('#dfe3ff', 0.8); this.fill.castShadow = false; this.three.add(this.fill); this.three.add(this.fill.target);
     this.groundMat = new THREE.MeshStandardMaterial({ color: '#2f4a33', roughness: 1, stencilWrite: true, stencilFunc: THREE.NotEqualStencilFunc, stencilRef: 1 }); this.ground = new THREE.Mesh(new THREE.CircleGeometry(600, 48), this.groundMat); this.ground.rotation.x = -Math.PI / 2; this.ground.receiveShadow = !soft; // the largest surface in the frame, and every actor already has a contact blob this.three.add(this.ground);
     this.waterGround = new THREE.Mesh(new THREE.PlaneGeometry(600, 600, 60, 60), waterMaterial('#1f4d6e')); this.waterGround.rotation.x = -Math.PI / 2; this.waterGround.visible = false; this.three.add(this.waterGround);
@@ -160,6 +160,21 @@ const Stage = {
           const dx = r3.a.pos[0] - h[0], dz = r3.a.pos[2] - h[2], d = Math.hypot(dx, dz);
           if (d > 1.5) { const k = 1.5 / d; r3.a.pos[0] = h[0] + dx * k; r3.a.pos[2] = h[2] + dz * k; } }
         for (const r2 of solo) r2.g.position.set(r2.a.pos[0], r2.a.pos[1], r2.a.pos[2]); }
+    // two crowds written at the same place stand inside one another: a staff torso inside a
+    // platoon soldier, in the beat where the platoon overwhelms the staff. Push the groups apart
+    // by their own radii before anybody is spread out inside them.
+    { const cw = [];
+      for (const rec of this.actors.values()) { if (rec.a.kind !== 'crowd') continue;
+        cw.push({ rec, r: (rec.a.detail.radius || 5) * rec.a.size }); }
+      for (let pass = 0; pass < 4 && cw.length > 1; pass++)
+        for (let i = 0; i < cw.length; i++) for (let j = i + 1; j < cw.length; j++) {
+          const A = cw[i], B = cw[j];
+          const min = (A.r + B.r) * 0.85; let dx = B.rec.a.pos[0] - A.rec.a.pos[0], dz = B.rec.a.pos[2] - A.rec.a.pos[2];
+          let d = Math.hypot(dx, dz); if (d >= min) continue;
+          if (d < 1e-3) { dx = Math.cos(i * 2.399 + j); dz = Math.sin(i * 2.399 + j); d = 1; }
+          const k = (min - d) / d / 2;
+          A.rec.a.pos[0] -= dx * k; A.rec.a.pos[2] -= dz * k; B.rec.a.pos[0] += dx * k; B.rec.a.pos[2] += dz * k; }
+      for (const q of cw) q.rec.g.position.set(q.rec.a.pos[0], q.rec.a.pos[1], q.rec.a.pos[2]); }
     // "crowded around an extremely long tea table" is ranked along both of its long sides, not
     // bunched at one end of it with two thirds of the table empty. Every crowd near the table is
     // ranked as one pool, so two crowds do not lay two ranks on the same line.
@@ -227,12 +242,19 @@ const Stage = {
       const kindOf = id => (S.actors.find(q => q.id === id) || {}).kind;
       const vehicles = b.actions.filter(x => x.actor && x.move && VEHICLE.has(kindOf(x.actor)));
       if (!vehicles.length) continue;
+      // ...and each of them in their own seat. Everybody who shares a destination with the
+      // helicopter was put at exactly the same point above it, so two men flew inside one body.
+      const aboard = new Map();
       for (const x of b.actions) { if (!x.actor || !x.move || VEHICLE.has(kindOf(x.actor))) continue;
         const v = vehicles.find(q => Math.hypot(q.move[0] - x.move[0], q.move[2] - x.move[2]) < 3); if (!v) continue;
-        const rider = out.get(x.actor), car = out.get(v.actor); if (!rider || !car) continue;
-        const seat = SEAT[kindOf(v.actor)] || 1;
-        rider.pos = [car.pos[0] + 0.6, car.pos[1] + seat, car.pos[2]]; rider.yaw = car.yaw;
-        if (rider.state === 'idle' || rider.state === 'walk') rider.state = 'sit'; } }
+        const l = aboard.get(v.actor) || []; l.push(x.actor); aboard.set(v.actor, l); }
+      for (const [vid, list] of aboard) { const car = out.get(vid); if (!car) continue;
+        const seat = SEAT[kindOf(vid)] || 1, rv = car.yaw * Math.PI / 180;
+        list.forEach((aid, i) => { const rider = out.get(aid); if (!rider) return;
+          const sx = ((i % 2) ? 0.45 : -0.45) * (car.size || 1), sz = (0.35 - Math.floor(i / 2) * 0.7) * (car.size || 1);
+          rider.pos = [car.pos[0] + Math.cos(rv) * sx + Math.sin(rv) * sz, car.pos[1] + seat, car.pos[2] - Math.sin(rv) * sx + Math.cos(rv) * sz];
+          rider.yaw = car.yaw;
+          if (rider.state === 'idle' || rider.state === 'walk' || rider.state === 'run') rider.state = 'sit'; }); } }
     { const held = new Map(); for (const a of S.actors) if (a.carriedBy) { const l = held.get(a.carriedBy) || []; l.push(a.id); held.set(a.carriedBy, l); }
     for (const [id, rec] of this.actors) { const ai = rec.g.userData.aimed; if (!ai) continue; const st0 = out.get(id); if (st0) st0.pos = ai.slice(); }
     for (const a of S.actors) { if (!a.carriedBy) continue; const it = out.get(a.id), by = out.get(a.carriedBy); if (!it || !by) continue;
@@ -286,7 +308,10 @@ const Stage = {
         if (!st || st.op < 0.3 || st.state === 'lie' || st.state === 'sit') continue;
         const rr = this.actors.get(a.id); if (rr && rr.g.userData.ridesIn) continue;
         if (a.carriedBy) continue;
-        who.push({ st, r: 0.5 * (st.size || 1) }); }
+        // an arm swings a good way past the shoulder: a waving father at a metre from the friend
+        // beside him put his forearm through her
+        const swing = ['wave', 'throw', 'push', 'yell', 'dance', 'shake'].includes(st.state) ? 0.28 : 0;
+        who.push({ st, r: (0.5 + swing) * (st.size || 1) }); }
       for (let pass = 0; pass < 3 && who.length > 1; pass++) {
         for (let i = 0; i < who.length; i++) for (let j = i + 1; j < who.length; j++) {
           const A = who[i], B = who[j]; if (Math.abs(A.st.pos[1] - B.st.pos[1]) > 1.2) continue;
@@ -323,7 +348,15 @@ const Stage = {
     // frames every run: on a software rasteriser the wall clock varies by a factor of two, and a
     // shot elected on the first frame past a checkpoint is elected on wherever that frame landed
     if (this.fixedDt) dt = this.fixedDt; if (!this.scene) { this.r.render(this.three, this.camera); return; }
-    if (this.playing) { this.time += dt; if (this.time >= this.scene.total) { this.time = this.scene.total; this.playing = false; if (this.onTime) this.onTime(this.time, true); } }
+    // A cut happens at the start of the sentence, not a thirtieth of a second into it. Landing the
+    // first frame of a beat wherever the clock happened to fall meant the shot was elected from a
+    // world a fraction of a frame past the cut, and which fraction depended on how the viewer got
+    // there -- which is the whole of the remaining gap between the shipped still and a playthrough.
+    if (this.playing) { const was = this.time; this.time += dt;
+      if (this.time < this.scene.total) { const b0 = this.scene.beats;
+        for (let i = 0; i < b0.length; i++) { const st0 = b0[i].start;
+          if (was < st0 && this.time > st0) { this.time = st0; break; } } }
+      if (this.time >= this.scene.total) { this.time = this.scene.total; this.playing = false; if (this.onTime) this.onTime(this.time, true); } }
     this.evaluate(dt, false);
     if (this.lastFrameAt !== undefined) { const gap = now - this.lastFrameAt; if (gap > 0 && gap < 2000) { this.frameTimes.push(gap); if (this.frameTimes.length > 240) this.frameTimes.shift(); } }
     // the shadow pass draws every caster a second time. Under a software rasteriser that is the
@@ -332,7 +365,11 @@ const Stage = {
     // lamp does the lighting and the sun is not in the room
     // indoors the sun casts a shadow of the room's own shell for nothing, and the sky sphere and
     // the stars are a full screen of fill behind a ceiling nobody can see through
-    { const inside = !!this.roomAround(this.camera.position); if (inside !== !!this._shOff) { this._shOff = inside; this.sun.castShadow = !inside; this.sky.visible = !inside; this.stars.visible = !inside && !!this.starsOn; } }
+    { const inside = !!this.roomAround(this.camera.position); if (inside !== !!this._shOff) { this._shOff = inside; this.sun.castShadow = !inside; this.sky.visible = !inside; this.stars.visible = !inside && !!this.starsOn; }
+      // indoors there is no sky and no sun, so the only light in the picture is one lamp: two
+      // beats in the hold came out at a mean stage luminance of twenty of two hundred and
+      // fifty-five, with ninety-four per cent of the frame below twenty-five.
+      if (inside) this.ambient.intensity *= 1.85; }
     this.r.shadowMap.needsUpdate = !this._shOff && ((this._shTick = (this._shTick || 0) + 1) % 4) === 1;
     this.lastFrameAt = now;
     this.submitTimes = this.submitTimes || []; this.submitTimes.push(performance.now() - now); if (this.submitTimes.length > 240) this.submitTimes.shift();
@@ -497,7 +534,7 @@ const Stage = {
     else if (s === 'throw') { // wind up, cast, then recover: the pose must not freeze once the stone is gone
       // four people given the same throw at the same second threw in lockstep and the picture
       // caught every one of them with their arms at their sides: stagger the release per figure
-      const wq = clamp(window - (phase % 1) * 0.2, 0, 1);
+      const wq = clamp(window - (phase % 1) * 0.45, 0, 1);
       const c0 = clamp(wq * 2.4, 0, 1), sw2 = c0 < 0.4 ? c0 / 0.4 : 1 - (c0 - 0.4) / 0.6;
       const rec0 = clamp((wq - 0.45) / 0.35, 0, 1), k = 1 - rec0, br = Math.sin(t * 1.2) * 0.04;
       T.armsX = [(-2.5 + c0 * 3.6) * k + br, (-0.5 + sw2 * 0.5) * k - br]; T.fore = [(-0.4 - sw2 * 0.7) * k - 0.3 * rec0, -0.5 * k - 0.3 * rec0];
@@ -512,9 +549,12 @@ const Stage = {
       T.armsX = [-0.25 + br, -0.3 - br * 0.7]; T.armsZ = [0.34 + sw * 0.06, -0.34 + sw * 0.06]; T.fore = [-0.6 - br * 0.5, -0.55 + br * 0.4];
       T.bodyX = 0.3 + br * 0.35; T.bodyZ = sw * 0.11; T.torsoS = 0.97 + Math.sin(t * 0.9) * 0.05;
       T.hipsZ = sw * 0.06; T.legs = [0.05, -0.05]; keepHead = false; }
-    else if (s === 'pockets') { // hands in pockets: arms down and pinned back, weight on one hip
+    else if (s === 'pockets') { // hands in pockets: upper arms hanging, forearms turned in to the
+      // hips and held there. The wide armsZ and the deep elbow had the arms out from the body with
+      // the hands meeting in front of the chest, which is a man holding a bowl, not a man with his
+      // hands in his pockets.
       const sw = Math.sin(t * 0.42), br = Math.sin(t * 1.5);
-      T.armsX = [0.12 + sw * 0.2, 0.12 - sw * 0.2]; T.armsZ = [0.3 + sw * 0.12, -0.3 + sw * 0.12]; T.fore = [-0.95 - sw * 0.12, -0.95 + sw * 0.12];
+      T.armsX = [0.02 + sw * 0.09, 0.02 - sw * 0.09]; T.armsZ = [0.08 + sw * 0.05, -0.08 + sw * 0.05]; T.fore = [-0.42 - sw * 0.07, -0.42 + sw * 0.07];
       T.hipsZ = 0.05 + sw * 0.22; T.bodyZ = -0.04 - sw * 0.16; T.legs = [0.06 + sw * 0.14, -0.06 + sw * 0.14];
       T.y = Math.abs(sw) * 0.018; T.headY = Math.sin(t * 0.4) * 0.34; T.headX = br * 0.09; T.torsoS = 1 + br * 0.045; }
     else if (s === 'yell') { // shouting: chin up, chest out, a jabbing arm on the beat of the words
@@ -820,6 +860,15 @@ const Stage = {
     // the clamps a settled shot still has to pass. They used to run only on the pose finally chosen,
     // after the search had already scored a different one, so the search kept electing shots the
     // clamps then broke; every candidate is dressed the same way now and scored as it will be seen.
+    // ...but not the room you are standing in. "It was like a cave" names the cave, and holding a
+    // cave you are inside as a thing to keep in frame backs the lens off until its shell is the
+    // picture: 17 per cent of the stage was unlit rock and the cafe the same sentence names was a
+    // hundred pixels. You are in it; it is the frame, not an actor in it.
+    { const rmL = this.roomAround(look);
+      for (const f of framed) { if (f.w < 1) continue;
+        const k0 = ((this.actors.get(f.id) || {}).a || {}).kind;
+        if (!['room', 'corridor', 'cave', 'tent'].includes(k0)) continue;
+        if (rmL && rmL.rec.a.id === f.id) f.w = 0.4; } }
     const dress = out => { let p = out.pos, l = out.look;
       // an authored fixed camera has its own height, chosen by whoever wrote the shot
       if (facesMatter && c.mode !== 'pov' && !out.steep && !(c.mode === 'fixed' && c.pos)) { const len0 = p.distanceTo(l);
@@ -1342,7 +1391,12 @@ const Stage = {
     }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const rm2 = this.roomAround(look); if (rm2 && pos.y > rm2.box.max.y - 0.3) pos.y = rm2.box.max.y - 0.3; }
-    { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
+    // a cut is a new lens as well as a new place: easing the field of view across a cut left the
+    // frame the shot was scored in depending on how wide the previous sentence had been squeezed,
+    // and that is a piece of history the shipped still does not share with a playthrough
+    { const wantFov = 50 + (this.wallSqueeze || 0) * 22;
+      this.camera.fov = snap ? wantFov : this.camera.fov + (wantFov - this.camera.fov) * Math.min(1, dt * 3);
+      this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
     if (this._rush > 0) this._rush = Math.max(0, this._rush - dt);
     if (this._rush > 0.7) this._rush = 0.7;
     if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + Math.min(tg.moving || 0, 8) * 0.8) * (this._rush > 0 ? 4 : 1) * dt;
@@ -1486,9 +1540,12 @@ const Stage = {
   intoRoom(p, r, l) { const b = r.box, pad = 0.4;
     p.x = clamp(p.x, b.min.x + pad, b.max.x - pad); p.z = clamp(p.z, b.min.z + pad, b.max.z - pad);
     if (p.y > b.max.y - 0.3) p.y = b.max.y - 0.3;
-    if (r.round) { const hx = Math.max(0.5, r.h.x - pad), hz = Math.max(0.5, r.h.z - pad);
-      const q = Math.hypot((p.x - r.c.x) / hx, (p.z - r.c.z) / hz);
+    if (r.round) { const hx = Math.max(0.5, r.h.x - pad), hz = Math.max(0.5, r.h.z - pad), hy = Math.max(0.5, r.h.y - 0.3);
+      // ...and the roof curves in as well as the walls: a lens high in the box is outside the rock
+      // even when it is well inside the footprint
+      const q = Math.hypot((p.x - r.c.x) / hx, (p.z - r.c.z) / hz, Math.max(0, p.y - r.c.y) / hy);
       if (q > 0.78) { const k = 0.78 / q; p.x = r.c.x + (p.x - r.c.x) * k; p.z = r.c.z + (p.z - r.c.z) * k;
+        if (p.y > r.c.y) p.y = r.c.y + (p.y - r.c.y) * k;
         // and never so far in that it is standing on the person it is looking at
         if (l) { const d0 = Math.hypot(p.x - l.x, p.z - l.z);
           if (d0 < 1.8) { const k2 = d0 > 0.05 ? 1.8 / d0 : 0; p.x = l.x + (p.x - l.x) * k2 + (k2 ? 0 : 1.8); p.z = l.z + (p.z - l.z) * k2; } } } }
@@ -1535,9 +1592,13 @@ const Stage = {
   },
 
   occluded(from, to, self) {
+    // A room is a box whose walls face inward, so a ray from outside passes through them and the
+    // shortcut below stands in for the wall. A cave is a shell a ray actually hits, with a mouth
+    // to see through, and standing the shortcut in for it called a brother plainly in the middle
+    // of the frame occluded.
     { const outOf = (p, r) => { const b = r.box, pad = 1.2; return p.x < b.min.x - pad || p.x > b.max.x + pad || p.z < b.min.z - pad || p.z > b.max.z + pad; };
-      const rt = this.roomAround(to); if (rt && outOf(from, rt)) return true;
-      const rf = this.roomAround(from); if (rf && outOf(to, rf)) return true; }
+      const rt = this.roomAround(to); if (rt && !rt.round && outOf(from, rt)) return true;
+      const rf = this.roomAround(from); if (rf && !rf.round && outOf(to, rf)) return true; }
     // a figure below the ground can only be seen down a hole: if the line of sight crosses
     // ground level outside every pit mouth, the earth (which is no collider) is in the way
     if (to.y < -0.3 && from.y > 0.15 && this.pits && this.pits.length) {
@@ -1707,21 +1768,52 @@ const Stage = {
   },
   // is this one actor on screen at this instant, asked of anything in the scene rather than only
   // of the current beat's cast: the director's reply is checked against it
+  // where to ask whether a thing is on screen. One point is not enough: the nearest corner of a
+  // mountain range's box to the look point can be off the edge while a third of the stage is
+  // mountain, and the middle of a man can be behind a lamp post while the man is plainly there.
+  sightPoints(rec, st) {
+    const out = []; const top = rec.g.userData.baseHeight * (st.size / rec.a.size);
+    if (rec.g.userData.big || rec.g.userData.flat) { const bx = this.groupBox(rec.g);
+      if (Number.isFinite(bx.min.x)) { const c = bx.getCenter(new THREE.Vector3());
+        const n = new THREE.Vector3(); bx.clampPoint(this.cam.look, n); n.y = Math.max(n.y, Math.min(bx.max.y, 1));
+        out.push(n, new THREE.Vector3(c.x, Math.min(bx.max.y, Math.max(1, c.y)), c.z));
+        if (bx.max.y > 3) out.push(new THREE.Vector3(c.x, bx.max.y * 0.85, c.z));
+        return out; } }
+    const p0 = new THREE.Vector3(st.pos[0], st.pos[1] + top / 2, st.pos[2]);
+    out.push(p0);
+    if (top > 0.8) { out.push(new THREE.Vector3(p0.x, st.pos[1] + top * 0.82, p0.z), new THREE.Vector3(p0.x, st.pos[1] + top * 0.3, p0.z)); }
+    return out;
+  },
   seenAt(id) { const rec = this.actors.get(id), st = this.states && this.states.get(id);
     if (!rec || !st || st.op < 0.05) return false;
-    const top = rec.g.userData.baseHeight * (st.size / rec.a.size);
-    const v = new THREE.Vector3(st.pos[0], st.pos[1] + top / 2, st.pos[2]);
-    if (rec.g.userData.big || rec.g.userData.flat) { const bx = this.groupBox(rec.g); if (Number.isFinite(bx.min.x)) { bx.clampPoint(this.cam.look, v); v.y = Math.max(v.y, Math.min(bx.max.y, 1)); } }
-    const occ = rec.g.userData.members ? !this.anyPointSeen(this.camera.position, v, rec, st) : this.occluded(this.camera.position, v.clone(), rec.g);
-    v.project(this.camera);
-    return !occ && v.z < 1 && Math.abs(v.x) < 0.96 && v.y < 0.94 && v.y > -0.76; },
+    return this.sightPoints(rec, st).some(v0 => { const v = v0.clone();
+      const occ = rec.g.userData.members ? !this.anyPointSeen(this.camera.position, v, rec, st) : this.occluded(this.camera.position, v.clone(), rec.g);
+      v.project(this.camera);
+      return !occ && v.z < 1 && Math.abs(v.x) < 0.96 && v.y < 0.94 && v.y > -0.76; }); },
   /* metrics for the harness: which actors of the current beat are on screen */
   metrics() {
     if (!this.scene) return null; const bi = this.beatAt(this.time), b = this.scene.beats[bi]; const ids = new Set(b.actions.filter(x => x.actor && !(x.vanish && !x.say && !x.move && !x.appear)).map(x => x.actor)); ids.add(b.camera.target); if (b.camera.mode === 'pov') ids.delete(b.camera.target); const v = new THREE.Vector3(); const res = [];
-    for (const id of ids) { const rec = this.actors.get(id), st = this.states.get(id); if (!rec || !st) continue; const top = rec.g.userData.baseHeight * (st.size / rec.a.size); v.set(st.pos[0], st.pos[1] + top / 2, st.pos[2]);
-      // a mountain range's origin is a hundred metres from the part of it that is in the picture:
-      // ask the nearest point of the thing, or the report calls a visible skyline off screen
-      if (rec.g.userData.big || rec.g.userData.flat) { const bx = this.groupBox(rec.g); if (Number.isFinite(bx.min.x)) { bx.clampPoint(this.cam.look, v); v.y = Math.max(v.y, Math.min(bx.max.y, 1)); } } const dist = v.distanceTo(this.camera.position); const occ = rec.g.userData.members ? !this.anyPointSeen(this.camera.position, v, rec, st) : this.occluded(this.camera.position, v.clone(), rec.g); v.project(this.camera); res.push({ id, visible: st.op > 0.05, onScreen: st.op > 0.05 && !occ && v.z < 1 && Math.abs(v.x) < 0.96 && v.y < 0.94 && v.y > -0.76, occluded: occ, dist: +dist.toFixed(1), x: +v.x.toFixed(2), y: +v.y.toFixed(2) }); }
+    // a mountain range's origin is a hundred metres from the part of it that is in the picture, and
+    // the middle of a man can be behind a lamp post while the man is plainly there: ask several
+    // points of a thing and report the best of them, which is what a viewer's eye does
+    for (const id of ids) { const rec = this.actors.get(id), st = this.states.get(id); if (!rec || !st) continue;
+      const pts = this.sightPoints(rec, st);
+      let best = null;
+      for (const p0 of pts) { const q = p0.clone();
+        const occ0 = rec.g.userData.members ? !this.anyPointSeen(this.camera.position, q, rec, st) : this.occluded(this.camera.position, q.clone(), rec.g);
+        const d0 = q.distanceTo(this.camera.position); const pr = q.clone().project(this.camera);
+        const on = !occ0 && pr.z < 1 && Math.abs(pr.x) < 0.96 && pr.y < 0.94 && pr.y > -0.76;
+        const cand = { on, occ: occ0, d: d0, x: pr.x, y: pr.y };
+        if (!best || (on && !best.on) || (on === best.on && !occ0 && best.occ)) best = cand;
+        if (on) break; }
+      if (!best) continue;
+      // ...and how big it is when it gets there. "On screen" says nothing about whether anybody can
+      // see it, and a fifth of the round's on-screen slots were under three hundred pixels.
+      const hgt0 = rec.g.userData.big || rec.g.userData.flat ? (() => { const bx = this.groupBox(rec.g); return Number.isFinite(bx.min.y) ? bx.max.y - bx.min.y : 2; })()
+        : rec.g.userData.baseHeight * (st.size / rec.a.size);
+      const fovR = this.camera.fov * Math.PI / 180;
+      const px = Math.round(hgt0 / Math.max(0.5, best.d) / (2 * Math.tan(fovR / 2)) * (this.canvas.clientHeight || 800));
+      res.push({ id, visible: st.op > 0.05, onScreen: st.op > 0.05 && best.on, occluded: best.occ, dist: +best.d.toFixed(1), px, x: +best.x.toFixed(2), y: +best.y.toFixed(2) }); }
     const ft = this.frameTimes.slice(-120); const avg = ft.length ? ft.reduce((a, b) => a + b, 0) / ft.length : 0; return { beat: bi, time: +this.time.toFixed(2), camera: { pos: this.camera.position.toArray().map(q => +q.toFixed(1)), look: this.cam.look.toArray().map(q => +q.toFixed(1)), mode: b.camera.mode }, fog: +this.three.fog.density.toFixed(4), actors: res, frameMs: +avg.toFixed(1), submitMs: +(((this.submitTimes || []).slice(-120).reduce((a, b) => a + b, 0)) / Math.max(1, (this.submitTimes || []).slice(-120).length)).toFixed(1), tris: this.r.info.render.triangles, calls: this.r.info.render.calls };
   }
 };
