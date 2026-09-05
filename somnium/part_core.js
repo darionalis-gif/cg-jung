@@ -430,7 +430,7 @@ function normalizeScene(raw, dreamText) {
         if (Math.hypot(o.pos[0] - t.pos[0], o.pos[2] - t.pos[2]) > 9) continue; others.push(o); }
       if (others.length) { let ox = 0, oz = 0; for (const o of others) { ox += o.pos[0] - t.pos[0]; oz += o.pos[2] - t.pos[2]; }
         if (Math.hypot(ox, oz) > 0.3) { const want = Math.round(Math.atan2(ox, oz) * 180 / Math.PI * 100) / 100;
-          if (blocked(want) < 0.05) t.yaw = ((want % 360) + 360) % 360; } } }
+          if (blocked(want) < blocked(t.yaw) - 0.05) t.yaw = ((want % 360) + 360) % 360; } } }
     let back = 0;
     for (const f of actors) { if (!['table', 'bed', 'desk', 'sofa', 'wall', 'car', 'truck', 'bus'].includes(f.kind)) continue;
       const hw = Math.max((f.detail.width || 1.6) * f.size, 0.4) / 2, hd = Math.max((f.detail.depth || 0.9) * f.size, 0.4) / 2;
@@ -451,7 +451,12 @@ function normalizeScene(raw, dreamText) {
       const hw2 = (rm.detail.width || 8) * rm.size / 2 - 0.7, hd2 = (rm.detail.depth || 8) * rm.size / 2 - 0.7;
       if (Math.abs(t.pos[0] - rm.pos[0]) > hw2 + 0.7 || Math.abs(t.pos[2] - rm.pos[2]) > hd2 + 0.7) continue;
       nx = clamp(nx, rm.pos[0] - hw2, rm.pos[0] + hw2); nz = clamp(nz, rm.pos[2] - hd2, rm.pos[2] + hd2); }
-    t.pos[0] = nx; t.pos[2] = nz; } }
+    const ddx = nx - t.pos[0], ddz = nz - t.pos[2];
+    t.pos[0] = nx; t.pos[2] = nz;
+    // and her own beats follow her: the move in beat 2 walked her straight back to the table she
+    // had just been moved off, which is the mirror of the cave bug
+    for (const b of beats) for (const x of b.actions) { if (x.actor !== tid || !x.move) continue;
+      x.move = [Math.round((x.move[0] + ddx) * 10000) / 10000, x.move[1], Math.round((x.move[2] + ddz) * 10000) / 10000]; } } }
   // the camera for a beat about somebody's face has to stand in front of that face. When the script
   // puts the other people there instead, every shot of the face is a shot of somebody's back.
   for (const b of beats) {
@@ -470,9 +475,11 @@ function normalizeScene(raw, dreamText) {
       // and one to each side: swung the same way, two of them fill the foreground together
       const order = swung.has(side) && !swung.has(-side) ? [-side, side] : [side, -side];
       let put = null, used = null;
-      for (const sg of order) { const ang = t.yaw * Math.PI / 180 + sg * 1.16;
-        const px = t.pos[0] + Math.sin(ang) * d, pz = t.pos[2] + Math.cos(ang) * d;
-        if (!rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r)) { put = [px, pz]; used = sg; break; } }
+      // one to each side, even when a crowd ring sits on the preferred slot: come in a little
+      // rather than pile both of them onto the same shoulder
+      outerW: for (const sg of order) for (const rad of [d, d * 0.78, d * 0.6]) { const ang = t.yaw * Math.PI / 180 + sg * 1.16;
+        const px = t.pos[0] + Math.sin(ang) * rad, pz = t.pos[2] + Math.cos(ang) * rad;
+        if (!rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r)) { put = [px, pz]; used = sg; break outerW; } }
       if (put) { a.pos[0] = put[0]; a.pos[2] = put[1]; swung.add(used); } } }
   for (const b of beats) for (const x of b.actions) if (x.appear && x.at > 0.82) x.at = 0.7;
   let t = 0; for (const b of beats) { b.start = t; t += b.dur; }

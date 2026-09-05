@@ -648,7 +648,7 @@ function normalizeScene(raw, dreamText) {
         if (Math.hypot(o.pos[0] - t.pos[0], o.pos[2] - t.pos[2]) > 9) continue; others.push(o); }
       if (others.length) { let ox = 0, oz = 0; for (const o of others) { ox += o.pos[0] - t.pos[0]; oz += o.pos[2] - t.pos[2]; }
         if (Math.hypot(ox, oz) > 0.3) { const want = Math.round(Math.atan2(ox, oz) * 180 / Math.PI * 100) / 100;
-          if (blocked(want) < 0.05) t.yaw = ((want % 360) + 360) % 360; } } }
+          if (blocked(want) < blocked(t.yaw) - 0.05) t.yaw = ((want % 360) + 360) % 360; } } }
     let back = 0;
     for (const f of actors) { if (!['table', 'bed', 'desk', 'sofa', 'wall', 'car', 'truck', 'bus'].includes(f.kind)) continue;
       const hw = Math.max((f.detail.width || 1.6) * f.size, 0.4) / 2, hd = Math.max((f.detail.depth || 0.9) * f.size, 0.4) / 2;
@@ -669,7 +669,12 @@ function normalizeScene(raw, dreamText) {
       const hw2 = (rm.detail.width || 8) * rm.size / 2 - 0.7, hd2 = (rm.detail.depth || 8) * rm.size / 2 - 0.7;
       if (Math.abs(t.pos[0] - rm.pos[0]) > hw2 + 0.7 || Math.abs(t.pos[2] - rm.pos[2]) > hd2 + 0.7) continue;
       nx = clamp(nx, rm.pos[0] - hw2, rm.pos[0] + hw2); nz = clamp(nz, rm.pos[2] - hd2, rm.pos[2] + hd2); }
-    t.pos[0] = nx; t.pos[2] = nz; } }
+    const ddx = nx - t.pos[0], ddz = nz - t.pos[2];
+    t.pos[0] = nx; t.pos[2] = nz;
+    // and her own beats follow her: the move in beat 2 walked her straight back to the table she
+    // had just been moved off, which is the mirror of the cave bug
+    for (const b of beats) for (const x of b.actions) { if (x.actor !== tid || !x.move) continue;
+      x.move = [Math.round((x.move[0] + ddx) * 10000) / 10000, x.move[1], Math.round((x.move[2] + ddz) * 10000) / 10000]; } } }
   // the camera for a beat about somebody's face has to stand in front of that face. When the script
   // puts the other people there instead, every shot of the face is a shot of somebody's back.
   for (const b of beats) {
@@ -688,9 +693,11 @@ function normalizeScene(raw, dreamText) {
       // and one to each side: swung the same way, two of them fill the foreground together
       const order = swung.has(side) && !swung.has(-side) ? [-side, side] : [side, -side];
       let put = null, used = null;
-      for (const sg of order) { const ang = t.yaw * Math.PI / 180 + sg * 1.16;
-        const px = t.pos[0] + Math.sin(ang) * d, pz = t.pos[2] + Math.cos(ang) * d;
-        if (!rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r)) { put = [px, pz]; used = sg; break; } }
+      // one to each side, even when a crowd ring sits on the preferred slot: come in a little
+      // rather than pile both of them onto the same shoulder
+      outerW: for (const sg of order) for (const rad of [d, d * 0.78, d * 0.6]) { const ang = t.yaw * Math.PI / 180 + sg * 1.16;
+        const px = t.pos[0] + Math.sin(ang) * rad, pz = t.pos[2] + Math.cos(ang) * rad;
+        if (!rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r)) { put = [px, pz]; used = sg; break outerW; } }
       if (put) { a.pos[0] = put[0]; a.pos[2] = put[1]; swung.add(used); } } }
   for (const b of beats) for (const x of b.actions) if (x.appear && x.at > 0.82) x.at = 0.7;
   let t = 0; for (const b of beats) { b.start = t; t += b.dur; }
@@ -1265,7 +1272,7 @@ const Stage = {
         for (const r2 of solo) r2.g.position.set(r2.a.pos[0], r2.a.pos[1], r2.a.pos[2]); }
       } this.applyWorld(scene.world); const mid0 = scene.beats[0] ? scene.beats[0].dur * 0.5 : 0; this.setTime(mid0); this.aimSkyLive(); this.setTime(0); this.playing = true;
   },
-  setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
+  setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this._rush = 0; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
   beatAt(t) { const bs = this.scene.beats; for (let i = bs.length - 1; i >= 0; i--) if (t >= bs[i].start) return i; return 0; },
   /* ---- evaluate all actor and world state at this.time ---- */
   evalActors(t) {
@@ -1277,7 +1284,7 @@ const Stage = {
         if (x.size !== undefined) st.size = lerp(st.size, x.size, e);
         if (x.color) { st.colorC = [st.color, x.color, e]; if (p >= 1) st.color = x.color; }
         if (x.appear) st.op = Math.max(st.op, p >= 1 ? 1 : Math.min(1, p * 2)); if (x.vanish) st.op = p >= 1 ? 0 : Math.min(st.op, 1 - Math.min(1, p * 2));
-        if (x.state === 'grow' || x.state === 'shrink') { const a0 = S.actors.find(q => q.id === x.actor) || {}; const base = a0.size || st.size; const lim = a0.kind === 'castle' ? 1.9 : 1.6; const tgt = x.state === 'grow' ? Math.min(st.size * 2.5, base * lim) : Math.max(st.size * 0.35, base * 0.5); st.size = lerp(st.size, tgt, e); } else if (x.state) { const transient = ['walk', 'run', 'limp', 'push', 'shake', 'spin', 'collapse', 'wave', 'dance', 'fall', 'open', 'grow', 'shrink'].includes(x.state); if (!transient || p < 1) { st.state = x.state; st.window = p; } else if (x.state === 'collapse') st.state = 'lie'; else if (x.state === 'fall') st.state = 'lie'; else if (x.state === 'open') st.state = 'open'; else if (x.state === 'grow' || x.state === 'shrink') st.state = 'idle'; }
+        if (x.state === 'grow' || x.state === 'shrink') { const a0 = S.actors.find(q => q.id === x.actor) || {}; const base = a0.size || st.size; const lim = a0.kind === 'castle' ? 1.15 : 1.6; const tgt = x.state === 'grow' ? Math.min(st.size * 2.5, base * lim) : Math.max(st.size * 0.35, base * 0.5); st.size = lerp(st.size, tgt, e); } else if (x.state) { const transient = ['walk', 'run', 'limp', 'push', 'shake', 'spin', 'collapse', 'wave', 'dance', 'fall', 'open', 'grow', 'shrink'].includes(x.state); if (!transient || p < 1) { st.state = x.state; st.window = p; } else if (x.state === 'collapse') st.state = 'lie'; else if (x.state === 'fall') st.state = 'lie'; else if (x.state === 'open') st.state = 'open'; else if (x.state === 'grow' || x.state === 'shrink') st.state = 'idle'; }
         if (x.say && p < 1) st.say = x.say; }
     }
     // whoever shares a vehicle's destination in a beat travels in it, not behind it
@@ -1598,7 +1605,10 @@ const Stage = {
     const yawS = this.smoothYaw;
     if (c.mode === 'fixed' && c.pos) { pos = new THREE.Vector3(...c.pos); look = Array.isArray(c.lookAt) ? new THREE.Vector3(...c.lookAt) : (typeof c.lookAt === 'string' && states.get(c.lookAt) ? new THREE.Vector3(...states.get(c.lookAt).pos).add(new THREE.Vector3(0, 1, 0)) : eye); }
     else if (c.mode === 'pov') { pos = T.clone().add(new THREE.Vector3(0, Math.max(0.5, hgt * 0.88), 0)); look = pos.clone().add(dirAt(tg.yaw, 10, -0.5)); }
-    else if (c.mode === 'orbit') { const ang = c.angle + yawS + local * 18; const dist = groupC ? Math.min(c.distance * 1.45, Math.max(c.distance, groupR * 1.8 + 3)) : c.distance; const ctr = groupC ? T.clone().lerp(groupC, 0.6) : T; pos = ctr.clone().add(dirAt(ang, dist, c.height + (dist - c.distance) * 0.2)); look = groupC ? new THREE.Vector3(ctr.x, eye.y, ctr.z) : eye; }
+    // an orbit should drift, not swing round behind the subject: eighteen degrees a second had the
+    // authored angle eighty degrees away by mid-beat, which is the back of the head of whoever the
+    // sentence is about
+    else if (c.mode === 'orbit') { const talky = beat.actions.some(x => x.say || FACE_STATE.has(x.state)); const ang = c.angle + yawS + Math.min(talky ? 12 : 30, local * (talky ? 2.2 : 5)); const dist = groupC ? Math.min(c.distance * 1.45, Math.max(c.distance, groupR * 1.8 + 3)) : c.distance; const ctr = groupC ? T.clone().lerp(groupC, 0.6) : T; pos = ctr.clone().add(dirAt(ang, dist, c.height + (dist - c.distance) * 0.2)); look = groupC ? new THREE.Vector3(ctr.x, eye.y, ctr.z) : eye; }
     else if (c.mode === 'wide') { const extent = Math.max(groupR * 2, (rec ? rec.g.userData.baseHeight : 1.8) * 2); const floorD = Math.min(clamp(extent * 2.6, 10, 22), c.distance * 1.15); pos = T.clone().add(dirAt(c.angle + yawS, Math.max(c.distance, floorD), Math.max(c.height, floorD * 0.32) + local * 0.2)); look = groupC ? new THREE.Vector3(groupC.x, eye.y, groupC.z) : eye; }
     else { const dist = groupC ? Math.min(c.distance * 1.45, Math.max(c.distance, groupR * 1.6 + 3)) : c.distance; pos = T.clone().add(dirAt(yawS + c.angle, dist, c.height + local * 0.05 + (dist - c.distance) * 0.25)); look = groupC ? new THREE.Vector3(lerp(T.x, groupC.x, 0.5), eye.y, lerp(T.z, groupC.z, 0.5)) : eye; }
     const lookRec = typeof c.lookAt === 'string' ? this.actors.get(c.lookAt) : null;
@@ -1622,7 +1632,12 @@ const Stage = {
         } } }
     // part of the beat is happening below the ground: look2 down into the hole instead of across it
     { const low = [], high = []; for (const x of beat.actions) { if (!x.actor) continue; const st = states.get(x.actor); const r2 = this.actors.get(x.actor); if (!st || st.op < 0.3 || !r2 || r2.g.userData.flat || r2.g.userData.big) continue; const climbing = beat.actions.some(q => q.actor === x.actor && q.move && q.move[1] > -1); (st.pos[1] < -1 && !climbing ? low : high).push(st); }
-      if (low.length && high.length) { const c0 = low.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(low.length);
+      // a beat where somebody at the rim is the one yelling is a shot of that person, with the hole
+      // in the lower frame -- not a plan view in which they are a crown of hair. A 4 m hole cannot
+      // be looked into from outside its rim at less than sixty degrees, so when the sentence is
+      // about the people above, the stage stops trying to be in both places.
+      const rimSpeaks = low.length && high.length && beat.actions.some(x => x.actor && (x.say || FACE_STATE.has(x.state)) && high.some(q => q === states.get(x.actor)));
+      if (low.length && high.length && !rimSpeaks) { const c0 = low.reduce((a, st) => a.add(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])), new THREE.Vector3()).divideScalar(low.length);
         // how steeply the hole has to be looked into is a fact about the hole's own axis and the
         // people standing off it; measuring it against a look point already pulled toward the rim
         // made every pit read as unlookable and threw the person at the bottom out of the shot
@@ -1978,7 +1993,7 @@ const Stage = {
       const badCam = must.length && !snap ? lost(this.cam.pos, this.cam.look) : 0;
       // when the pose holds everybody and the lens does not, the answer is not another pose: it is
       // to be at this one. Cut to it.
-      if (!badPose && badCam) this._snapNow = true;
+      if (!badPose && badCam) { if (this.cam.pos.distanceTo(pos) > 6 && !snap) this._rush = 0.7; else this._snapNow = true; }
       let bad = badPose;
       if (this.debugFrames) this.saveDbg = { bad, n: must.length, ids: must.map(f => f.id + (this.inShot(pos, look, f.p, f.g) ? '+' : '-')), saves: this.framePick.saves || 0 };
       // the rescue has to judge a shot the way the search does, or it elects the shots the search
@@ -1989,7 +2004,9 @@ const Stage = {
           if (cov > 1.2) q += 7;
           else if (f.w >= 1 && dl < Math.max(2.2, reach * 0.35) && cov > 0.9) q += 5; }
         return q; };
-      if (bad && (this.framePick.saves || 0) < 3) {
+      const mayTry = snap || this.framePick.tryAt === undefined || Math.abs(this.time - this.framePick.tryAt) > 0.3;
+      if (bad && (this.framePick.saves || 0) < 3 && mayTry) {
+        this.framePick.tryAt = this.time;
         let bq = pos, bl = look, bAz = null, bMul = 1, bLift = 0;
         let bb = bad * 10 + uglier(pos, look);
         outer2: for (const mul of [1, 1.25, 1.6]) for (const lift of [0, 1.6]) for (const az of [0, 20, -20, 40, -40, 70, -70, 110, -110, 150, -150, 180]) {
@@ -2006,17 +2023,19 @@ const Stage = {
           // and take a big correction now rather than easing into it: easing means the frames in
           // between are the ones that lose the subject, which is the whole thing being fixed
           const jump = bq.distanceTo(pos); pos = bq; look = bl;
-          if ((this.framePick.saves || 0) <= 1 || jump > 2) this._snapNow = true; } } }
+          if (jump <= 4 && ((this.framePick.saves || 0) <= 1 || jump > 2)) this._snapNow = true;
+          else if (jump > 4) this._rush = 0.7; } } }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const rm2 = this.roomAround(look); if (rm2 && pos.y > rm2.box.max.y - 0.3) pos.y = rm2.box.max.y - 0.3; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
-    if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + Math.min(tg.moving || 0, 8) * 0.8) * dt;
+    if (this._rush > 0) this._rush = Math.max(0, this._rush - dt);
+    if (!snap && this._lastAim && dt > 0) { const step = pos.distanceTo(this._lastAim); const cap = (2.5 + Math.min(tg.moving || 0, 8) * 0.8) * (this._rush > 0 ? 8 : 1) * dt;
       if (step > cap) pos = this._lastAim.clone().lerp(pos, cap / step); }
     this._lastAim = (this._lastAim || new THREE.Vector3()).copy(pos);
-    if (snap || this._snapNow) { this._snapNow = false; this.cam.pos.copy(pos); this.cam.look.copy(look); this._lastCamOff = null; this._lastOff = null; this._lastAim = (this._lastAim || new THREE.Vector3()).copy(pos); } else { const k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); const f = 1 - Math.exp(-dt * k);
+    if (snap || this._snapNow) { this._snapNow = false; this.cam.pos.copy(pos); this.cam.look.copy(look); this._lastCamOff = null; this._lastOff = null; this._lastAim = (this._lastAim || new THREE.Vector3()).copy(pos); } else { let k = this.user.on ? 8 : (c.mode === 'fixed' ? 2.2 : 3 + Math.min(9, (tg.moving || 0) * 0.3)); if (this._rush > 0) k *= 4; const f = 1 - Math.exp(-dt * k);
       const was = this.cam.pos.clone(); this.cam.pos.lerp(pos, f); this.cam.look.lerp(look, f);
       if (local > 1 && dt > 0 && this._lastCamOff) { const o2 = this.cam.pos.clone().sub(this.cam.look);
-        const moved = o2.distanceTo(this._lastCamOff), lim = 3.2 * dt;
+        const moved = o2.distanceTo(this._lastCamOff), lim = 3.2 * (this._rush > 0 ? 8 : 1) * dt;
         if (moved > lim) { o2.copy(this._lastCamOff).lerp(o2, lim / moved); this.cam.pos.copy(this.cam.look).add(o2); } }
       this._lastCamOff = (this._lastCamOff || new THREE.Vector3()).copy(this.cam.pos).sub(this.cam.look); }
     const hh = this.user.on ? 0 : 0.035; const drift = new THREE.Vector3(Math.sin(this.time * 0.7) * hh + Math.sin(this.time * 1.9) * hh * 0.4, Math.sin(this.time * 0.9 + 1) * hh * 0.7, Math.cos(this.time * 0.5) * hh);
@@ -2062,8 +2081,11 @@ const Stage = {
   seenWell(pos, look, f, strictLow) {
     const h = Math.max(0.6, f.h || 1.8); const q = this._sw || (this._sw = new THREE.Vector3());
     if (!this.inShot(pos, look, f.p, f.g)) return false;
-    let ok = 0; for (const k of [0.35, -0.2]) { q.copy(f.p); q.y = f.p.y + h * k; if (this.inShot(pos, look, q, f.g)) ok++; }
-    return strictLow ? ok === 2 : ok > 0;
+    let ok = 0, head = false; for (const k of [0.35, -0.2]) { q.copy(f.p); q.y = f.p.y + h * k; if (this.inShot(pos, look, q, f.g)) { ok++; if (k > 0) head = true; } }
+    // strict means her head has to be in it, not her shins: the tea table she stands at hides her
+    // legs from every frontal candidate, and demanding the low point marked all of them "target
+    // lost" -- which put the lens on the back of her head for four face beats running
+    return strictLow ? head : ok > 0;
   },
   lensCrowding(pos, self) {
     const sol = this.solidsNow; if (!sol || !sol.length) return 0; let n = 0; const seen = new Set();
@@ -2179,7 +2201,9 @@ const Stage = {
         if (t < 1e5) { const q = cam.position.clone().add(f.multiplyScalar(Math.max(1.5, t - 0.6))); q.y = b.min.y + (b.max.y - b.min.y) * 0.55;
           const aq = [+q.x.toFixed(2), +q.y.toFixed(2), +q.z.toFixed(2)]; rec.g.userData.aimed = aq; const st2 = this.states && this.states.get(a.id); if (st2) st2.pos = aq.slice(); rec.g.position.copy(q); rec.g.userData.indoor = true; }
         continue; }
-      if (this.roomAround(new THREE.Vector3(a.pos[0], Math.min(a.pos[1], 2), a.pos[2]))) continue;
+      // a sky disc's authored x/z are arbitrary far-field numbers; when a room happened to sit over
+      // them the moon was never aimed at all and stayed eleven screen-widths off the frame
+      if (this.roomAround(this.cam.look)) continue;
       // and off the centre line: a disc nailed to the middle of every frame reads as a sticker on
       // the lens rather than something in the sky
       const side = ((a.pos[0] * fwd.z - a.pos[2] * fwd.x) >= 0 ? 1 : -1) * 0.42;
@@ -2191,7 +2215,12 @@ const Stage = {
       const flatF = fwd.clone(); flatF.y = 0; flatF.normalize();
       const drop = Math.tan(Math.atan2(cam.position.y - this.cam.look.y, Math.max(1, Math.hypot(cam.position.x - this.cam.look.x, cam.position.z - this.cam.look.z)))) * 900;
       const far = cam.position.clone().add(flatF.multiplyScalar(900)); far.y = cam.position.y - drop;
-      const hy = far.project(cam).y; const lo = Math.min(0.5, hy + 0.04), hi = Math.max(lo + 0.05, Math.min(0.58, hy + 0.26));
+      const hy = far.project(cam).y;
+      // and where in the sky it sits is the director's to ask for: a moon written low over the
+      // horizon stays near it, one written high rides higher
+      const elev = Math.atan2(Math.max(0, a.pos[1]), Math.max(1, Math.hypot(a.pos[0], a.pos[2])));
+      const band = clamp(elev / (Math.PI / 5), 0, 1);
+      const lo = Math.min(0.55, hy + 0.02 + band * 0.16), hi = Math.max(lo + 0.05, Math.min(0.72, lo + 0.2));
       for (let k = 0; k < 16; k++) { const ndc = p.clone().project(cam); if (ndc.y >= lo && ndc.y <= hi) break; p.y += (ndc.y > hi ? -1 : 1) * Math.max(1.2, Math.abs(ndc.y - (ndc.y > hi ? hi : lo)) * 26); if (p.y < 8) { p.y = 8; break; } if (p.y > 260) { p.y = 260; break; } }
       const aimed = [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)];
       rec.g.userData.aimed = aimed;
