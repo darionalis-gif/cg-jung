@@ -1339,9 +1339,10 @@ const Stage = {
       T.armsX = [-0.62 + br, -0.5 - br]; T.armsZ = [0.18, -0.24]; T.fore = [-0.95, -0.75];
       T.headY = Math.sin(t * 0.42) * 0.2; T.torsoS = 1 + Math.sin(t * 1.5) * 0.012; T.hipsZ = br * 0.4; }
     else if (s === 'kneel') { const br = Math.sin(t * 1.2) * 0.035;
-      T.legs = [-0.05, 1.5]; T.shins = [-2.5, -1.5]; T.y = -0.35; T.ground = true;
-      T.armsX = [-0.78 + br, -0.55 - br * 0.6]; T.armsZ = [0.2, -0.3]; T.fore = [-0.95, -0.6];
-      T.bodyX = 0.22 + br * 0.5; T.hipsZ = 0.05; T.headY = Math.sin(t * 0.5) * 0.22; T.torsoS = 1 + Math.sin(t * 1.5) * 0.014; }
+      // the hips have to come down to the folded shin, or it reads as a man sitting on air
+      T.legs = [-0.12, 1.32]; T.shins = [-2.78, -1.36]; T.y = -0.52; T.ground = true;
+      T.armsX = [-0.95 + br, -0.7 - br * 0.6]; T.armsZ = [0.24, -0.34]; T.fore = [-1.15, -0.85];
+      T.bodyX = 0.32 + br * 0.5; T.hipsZ = 0.05; T.headY = Math.sin(t * 0.5) * 0.22; T.torsoS = 1 + Math.sin(t * 1.5) * 0.014; }
     else if (s === 'lie') { const br = Math.sin(t * 0.9) * 0.03;
       T.bodyX = -1.5; T.y = 0.2 - 0.96 + 0.18; T.ground = true;
       T.legs = [0.06, -0.09]; T.shins = [0, -0.05];
@@ -1351,8 +1352,12 @@ const Stage = {
     else if (s === 'shake') { T.armsX = [-0.9, -0.9]; T.fore = [-1.2, -1.2]; T.armsZ = [0.3, -0.3]; T.bodyX = 0.18; T.legs = [0.12, -0.12]; T.shins = [-0.15, -0.15]; }
     else if (s === 'push') { T.armsX = [-1.5, -1.5]; T.fore = [-0.1, -0.1]; T.bodyX = 0.2 + Math.max(0, Math.sin(t * 4)) * 0.15; T.legs = [0.3, -0.3]; T.shins = [-0.2, -0.5]; }
     else if (s === 'spin') { T.armsZ = [0.9, -0.9]; T.armsX = [-0.3, -0.3]; }
-    else if (s === 'dance') { const v = 0.5 + 0.5 * Math.sin(phase * 3.7); T.y = Math.abs(Math.sin(t * 6)) * 0.12; T.armsZ = [1.1 + v * 1.3 + Math.sin(t * 6) * 0.5, -(0.9 + (1 - v) * 1.5) - Math.sin(t * 6 + 1) * 0.5]; T.fore = [-0.6, -0.6]; T.legs = [Math.sin(t * 6) * 0.2, -Math.sin(t * 6) * 0.2]; T.hipsZ = Math.sin(t * 6) * 0.12; }
-    else if (s === 'wave') { T.armsZ = [0.08, 2.55]; T.armsX = [0, -0.2]; T.fore = [-0.25, -0.3 + Math.sin(t * 8) * 0.5]; T.headY = 0; }
+    else if (s === 'dance') { const v = 0.5 + 0.5 * Math.sin(phase * 3.7); const d4 = Math.sin(t * 3.6), d4b = Math.sin(t * 3.6 + 1); T.y = Math.abs(Math.sin(t * 3.6)) * 0.16; T.armsZ = [1.1 + v * 1.3 + d4 * 1.1, -(0.9 + (1 - v) * 1.5) - d4b * 1.1]; T.fore = [-0.6 + d4 * 0.4, -0.6 - d4b * 0.4]; T.legs = [d4 * 0.34, -d4 * 0.34]; T.hipsZ = Math.sin(t * 6) * 0.12; }
+    else if (s === 'wave') { // the whole raised arm swings, not a wrist: at ten frames a second a
+      // small fast flick averages into a still arm
+      const sw = Math.sin(t * 4.2);
+      T.armsZ = [0.1, 2.18 + sw * 0.5]; T.armsX = [0.05, -0.25 + sw * 0.12];
+      T.fore = [-0.3, -0.45 + sw * 0.75]; T.bodyZ = sw * 0.05; T.headZ = sw * 0.06; T.headY = 0; }
     else if (s === 'melt') { const p = window; T.ground = true; T.torsoS = Math.max(0.05, 1 - p); T.y = -0.9 * p; T.armsZ = [0.8 * p, -0.8 * p]; }
     else if (s === 'fold') { const p = window; T.headS = Math.max(0.45, 1 - p * 0.55); T.headX = p * 0.28; T.headZ = Math.sin(p * 6) * 0.3 * p; T.armsX = [-1.6 * p, -1.6 * p]; T.fore = [-0.9 * p, -0.9 * p]; T.bodyX = 0.35 * p; keepHead = false; }
     else if (s === 'throw') { // wind up, cast, then recover: the pose must not freeze once the stone is gone
@@ -1553,10 +1558,23 @@ const Stage = {
     // frame the actors the sentence names, not only the camera's target: try the shot, then a few wider or turned variants
     const framed = [];
     const cut = beat.actions.some(x => x.effect === 'blackout');
+    const wideNamed = [];
     for (const x of beat.actions) { if (!x.actor) continue; if (cut && !x.appear && !x.say && !x.move) continue;
-      if (x.vanish && !x.say && !x.move && !x.appear) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; // somebody the sentence names is in the shot whether or not the script gave them something to
+      if (x.vanish && !x.say && !x.move && !x.appear) continue;
+      { const rW = this.actors.get(x.actor); const sW = states.get(x.actor);
+        if (rW && sW && sW.op >= 0.3 && (rW.g.userData.flat || rW.g.userData.big) && !rW.g.userData.far) {
+          const bw = new THREE.Box3().setFromObject(rW.g);
+          if (Number.isFinite(bw.min.x)) wideNamed.push({ id: x.actor, g: rW.g, box: bw }); } } const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; // somebody the sentence names is in the shot whether or not the script gave them something to
       // do: standing still was costing them every guarantee, which all key on a weight of 1
       let weight = (x.say || x.move || x.appear || (x.state && x.state !== 'idle') || FACED.has(r2.a.kind) || x.actor === c.target) ? 1 : 0.35; const prev = framed.find(q => q.id === x.actor); if (prev) { prev.w = Math.max(prev.w, weight); prev.speaks = prev.speaks || !!x.say || FACE_STATE.has(x.state); continue; } const shrink = ['sit', 'lie', 'crouch', 'kneel', 'crawl'].includes(st2.state) ? 0.55 : 1; framed.push({ id: x.actor, g: r2.g, w: weight, faced: FACED.has(r2.a.kind), speaks: !!x.say || FACE_STATE.has(x.state), h: r2.g.userData.baseHeight * (st2.size / r2.a.size) * shrink, p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
+    // the surf the sentence is about is a 300 m plane whose centre is out at sea: hold its nearest
+    // edge in shot instead, so a beat that casts stones into the water has water in it
+    if (framed.length) { const c0 = new THREE.Vector3();
+      for (const f of framed) c0.add(f.p); c0.divideScalar(framed.length);
+      for (const w of wideNamed) { if (framed.some(q => q.id === w.id)) continue;
+        const near = w.box.clampPoint(c0, new THREE.Vector3()); near.y = Math.max(near.y, 0.2);
+        if (near.distanceTo(c0) > 60) continue;
+        framed.push({ id: w.id, g: w.g, w: 0.5, faced: false, speaks: false, h: 1.2, p: near }); } }
     for (const a2 of this.scene.actors) { if (!a2.carriedBy) continue; if (!framed.some(q => q.id === a2.carriedBy)) continue;
       if (framed.some(q => q.id === a2.id)) continue; const r4 = this.actors.get(a2.id), s5 = states.get(a2.id);
       if (!r4 || !s5 || s5.op < 0.3) continue;
