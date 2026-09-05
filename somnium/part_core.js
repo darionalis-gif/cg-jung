@@ -480,7 +480,11 @@ function normalizeScene(raw, dreamText) {
       let put = null, used = null;
       // one to each side, even when a crowd ring sits on the preferred slot: come in a little
       // rather than pile both of them onto the same shoulder
-      outerW: for (const sg of order) for (const rad of [d, d * 0.78, d * 0.6]) { const ang = t.yaw * Math.PI / 180 + sg * 1.16;
+      // and at a talking distance: after the dreamer is backed off her own table the people she is
+      // talking to are four metres away, and holding both of them makes a wide shot of the party
+      // out of a beat about her face
+      const dd = Math.min(d, 3.2);
+      outerW: for (const sg of order) for (const rad of [dd, dd * 0.78, dd * 0.6]) { const ang = t.yaw * Math.PI / 180 + sg * 1.16;
         const px = t.pos[0] + Math.sin(ang) * rad, pz = t.pos[2] + Math.cos(ang) * rad;
         if (!rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r)) { put = [px, pz]; used = sg; break outerW; } }
       if (put) { a.pos[0] = put[0]; a.pos[2] = put[1]; swung.add(used); } } }

@@ -698,7 +698,11 @@ function normalizeScene(raw, dreamText) {
       let put = null, used = null;
       // one to each side, even when a crowd ring sits on the preferred slot: come in a little
       // rather than pile both of them onto the same shoulder
-      outerW: for (const sg of order) for (const rad of [d, d * 0.78, d * 0.6]) { const ang = t.yaw * Math.PI / 180 + sg * 1.16;
+      // and at a talking distance: after the dreamer is backed off her own table the people she is
+      // talking to are four metres away, and holding both of them makes a wide shot of the party
+      // out of a beat about her face
+      const dd = Math.min(d, 3.2);
+      outerW: for (const sg of order) for (const rad of [dd, dd * 0.78, dd * 0.6]) { const ang = t.yaw * Math.PI / 180 + sg * 1.16;
         const px = t.pos[0] + Math.sin(ang) * rad, pz = t.pos[2] + Math.cos(ang) * rad;
         if (!rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r)) { put = [px, pz]; used = sg; break outerW; } }
       if (put) { a.pos[0] = put[0]; a.pos[2] = put[1]; swung.add(used); } } }
@@ -1608,7 +1612,27 @@ const Stage = {
     const c = beat.camera, tg = states.get(c.target) || states.values().next().value; const T = new THREE.Vector3(tg.pos[0], tg.pos[1], tg.pos[2]); const rec = this.actors.get(c.target); const hgt = rec ? rec.g.userData.baseHeight * (tg.size / rec.a.size) : 1.8; const eye = T.clone().add(new THREE.Vector3(0, Math.min(hgt * 0.6, 1.6), 0));
     let pos, look; const local = this.time - beat.start;
     // frame the whole group that acts in this beat, not only the target
-    let groupC = null, groupR = 0; { const active = beat.actions.filter(x => x.actor && (x.move || x.say || x.appear || (x.state && x.state !== 'idle'))).map(x => x.actor); const ids = [...new Set(active.concat([c.target]))]; const pts = []; for (const id of ids) { const st = states.get(id); const r2 = this.actors.get(id); if (!st || st.op < 0.3 || !r2 || r2.g.userData.big || r2.g.userData.flat) continue; if (r2.g.userData.members && id !== c.target) continue; if (Math.abs(st.pos[1] - T.y) > 3) continue; pts.push(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])); } if (pts.length > 1) { groupC = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(pts.length); for (const p of pts) groupR = Math.max(groupR, Math.hypot(p.x - groupC.x, p.z - groupC.z)); if (groupR > 7 || groupR < 1.2) { groupC = null; groupR = 0; } } }
+    const speakerHere = beat.actions.some(x => (x.say || FACE_STATE.has(x.state)) && FACED.has(((this.actors.get(x.actor) || {}).a || {}).kind));
+    // the beat is ABOUT this face when the camera's own subject speaks or wears a face state; that
+    // is when the face outranks keeping a bystander in shot, which "somebody somewhere speaks" is not
+    // ...and it is the face ALONE when nobody else in the beat is doing anything: two people
+    // grieving is a two-shot, and turning to one of their faces loses the other
+    const bowed = beat.actions.some(x => x.actor === c.target && (x.state === 'fold' || x.state === 'grieve' || x.state === 'kneel'));
+    const faceIsSubject = beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state))) && FACED.has((rec && rec.a.kind) || '')
+      && !beat.actions.some(x => x.actor && x.actor !== c.target && x.say);
+    // and when the camera's own subject is silent while exactly one person in the beat talks, that
+    // speaker's face is what the sentence is about: "he says he has seen me before" is a shot of
+    // the boy, not of the back of both their heads
+    const faceActor = faceIsSubject ? c.target
+      : (() => { const sp = [...new Set(beat.actions.filter(x => x.actor && x.say && FACED.has(((this.actors.get(x.actor) || {}).a || {}).kind)).map(x => x.actor))];
+          return sp.length === 1 && states.get(sp[0]) && (states.get(sp[0]).op || 0) > 0.3 ? sp[0] : null; })();
+    const fSt = faceActor && faceActor !== c.target ? states.get(faceActor) : null;
+    const fP = fSt ? new THREE.Vector3(fSt.pos[0], fSt.pos[1], fSt.pos[2]) : null;
+    const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state) || ((tg.moving || 0) < 0.3 && x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
+    let groupC = null, groupR = 0; { const active = beat.actions.filter(x => x.actor && (x.move || x.say || x.appear || (x.state && x.state !== 'idle'))).map(x => x.actor); const ids = [...new Set(active.concat([c.target]))]; const pts = []; for (const id of ids) { const st = states.get(id); const r2 = this.actors.get(id); if (!st || st.op < 0.3 || !r2 || r2.g.userData.big || r2.g.userData.flat) continue; if (r2.g.userData.members && id !== c.target) continue; if (Math.abs(st.pos[1] - T.y) > 3) continue; pts.push(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])); } // ...but a beat about one person's face is a shot of that face: pulling the centre of the shot
+      // out to the middle of the group put the lens where their front was not, and every candidate
+      // the search then tried was a variation on the back of their head
+      if (pts.length > 1 && !faceIsSubject) { groupC = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(pts.length); for (const p of pts) groupR = Math.max(groupR, Math.hypot(p.x - groupC.x, p.z - groupC.z)); if (groupR > 7 || groupR < 1.2) { groupC = null; groupR = 0; } } }
     const dirAt = (deg, d, h) => new THREE.Vector3(Math.sin(deg * Math.PI / 180) * d, h, Math.cos(deg * Math.PI / 180) * d);
     { const sm0 = this.smoothYaw === undefined ? tg.yaw : this.smoothYaw; const d0 = ((tg.yaw - sm0 + 540) % 360) - 180; this.smoothYaw = snap ? tg.yaw : sm0 + d0 * Math.min(1, dt * 1.5); }
     const yawS = this.smoothYaw;
@@ -1694,7 +1718,7 @@ const Stage = {
         if (ground) { const drop = Math.min(6, (look2.y - 6) * 0.3); look2.y -= drop; p.y += drop * 1.4; } } }
     // keep camera above ground and out of the target
     const minY = Math.min(0.4, T.y + 0.5); if (p.y < minY) p.y = minY;
-    const look2Rec = typeof c.look2At === 'string' ? this.actors.get(c.look2At) : null;
+    const look2Rec = typeof c.lookAt === 'string' ? this.actors.get(c.lookAt) : null;
     const selfs = [rec && rec.g, look2Rec && look2Rec.g].filter(Boolean);
     p = this.unblock(look2, p, selfs.length ? selfs : null);
       p = this.pushOffLens(p, look2, selfs);
@@ -1733,23 +1757,6 @@ const Stage = {
       if (framed.some(q => q.id === a2.id)) continue; const r4 = this.actors.get(a2.id), s5 = states.get(a2.id);
       if (!r4 || !s5 || s5.op < 0.3) continue;
       framed.push({ id: a2.id, g: r4.g, w: 0.7, faced: false, speaks: false, h: r4.g.userData.baseHeight * (s5.size / a2.size), p: new THREE.Vector3(s5.pos[0], s5.pos[1], s5.pos[2]) }); }
-    const speakerHere = beat.actions.some(x => (x.say || FACE_STATE.has(x.state)) && FACED.has(((this.actors.get(x.actor) || {}).a || {}).kind));
-    // the beat is ABOUT this face when the camera's own subject speaks or wears a face state; that
-    // is when the face outranks keeping a bystander in shot, which "somebody somewhere speaks" is not
-    // ...and it is the face ALONE when nobody else in the beat is doing anything: two people
-    // grieving is a two-shot, and turning to one of their faces loses the other
-    const bowed = beat.actions.some(x => x.actor === c.target && (x.state === 'fold' || x.state === 'grieve' || x.state === 'kneel'));
-    const faceIsSubject = beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state))) && FACED.has((rec && rec.a.kind) || '')
-      && !beat.actions.some(x => x.actor && x.actor !== c.target && x.say);
-    // and when the camera's own subject is silent while exactly one person in the beat talks, that
-    // speaker's face is what the sentence is about: "he says he has seen me before" is a shot of
-    // the boy, not of the back of both their heads
-    const faceActor = faceIsSubject ? c.target
-      : (() => { const sp = [...new Set(beat.actions.filter(x => x.actor && x.say && FACED.has(((this.actors.get(x.actor) || {}).a || {}).kind)).map(x => x.actor))];
-          return sp.length === 1 && states.get(sp[0]) && (states.get(sp[0]).op || 0) > 0.3 ? sp[0] : null; })();
-    const fSt = faceActor && faceActor !== c.target ? states.get(faceActor) : null;
-    const fP = fSt ? new THREE.Vector3(fSt.pos[0], fSt.pos[1], fSt.pos[2]) : null;
-    const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state) || ((tg.moving || 0) < 0.3 && x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
     // the clamps a settled shot still has to pass. They used to run only on the pose finally chosen,
     // after the search had already scored a different one, so the search kept electing shots the
     // clamps then broke; every candidate is dressed the same way now and scored as it will be seen.
@@ -1962,7 +1969,8 @@ const Stage = {
         const tc2 = o4.pos.clone().sub(fP || T), fc2 = dirAt(fSt ? this.faceYaw(faceActor, fSt) : tg.yaw, 1, 0);
         const front2 = (tc2.x * fc2.x + tc2.z * fc2.z) / (Math.hypot(tc2.x, tc2.z) || 1);
         // ...but a face is not worth a wrecked shot: take it only when it costs little
-        if (front2 < 0.15 && faceOnly.score > (best.score || -1e9) - 7) best = faceOnly; }
+        // and when the beat is about that face alone, the face is not a tie-break, it is the shot
+        if (front2 < 0.15 && (faceIsSubject || faceOnly.score > (best.score || -1e9) - 7)) best = faceOnly; }
       if (drifted && this.framePick && this.framePick.beat === this.lastBeat) {
         const keep = this.frameScanScoreOf(tiers, this.framePick);
         if (keep !== null && best.score - keep < 0.5) { best = { az: this.framePick.az, mul: this.framePick.mul, lift: this.framePick.lift, score: keep, has: true }; } }
@@ -2024,7 +2032,8 @@ const Stage = {
         return false; };
       // and whoever is speaking in the beat is not the one to drop: "when I speak to Timmy D." has
       // to have both of them in it, and if it cannot, it keeps the one talking
-      const lost = (p1, l1) => { let n = 0; for (const f of must) if (!shown(p1, l1, f)) n += (f.id === faceActor || f.speaks) ? 3 : 1; return n; };
+      // and the same trade as the search makes: an idle bystander is not worth the face
+      const lost = (p1, l1) => { let n = 0; for (const f of must) if (!shown(p1, l1, f)) n += (f.id === faceActor || f.speaks) ? 3 : (faceActor ? 0.34 : 1); return n; };
       // judge the camera the viewer is looking through, not the pose it is easing toward: a pose
       // that holds everybody is no help while the lens is still three metres behind it
       const badPose = must.length ? lost(pos, look) : 0;
@@ -2036,7 +2045,12 @@ const Stage = {
       if (this.debugFrames) this.saveDbg = { bad, n: must.length, ids: must.map(f => f.id + (this.inShot(pos, look, f.p, f.g) ? '+' : '-')), saves: this.framePick.saves || 0 };
       // the rescue has to judge a shot the way the search does, or it elects the shots the search
       // refused: a body filling the frame, a wall across it, a lens inside a crowd
+      // and the rescue must not undo the face the search just fought for: a pose that holds one
+      // more bystander by turning to the back of the head the sentence is about is not a rescue
       const uglier = (p1, l1) => { let q = this.lensCrowding(p1, selfs) * 1.1; const reach = p1.distanceTo(l1);
+        if (faceActor) { const fs = states.get(faceActor);
+          if (fs) { const fc = dirAt(this.faceYaw(faceActor, fs), 1, 0); const v = p1.clone().sub(new THREE.Vector3(fs.pos[0], fs.pos[1], fs.pos[2]));
+            const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); if (fr < 0.15) q += faceIsSubject ? 12 : 6; } }
         for (const f of framed) { const dl = f.p.distanceTo(p1), cov = (f.h || 1.8) / Math.max(0.6, dl);
           if (f.id === c.target) continue;
           if (cov > 1.2) q += 7;
