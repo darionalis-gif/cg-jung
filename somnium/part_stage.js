@@ -505,7 +505,10 @@ const Stage = {
         let span = 0; for (const q of shown) span = Math.max(span, look2.distanceTo(q));
         const len = clamp(Math.min(off.length(), want), Math.max(3, span * (facesMatter ? 2.6 : 2.1)), Math.max(3, want * 1.5)); const flat = Math.hypot(off.x, off.z) || 0.001;
         const rimFaces = beat.actions.some(x => x.actor && (x.say || FACE_STATE.has(x.state)) && high.some(q => q === states.get(x.actor)));
-        const ceil = rimOnly ? 52 : (need <= Math.PI / 180 * 62 ? 64 : (rimFaces ? 74 : 88));
+        // and never far past the angle the director wrote: a height of six against a distance of
+        // eight is a raking shot into the hole, not a quarter of the dream seen from a helicopter
+        const authored = (c.distance && c.height) ? Math.atan2(c.height, c.distance) * 180 / Math.PI + 26 : 999;
+        const ceil = Math.min(rimOnly ? 52 : (need <= Math.PI / 180 * 62 ? 64 : (rimFaces ? 74 : 88)), Math.max(54, authored));
         const pitch = rimOnly ? Math.PI / 180 * 52 : clamp(need + 0.12, Math.PI / 180 * 50, Math.PI / 180 * ceil);
         steep = !rimOnly;
         p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
@@ -544,6 +547,11 @@ const Stage = {
     // edge in shot instead, so a beat that casts stones into the water has water in it
     if (framed.length) { const c0 = new THREE.Vector3();
       for (const f of framed) c0.add(f.p); c0.divideScalar(framed.length);
+      for (const [wid, wr] of this.actors) { if (wr.a.kind !== 'water' && wr.a.kind !== 'river') continue;
+        const ws = states.get(wid); if (!ws || ws.op < 0.3) continue;
+        if (wideNamed.some(q => q.id === wid)) continue;
+        const bw = new THREE.Box3().setFromObject(wr.g); if (!Number.isFinite(bw.min.x)) continue;
+        wideNamed.push({ id: wid, g: wr.g, box: bw }); }
       for (const w of wideNamed) { if (framed.some(q => q.id === w.id)) continue;
         const near = w.box.clampPoint(c0, new THREE.Vector3()); near.y = Math.max(near.y, 0.2);
         if (near.distanceTo(c0) > 60) continue;
@@ -559,7 +567,7 @@ const Stage = {
     // grieving is a two-shot, and turning to one of their faces loses the other
     const bowed = beat.actions.some(x => x.actor === c.target && (x.state === 'fold' || x.state === 'grieve' || x.state === 'kneel'));
     const faceIsSubject = beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state))) && FACED.has((rec && rec.a.kind) || '')
-      && !beat.actions.some(x => x.actor && x.actor !== c.target && (x.say || x.move || x.appear || (x.state && x.state !== 'idle')));
+      && !beat.actions.some(x => x.actor && x.actor !== c.target && (x.say || FACE_STATE.has(x.state)));
     const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state) || ((tg.moving || 0) < 0.3 && x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
     // the clamps a settled shot still has to pass. They used to run only on the pose finally chosen,
     // after the search had already scored a different one, so the search kept electing shots the

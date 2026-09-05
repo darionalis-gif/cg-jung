@@ -359,6 +359,13 @@ function normalizeScene(raw, dreamText) {
       if (Math.hypot(dx, dz) > REACH) continue;
       const fwd = dx * sn + dz * cs; if (fwd <= 1.5) continue;
       shove(a, -sn * (fwd + 1.5), -cs * (fwd + 1.5)); } }
+  // a hole with people at the bottom has to be wide enough to be looked into: 1.1 m across and 4 m
+  // deep needs an eighty-five degree camera, which is a plan view of everyone standing at the rim
+  for (const p0 of actors) { if (p0.kind !== 'pit') continue;
+    if (!actors.some(a => a !== p0 && a.pos[1] < -1 && Math.hypot(a.pos[0] - p0.pos[0], a.pos[2] - p0.pos[2]) < ((p0.detail.radius || 1.5) * p0.size + 2))) continue;
+    const depth = (p0.detail.height || 4) * p0.size;
+    const wantR = Math.max((p0.detail.radius || 1.5) * p0.size, depth * 0.5);
+    p0.detail.radius = Math.round((wantR / (p0.size || 1)) * 100) / 100; }
   // someone at the bottom of a pit has to be inside its mouth: outside it they are in solid ground
   for (const p of actors) { if (p.kind !== 'pit') continue; const R = (p.detail.radius || 1.5) * p.size;
     for (const a of actors) { if (a === p || a.pos[1] > -0.5) continue;
@@ -471,6 +478,90 @@ function normalizeScene(raw, dreamText) {
         if (mine) continue;
         { const own = b.actions.find(x => x.actor === id) || {};
           b.actions.push({ actor: id, at: 0, for: Math.min(0.55, own.at !== undefined ? Math.max(0.2, own.at) : 0.4), move: to, path: 'line' }); } } } }
+  // a flight over the timberland has to end above the timberland
+  { const GROUNDY = new Set(['forest', 'field', 'water', 'city', 'hill']);
+    for (const b of beats) { const air = b.actions.filter(x => x.move && x.move[1] > 8);
+      if (!air.length) continue;
+      const named = b.actions.map(x => actors.find(a => a.id === x.actor)).filter(a => a && GROUNDY.has(a.kind));
+      if (!named.length) continue;
+      for (const x of air) {
+        // aim at the nearest of the places the beat names, not at the middle of all of them, which
+        // for two woods is the gap between the two woods
+        let best = named[0], bd = 1e9;
+        for (const g of named) { const d0 = Math.hypot(x.move[0] - g.pos[0], x.move[2] - g.pos[2]); if (d0 < bd) { bd = d0; best = g; } }
+        const reach = (best.detail.radius || 25) * best.size * 0.7;
+        if (bd <= reach) continue;
+        const k = reach / bd; x.move[0] = best.pos[0] + (x.move[0] - best.pos[0]) * k; x.move[2] = best.pos[2] + (x.move[2] - best.pos[2]) * k; } } }
+  // someone the script lays down belongs on the bed it wrote for them
+  { const beds = actors.filter(a => a.kind === 'bed');
+    if (beds.length) for (const b of beats) for (const x of b.actions) {
+      if (x.state !== 'lie' || !x.actor) continue; const a = actors.find(q => q.id === x.actor); if (!a || a.kind !== 'person') continue;
+      let best = null, bd = 1e9;
+      for (const bed of beds) { const d = Math.hypot(a.pos[0] - bed.pos[0], a.pos[2] - bed.pos[2]); if (d < bd) { bd = d; best = bed; } }
+      // the mattress is at 0.65 of a bed's own height and a lying body sits a little above its own
+      // origin: 0.62 floated her clear of it. And the pillow end is the head end.
+      if (best && bd > 0.8 * best.size) { a.pos[0] = best.pos[0]; a.pos[2] = best.pos[2] - 0.3 * best.size; a.pos[1] = Math.max(a.pos[1], best.pos[1] + 0.44 * best.size); a.yaw = best.yaw; a.size = Math.min(a.size, 0.94); } } }
+  // an aircraft above about 22 m cannot share a frame with the ground it flies over
+  { const low = actors.some(a => ['forest', 'field', 'water', 'city', 'hill', 'road', 'river'].includes(a.kind) && a.pos[1] < 6);
+    if (low) { const CAP = 22;
+      for (const a of actors) if (a.pos[1] > CAP) a.pos[1] = CAP;
+      for (const b of beats) for (const x of b.actions) if (x.move && x.move[1] > CAP) x.move[1] = CAP; } }
+  // a person written just outside the room the scene is happening in stands behind its wall and is
+  // in no shot of it. The room is in use if anyone stands in it OR walks into it during the dream,
+  // and whoever is pulled inside takes the moves that end out there with them.
+  for (const rm of actors) { if (rm.kind !== 'room' && rm.kind !== 'corridor') continue;
+    const hw = (rm.detail.width || 8) * rm.size / 2, hd = (rm.detail.depth || (rm.kind === 'corridor' ? 30 : 8)) * rm.size / 2;
+    const inRoom = q => Math.abs(q[0] - rm.pos[0]) < hw && Math.abs(q[2] - rm.pos[2]) < hd;
+    let used = false;
+    for (const a of actors) { if (a.kind !== 'person' && a.kind !== 'crowd') continue;
+      if (inRoom(a.pos)) { used = true; break; } }
+    if (!used) for (const b of beats) { for (const x of b.actions) { if (!x.actor || !x.move) continue;
+      const a = actors.find(q => q.id === x.actor); if (!a || (a.kind !== 'person' && a.kind !== 'crowd')) continue;
+      if (inRoom(x.move)) { used = true; break; } } if (used) break; }
+    if (!used) continue;
+    const pull = q => { const dx = q[0] - rm.pos[0], dz = q[2] - rm.pos[2];
+      const ox = Math.abs(dx) - hw, oz = Math.abs(dz) - hd;
+      if (ox < 0 && oz < 0) return null; if (ox > 4 || oz > 4) return null; const pad = 0.7;
+      return [ox >= 0 ? rm.pos[0] + Math.sign(dx || 1) * Math.max(0, hw - pad) : q[0], q[1],
+              oz >= 0 ? rm.pos[2] + Math.sign(dz || 1) * Math.max(0, hd - pad) : q[2]]; };
+    for (const a of actors) { if (a.kind !== 'person' && a.kind !== 'crowd') continue; const q = pull(a.pos); if (q) a.pos = q; }
+    for (const b of beats) for (const x of b.actions) { if (!x.actor || !x.move) continue;
+      const a = actors.find(q => q.id === x.actor); if (!a || (a.kind !== 'person' && a.kind !== 'crowd')) continue;
+      const q = pull(x.move); if (q) x.move = q; } }
+  // and last of all, because every pass above can leave somebody standing beside a crowd: a named
+  // person the same colour as the people around them cannot be picked out of the frame at all.
+  // Light against a dark crowd, dark against a light one -- not always the same yellow.
+  { const hex3 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const R = (cw.detail.radius || 5) * cw.size;
+      const B = hex3(cw.color), tg = (B[0] * 0.299 + B[1] * 0.587 + B[2] * 0.114) < 128 ? 232 : 34;
+      const mix = (v, t) => Math.round(v + (t - v) * 0.6).toString(16).padStart(2, '0');
+      for (const a of actors) { if (a.kind !== 'person') continue;
+        if (Math.hypot(a.pos[0] - cw.pos[0], a.pos[2] - cw.pos[2]) > R + 4.5) continue;
+        const A = hex3(a.color);
+        if (Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) >= 90) continue;
+        a.color = '#' + mix(A[0], tg) + mix(A[1], tg) + mix(A[2], tg);
+        // a coat covers the body colour entirely, so it has to be told too
+        if (a.detail.wear && a.detail.wearColor) { const W = hex3(a.detail.wearColor);
+          a.detail.wearColor = '#' + mix(W[0], tg) + mix(W[1], tg) + mix(W[2], tg); } } } }
+  // nothing but the sky belongs above a room's ceiling: an orb the director puts at y 3 in a 3.5 m
+  // room, at size 1.6, has its bottom above the lamp and is in no shot of the room at all
+  for (const rm of actors) { if (rm.kind !== 'room' && rm.kind !== 'corridor') continue;
+    const hw = (rm.detail.width || 8) * rm.size / 2, hd = (rm.detail.depth || (rm.kind === 'corridor' ? 30 : 8)) * rm.size / 2;
+    const ceil = (rm.detail.height || 3) * rm.size;
+    for (const a of actors) { if (a === rm || ['moon', 'sun', 'star', 'cloud', 'room', 'corridor', 'building', 'house'].includes(a.kind)) continue;
+      if (Math.abs(a.pos[0] - rm.pos[0]) > hw || Math.abs(a.pos[2] - rm.pos[2]) > hd) continue;
+      const top = a.pos[1] + Math.max(0.4, a.size * 0.9);
+      if (top > ceil - 0.35) a.pos[1] = Math.max(0.2, ceil - 0.35 - Math.max(0.4, a.size * 0.9)); } }
+  // a beat that says we are inside something puts us inside it: a cave eleven metres past the two
+  // people it is meant to be around reads as a lit hut they are walking past
+  for (const b of beats) {
+    const cv = b.actions.map(x => actors.find(q => q.id === x.actor)).find(a => a && a.kind === 'cave');
+    if (!cv) continue;
+    const who = b.actions.map(x => actors.find(q => q.id === x.actor)).filter(a => a && a.kind === 'person');
+    if (!who.length) continue;
+    let cx = 0, cz = 0; for (const a of who) { cx += a.pos[0]; cz += a.pos[2]; } cx /= who.length; cz /= who.length;
+    const reach = 3 * cv.size;
+    if (Math.hypot(cv.pos[0] - cx, cv.pos[2] - cz) > reach) { cv.pos[0] = cx; cv.pos[2] = cz; } }
   // a rider goes where the machine goes. The vocabulary asks for the same move on both, and when
   // the script gives the helicopter one destination and the two men in it another forty metres
   // away, the beat plays with the cabin empty and its passengers hanging in the air beside it.
@@ -548,71 +639,6 @@ function normalizeScene(raw, dreamText) {
       if (put) { a.pos[0] = put[0]; a.pos[2] = put[1]; } } }
   for (const b of beats) for (const x of b.actions) if (x.appear && x.at > 0.82) x.at = 0.7;
   let t = 0; for (const b of beats) { b.start = t; t += b.dur; }
-  // a flight over the timberland has to end above the timberland
-  { const GROUNDY = new Set(['forest', 'field', 'water', 'city', 'hill']);
-    for (const b of beats) { const air = b.actions.filter(x => x.move && x.move[1] > 8);
-      if (!air.length) continue;
-      const named = b.actions.map(x => actors.find(a => a.id === x.actor)).filter(a => a && GROUNDY.has(a.kind));
-      if (!named.length) continue;
-      for (const x of air) {
-        // aim at the nearest of the places the beat names, not at the middle of all of them, which
-        // for two woods is the gap between the two woods
-        let best = named[0], bd = 1e9;
-        for (const g of named) { const d0 = Math.hypot(x.move[0] - g.pos[0], x.move[2] - g.pos[2]); if (d0 < bd) { bd = d0; best = g; } }
-        const reach = (best.detail.radius || 25) * best.size * 0.7;
-        if (bd <= reach) continue;
-        const k = reach / bd; x.move[0] = best.pos[0] + (x.move[0] - best.pos[0]) * k; x.move[2] = best.pos[2] + (x.move[2] - best.pos[2]) * k; } } }
-  // someone the script lays down belongs on the bed it wrote for them
-  { const beds = actors.filter(a => a.kind === 'bed');
-    if (beds.length) for (const b of beats) for (const x of b.actions) {
-      if (x.state !== 'lie' || !x.actor) continue; const a = actors.find(q => q.id === x.actor); if (!a || a.kind !== 'person') continue;
-      let best = null, bd = 1e9;
-      for (const bed of beds) { const d = Math.hypot(a.pos[0] - bed.pos[0], a.pos[2] - bed.pos[2]); if (d < bd) { bd = d; best = bed; } }
-      // the mattress is at 0.65 of a bed's own height and a lying body sits a little above its own
-      // origin: 0.62 floated her clear of it. And the pillow end is the head end.
-      if (best && bd > 0.8 * best.size) { a.pos[0] = best.pos[0]; a.pos[2] = best.pos[2] - 0.3 * best.size; a.pos[1] = Math.max(a.pos[1], best.pos[1] + 0.44 * best.size); a.yaw = best.yaw; a.size = Math.min(a.size, 0.94); } } }
-  // an aircraft above about 22 m cannot share a frame with the ground it flies over
-  { const low = actors.some(a => ['forest', 'field', 'water', 'city', 'hill', 'road', 'river'].includes(a.kind) && a.pos[1] < 6);
-    if (low) { const CAP = 22;
-      for (const a of actors) if (a.pos[1] > CAP) a.pos[1] = CAP;
-      for (const b of beats) for (const x of b.actions) if (x.move && x.move[1] > CAP) x.move[1] = CAP; } }
-  // a person written just outside the room the scene is happening in stands behind its wall and is
-  // in no shot of it. The room is in use if anyone stands in it OR walks into it during the dream,
-  // and whoever is pulled inside takes the moves that end out there with them.
-  for (const rm of actors) { if (rm.kind !== 'room' && rm.kind !== 'corridor') continue;
-    const hw = (rm.detail.width || 8) * rm.size / 2, hd = (rm.detail.depth || (rm.kind === 'corridor' ? 30 : 8)) * rm.size / 2;
-    const inRoom = q => Math.abs(q[0] - rm.pos[0]) < hw && Math.abs(q[2] - rm.pos[2]) < hd;
-    let used = false;
-    for (const a of actors) { if (a.kind !== 'person' && a.kind !== 'crowd') continue;
-      if (inRoom(a.pos)) { used = true; break; } }
-    if (!used) for (const b of beats) { for (const x of b.actions) { if (!x.actor || !x.move) continue;
-      const a = actors.find(q => q.id === x.actor); if (!a || (a.kind !== 'person' && a.kind !== 'crowd')) continue;
-      if (inRoom(x.move)) { used = true; break; } } if (used) break; }
-    if (!used) continue;
-    const pull = q => { const dx = q[0] - rm.pos[0], dz = q[2] - rm.pos[2];
-      const ox = Math.abs(dx) - hw, oz = Math.abs(dz) - hd;
-      if (ox < 0 && oz < 0) return null; if (ox > 4 || oz > 4) return null; const pad = 0.7;
-      return [ox >= 0 ? rm.pos[0] + Math.sign(dx || 1) * Math.max(0, hw - pad) : q[0], q[1],
-              oz >= 0 ? rm.pos[2] + Math.sign(dz || 1) * Math.max(0, hd - pad) : q[2]]; };
-    for (const a of actors) { if (a.kind !== 'person' && a.kind !== 'crowd') continue; const q = pull(a.pos); if (q) a.pos = q; }
-    for (const b of beats) for (const x of b.actions) { if (!x.actor || !x.move) continue;
-      const a = actors.find(q => q.id === x.actor); if (!a || (a.kind !== 'person' && a.kind !== 'crowd')) continue;
-      const q = pull(x.move); if (q) x.move = q; } }
-  // and last of all, because every pass above can leave somebody standing beside a crowd: a named
-  // person the same colour as the people around them cannot be picked out of the frame at all.
-  // Light against a dark crowd, dark against a light one -- not always the same yellow.
-  { const hex3 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const R = (cw.detail.radius || 5) * cw.size;
-      const B = hex3(cw.color), tg = (B[0] * 0.299 + B[1] * 0.587 + B[2] * 0.114) < 128 ? 232 : 34;
-      const mix = (v, t) => Math.round(v + (t - v) * 0.6).toString(16).padStart(2, '0');
-      for (const a of actors) { if (a.kind !== 'person') continue;
-        if (Math.hypot(a.pos[0] - cw.pos[0], a.pos[2] - cw.pos[2]) > R + 4.5) continue;
-        const A = hex3(a.color);
-        if (Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) >= 90) continue;
-        a.color = '#' + mix(A[0], tg) + mix(A[1], tg) + mix(A[2], tg);
-        // a coat covers the body colour entirely, so it has to be told too
-        if (a.detail.wear && a.detail.wearColor) { const W = hex3(a.detail.wearColor);
-          a.detail.wearColor = '#' + mix(W[0], tg) + mix(W[1], tg) + mix(W[2], tg); } } } }
   // a pass that reads its own output has to see the same numbers: round everything the passes
   // above may have arrived at by a slightly different route
   { const r4 = v => Math.round(v * 10000) / 10000;
@@ -1537,7 +1563,10 @@ const Stage = {
         let span = 0; for (const q of shown) span = Math.max(span, look2.distanceTo(q));
         const len = clamp(Math.min(off.length(), want), Math.max(3, span * (facesMatter ? 2.6 : 2.1)), Math.max(3, want * 1.5)); const flat = Math.hypot(off.x, off.z) || 0.001;
         const rimFaces = beat.actions.some(x => x.actor && (x.say || FACE_STATE.has(x.state)) && high.some(q => q === states.get(x.actor)));
-        const ceil = rimOnly ? 52 : (need <= Math.PI / 180 * 62 ? 64 : (rimFaces ? 74 : 88));
+        // and never far past the angle the director wrote: a height of six against a distance of
+        // eight is a raking shot into the hole, not a quarter of the dream seen from a helicopter
+        const authored = (c.distance && c.height) ? Math.atan2(c.height, c.distance) * 180 / Math.PI + 26 : 999;
+        const ceil = Math.min(rimOnly ? 52 : (need <= Math.PI / 180 * 62 ? 64 : (rimFaces ? 74 : 88)), Math.max(54, authored));
         const pitch = rimOnly ? Math.PI / 180 * 52 : clamp(need + 0.12, Math.PI / 180 * 50, Math.PI / 180 * ceil);
         steep = !rimOnly;
         p.set(look2.x + off.x / flat * len * Math.cos(pitch), look2.y + len * Math.sin(pitch), look2.z + off.z / flat * len * Math.cos(pitch)); } }
@@ -1576,6 +1605,11 @@ const Stage = {
     // edge in shot instead, so a beat that casts stones into the water has water in it
     if (framed.length) { const c0 = new THREE.Vector3();
       for (const f of framed) c0.add(f.p); c0.divideScalar(framed.length);
+      for (const [wid, wr] of this.actors) { if (wr.a.kind !== 'water' && wr.a.kind !== 'river') continue;
+        const ws = states.get(wid); if (!ws || ws.op < 0.3) continue;
+        if (wideNamed.some(q => q.id === wid)) continue;
+        const bw = new THREE.Box3().setFromObject(wr.g); if (!Number.isFinite(bw.min.x)) continue;
+        wideNamed.push({ id: wid, g: wr.g, box: bw }); }
       for (const w of wideNamed) { if (framed.some(q => q.id === w.id)) continue;
         const near = w.box.clampPoint(c0, new THREE.Vector3()); near.y = Math.max(near.y, 0.2);
         if (near.distanceTo(c0) > 60) continue;
@@ -1591,7 +1625,7 @@ const Stage = {
     // grieving is a two-shot, and turning to one of their faces loses the other
     const bowed = beat.actions.some(x => x.actor === c.target && (x.state === 'fold' || x.state === 'grieve' || x.state === 'kneel'));
     const faceIsSubject = beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state))) && FACED.has((rec && rec.a.kind) || '')
-      && !beat.actions.some(x => x.actor && x.actor !== c.target && (x.say || x.move || x.appear || (x.state && x.state !== 'idle')));
+      && !beat.actions.some(x => x.actor && x.actor !== c.target && (x.say || FACE_STATE.has(x.state)));
     const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state) || ((tg.moving || 0) < 0.3 && x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
     // the clamps a settled shot still has to pass. They used to run only on the pose finally chosen,
     // after the search had already scored a different one, so the search kept electing shots the
