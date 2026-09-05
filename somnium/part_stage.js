@@ -13,7 +13,7 @@ const Stage = {
       soft = /swiftshader|llvmpipe|software|mesa offscreen/i.test(name); } catch (e) { }
     this.softGL = soft;
     const r = new THREE.WebGLRenderer({ canvas, antialias: !soft, powerPreference: 'high-performance' });
-    r.setPixelRatio(soft ? 1 : Math.min(devicePixelRatio || 1, 2)); r.shadowMap.enabled = true; r.shadowMap.type = soft ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap; r.shadowMap.autoUpdate = false; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.25; r.outputColorSpace = THREE.SRGBColorSpace;
+    r.setPixelRatio(soft ? 0.7 : Math.min(devicePixelRatio || 1, 2)); r.shadowMap.enabled = true; r.shadowMap.type = soft ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap; r.shadowMap.autoUpdate = false; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.25; r.outputColorSpace = THREE.SRGBColorSpace;
     this.r = r; this.three = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(50, 1, 0.25, 1200);
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(500, 24, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: true, uniforms: { top: { value: new THREE.Color('#0b1030') }, hor: { value: new THREE.Color('#2a2f5c') }, fogRaw: { value: new THREE.Vector3(0.09, 0.11, 0.24) } }, vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform vec3 top;\nuniform vec3 hor;\nuniform vec3 fogRaw;\nvarying vec3 vP;\nvoid main(){\n float h = normalize(vP).y;\n float t = smoothstep(0.04, 0.5, h);\n gl_FragColor = vec4(mix(hor, top, t), 1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n gl_FragColor.rgb = mix(gl_FragColor.rgb, fogRaw, 1.0 - smoothstep(0.0, 0.16, h));\n}' }));
     this.three.add(this.sky);
@@ -22,7 +22,7 @@ const Stage = {
     this.ambient = new THREE.HemisphereLight('#6a6f9a', '#202030', 1.2); this.three.add(this.ambient);
     this.sun = new THREE.DirectionalLight('#cfd6ff', 1); this.sun.castShadow = true; this.sun.shadow.mapSize.set(1024, 1024); const sc = this.sun.shadow.camera; sc.left = sc.bottom = -40; sc.right = sc.top = 40; sc.near = 1; sc.far = 200; this.sun.shadow.bias = -0.0015; this.three.add(this.sun); this.three.add(this.sun.target);
     this.fill = new THREE.DirectionalLight('#dfe3ff', 0.8); this.fill.castShadow = false; this.three.add(this.fill); this.three.add(this.fill.target);
-    this.groundMat = new THREE.MeshStandardMaterial({ color: '#2f4a33', roughness: 1, stencilWrite: true, stencilFunc: THREE.NotEqualStencilFunc, stencilRef: 1 }); this.ground = new THREE.Mesh(new THREE.CircleGeometry(600, 48), this.groundMat); this.ground.rotation.x = -Math.PI / 2; this.ground.receiveShadow = true; this.three.add(this.ground);
+    this.groundMat = new THREE.MeshStandardMaterial({ color: '#2f4a33', roughness: 1, stencilWrite: true, stencilFunc: THREE.NotEqualStencilFunc, stencilRef: 1 }); this.ground = new THREE.Mesh(new THREE.CircleGeometry(600, 48), this.groundMat); this.ground.rotation.x = -Math.PI / 2; this.ground.receiveShadow = !soft; // the largest surface in the frame, and every actor already has a contact blob this.three.add(this.ground);
     this.waterGround = new THREE.Mesh(new THREE.PlaneGeometry(600, 600, 60, 60), waterMaterial('#1f4d6e')); this.waterGround.rotation.x = -Math.PI / 2; this.waterGround.visible = false; this.three.add(this.waterGround);
     this.three.fog = new THREE.FogExp2('#171b3d', 0.012);
     this.root = new THREE.Group(); this.three.add(this.root);
@@ -598,6 +598,11 @@ const Stage = {
         const wantH = (c.distance || 8) * 1.3, minH = (c.distance || 8) * 0.7, gotH = Math.hypot(p.x - l.x, p.z - l.z);
         if (gotH > wantH) { const k = wantH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; }
         else if (gotH > 0.05 && gotH < minH) { const k = minH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; } }
+      // and never leave the lens inside a building: the shot that put a shop front over half the
+      // frame had the camera standing in the shop, looking out through its own wall
+      { let tries = 0; const dirIn = l.clone().sub(p); const len = dirIn.length() || 1; dirIn.divideScalar(len);
+        while (tries < 7 && this.insideSolid(p, selfs)) { p = p.clone().add(dirIn.clone().multiplyScalar(0.9)); tries++; }
+        if (tries && this.insideSolid(p, selfs)) p = l.clone().add(dirIn.clone().multiplyScalar(-1.6)).setY(Math.max(0.6, l.y + 1.2)); }
       { const rm = this.roomAround(l); if (rm) { const b = rm.box, pad = 0.4;
           p.x = clamp(p.x, b.min.x + pad, b.max.x - pad); p.z = clamp(p.z, b.min.z + pad, b.max.z - pad);
           if (p.y > b.max.y - 0.3) p.y = b.max.y - 0.3; } }
@@ -716,7 +721,9 @@ const Stage = {
             const sp = framed.find(q => q.id === b.id && q.speaks);
             if (sp) { const fcb = dirAt(b.yaw, 1, 0); const vb = out.pos.clone().sub(b.box.getCenter(this._bc || (this._bc = new THREE.Vector3())));
               if ((vb.x * fcb.x + vb.z * fcb.z) / (Math.hypot(vb.x, vb.z) || 1) > 0.2) continue; }
-            if (b.id !== c.target && cov > 1.2) wallAcross = true;
+            // a shop front is not a person: half the frame of building between the lens and the
+            // people is a wall across the shot even though a body that size might be a foreground
+            if (b.id !== c.target && cov > (b.id === '#solid' ? 0.85 : 1.2)) wallAcross = true;
             const over = cov - (b.id === c.target ? 0.5 : 0.22); hog += over * 1.5 + over * over * 2.2; sawHog = true; }
 
           let stacked = 0;
@@ -738,7 +745,7 @@ const Stage = {
           let faceCost = 0; if (facesMatter) { const tf = framed.find(f => f.id === c.target); if (tf && tf.seen) faceCost = (1 - front) * 0.9;
             for (const f of framed) { if (!f.speaks || f.id === c.target || !f.seen) continue; const st3 = states.get(f.id); const fc = dirAt(this.faceYaw(f.id, st3), 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.6; } }
           const crowd = this.lensCrowding(out.pos, selfs);
-          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(12, hog * 2.4) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(3.6, stacked * 2.2) + lostNamed * 3.2;
+          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(40, hog * 2.4) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(3.6, stacked * 2.2) + lostNamed * 3.2;
           const score = n - cost - cropAtLens * 1.6 - (wallAcross ? 25 : 0);
           if (faceIsSubject && front > 0.35 && tgtSeen && (!faceOnly || score > faceOnly.score)) faceOnly = { az, mul, lift, score, has: true }; if (this.debugFrames) this.frameScan.push({ az, mul, lift, n: +n.toFixed(2), backToLens, lostTarget, faceCost: +faceCost.toFixed(2), crop: cropAtLens, crowd, score: +score.toFixed(2) });
           const cand2 = { az, mul, lift, score, n, has: true };
@@ -760,7 +767,16 @@ const Stage = {
       if (drifted && this.framePick && this.framePick.beat === this.lastBeat) {
         const keep = this.frameScanScoreOf(tiers, this.framePick);
         if (keep !== null && best.score - keep < 0.5) { best = { az: this.framePick.az, mul: this.framePick.mul, lift: this.framePick.lift, score: keep, has: true }; } }
-      if (!anyOk && framed.length) { best = { az: 0, mul: 1, score: -1 }; for (const az of azList) { const cand = this.turnShot(pos, look, az, 1); const out = dress(settle(cand, look)); let n = 0; for (const f of framed) if (this.inShot(out.pos, out.look, f.p, f.g)) n += f.w; if (n > best.score) best = { az, mul: 1, lift: 0, score: n }; } }
+      // and the last fallback, when every candidate was rejected, counted heads and nothing else --
+      // which on a street lined with shops chose the bearing with a shop front over half the frame
+      if (!anyOk && framed.length) { best = { az: 0, mul: 1, score: -1e9 };
+        for (const mul of [1, 0.8, 1.3]) for (const az of azList) { const cand = this.turnShot(pos, look, az, mul); const out = dress(settle(cand, look));
+          let n = 0; for (const f of framed) if (this.inShot(out.pos, out.look, f.p, f.g)) n += f.w;
+          let q = this.lensCrowding(out.pos, selfs) * 0.5;
+          for (const b3 of bodies) { if (b3.id === c.target) continue;
+            const d3 = Math.max(0.6, b3.box.distanceToPoint(out.pos)); const cv3 = b3.h / d3 / 0.933;
+            if (cv3 > 0.85) q += Math.min(6, (cv3 - 0.85) * 2.2); }
+          const sc3 = n - q; if (sc3 > best.score) best = { az, mul, lift: 0, score: sc3 }; } }
       // an open door leaf or a wall right beside the pair hides one of them from every bearing the
       // sweep tried: before settling for that, look from behind it
       const poseOf = (az, mul, lift) => { const cand = this.turnShot(pos, look, az, mul); if (lift) cand.y += lift; return dress(settle(cand, look)); };
@@ -773,8 +789,18 @@ const Stage = {
         if (faceIsSubject) { const tc3 = o5.pos.clone().sub(T), fc3 = dirAt(tg.yaw, 1, 0);
           showsFace = (tc3.x * fc3.x + tc3.z * fc3.z) / (Math.hypot(tc3.x, tc3.z) || 1) > 0.35; }
         let miss = must.length && !showsFace ? lost(o5) : 0;
-        if (miss) for (const az of [115, -115, 150, -150, 180]) { const n3 = lost(poseOf(az, best.mul, best.lift));
-          if (n3 < miss) { miss = n3; best = { ...best, az }; if (!n3) break; } } }
+        // and this hunt has to be scored like the sweep too, or it elects a bearing the sweep never
+        // saw: a shop wall 1.8 m from the lens over half the frame on the beat that introduces him
+        if (miss) { const ugly = o => { let q = this.lensCrowding(o.pos, selfs) * 1.1;
+            for (const f of framed) { if (f.id === c.target) continue; const dl = f.p.distanceTo(o.pos);
+              if ((f.h || 1.8) / Math.max(0.6, dl) > 1.2) q += 7; }
+            for (const b2 of bodies) { if (b2.id === c.target) continue;
+              const d2 = Math.max(0.6, b2.box.distanceToPoint(o.pos)); if (b2.h / d2 / 0.933 > 1.2) q += 7; }
+            return q; };
+          let score5 = miss * 10 + ugly(o5);
+          for (const az of [115, -115, 150, -150, 180]) { const o7 = poseOf(az, best.mul, best.lift);
+            const n3 = lost(o7) * 10 + ugly(o7);
+            if (n3 < score5 - 0.5) { score5 = n3; best = { ...best, az }; if (n3 < 1) break; } } } }
       this.framePick = { beat: this.lastBeat, az: best.az, mul: best.mul, lift: best.lift || 0, at: this.time };
       { const o2 = poseOf(best.az, best.mul, best.lift); this.framePick.settled = o2.pos.distanceTo(o2.look); }
     } else if (authored) { this.framePick = { beat: this.lastBeat, az: 0, mul: 1, lift: 0 };
@@ -791,7 +817,13 @@ const Stage = {
       const must = framed.filter(f => f.w >= 1);
       // losing the person whose face the beat is about is worth more than losing two bystanders
       // standing idle behind them: a close shot of six named actors cannot hold all six.
-      const lost = (p1, l1) => { let n = 0; for (const f of must) if (!this.inShot(p1, l1, f.p, f.g)) n += (faceIsSubject && f.id === c.target) ? 3 : 1; return n; };
+      // one ray to one centre point lets a figure through that is all but hidden: ask for the
+      // middle AND one of the shoulders or the knees
+      const shown = (p1, l1, f) => { if (!this.inShot(p1, l1, f.p, f.g)) return false;
+        const h = Math.max(0.6, f.h || 1.8), q = this._ls || (this._ls = new THREE.Vector3());
+        for (const k of [0.3, -0.25]) { q.copy(f.p); q.y = f.p.y + h * k; if (this.inShot(p1, l1, q, f.g)) return true; }
+        return false; };
+      const lost = (p1, l1) => { let n = 0; for (const f of must) if (!shown(p1, l1, f)) n += (faceIsSubject && f.id === c.target) ? 3 : 1; return n; };
       // judge the camera the viewer is looking through, not the pose it is easing toward: a pose
       // that holds everybody is no help while the lens is still three metres behind it
       const badPose = must.length ? lost(pos, look) : 0;
