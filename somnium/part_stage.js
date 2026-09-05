@@ -823,7 +823,9 @@ const Stage = {
         const h = Math.max(0.6, f.h || 1.8), q = this._ls || (this._ls = new THREE.Vector3());
         for (const k of [0.3, -0.25]) { q.copy(f.p); q.y = f.p.y + h * k; if (this.inShot(p1, l1, q, f.g)) return true; }
         return false; };
-      const lost = (p1, l1) => { let n = 0; for (const f of must) if (!shown(p1, l1, f)) n += (faceIsSubject && f.id === c.target) ? 3 : 1; return n; };
+      // and whoever is speaking in the beat is not the one to drop: "when I speak to Timmy D." has
+      // to have both of them in it, and if it cannot, it keeps the one talking
+      const lost = (p1, l1) => { let n = 0; for (const f of must) if (!shown(p1, l1, f)) n += ((faceIsSubject && f.id === c.target) || f.speaks) ? 3 : 1; return n; };
       // judge the camera the viewer is looking through, not the pose it is easing toward: a pose
       // that holds everybody is no help while the lens is still three metres behind it
       const badPose = must.length ? lost(pos, look) : 0;
