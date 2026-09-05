@@ -762,7 +762,12 @@ const Stage = {
 
             if (f.w >= 1) { const d0 = f.p.distanceTo(out.pos); const apparent = (f.h || 1.8) / Math.max(1, d0); if (f.speaks && apparent < 0.15) tinyTalk += 0.15 - apparent; if (f.faced && (f.h || 0) > 1 && apparent < 0.06) { tiny += 0.06 - apparent; if (this.debugFrames) small = f.id + ' small ' + apparent.toFixed(3) + ' @' + d0.toFixed(1); } if (d0 < 1.9) { tooSmall = true; if (this.debugFrames) small = f.id + ' near ' + d0.toFixed(1); } } }
           const lostTarget = !tgtSeen && framed.some(f => f.id === c.target && f.w >= 1);
-          let lostNamed = 0; for (const f of framed) if (f.w >= 1 && !f.seen) lostNamed++;
+          // when the sentence is about one face, somebody standing idle behind it is worth a
+          // fraction of it. Counting them the same traded the subject's face for a full headcount
+          // in seven beats of one round, which is the single thing the fidelity critic keeps
+          // asking for back
+          let lostNamed = 0; for (const f of framed) { if (f.w < 1 || f.seen) continue;
+            lostNamed += (faceActor && f.id !== faceActor && !f.speaks && ((states.get(f.id) || {}).moving || 0) < 0.3) ? 0.34 : 1; }
           // somebody the sentence names, standing at the lens and cut off by the frame edge, is a
           // head across the bottom of the shot. It is a heavy cost and not a rejection: three
           // people two metres apart at a three-metre camera cannot all be held, and refusing every
@@ -809,7 +814,7 @@ const Stage = {
           let faceCost = 0; if (facesMatter) { const tf = framed.find(f => f.id === c.target); if (tf && tf.seen) faceCost = (1 - front) * 0.9;
             for (const f of framed) { if (!f.speaks || f.id === c.target || !f.seen) continue; const st3 = states.get(f.id); const fc = dirAt(this.faceYaw(f.id, st3), 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.6; } }
           const crowd = this.lensCrowding(out.pos, selfs);
-          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(40, hog * 2.4) + Math.min(14, Math.log1p(hog) * 1.2) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(3.6, stacked * 2.2) + lostNamed * 3.2;
+          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(faceActor ? 2.6 : 1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(40, hog * 2.4) + Math.min(14, Math.log1p(hog) * 1.2) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(3.6, stacked * 2.2) + lostNamed * 3.2;
           const score = n - cost - cropAtLens * 1.6 - (wallAcross ? 25 : 0);
           let frontF = front, fSeen = tgtSeen;
           if (fP) { const tc = out.pos.clone().sub(fP); const fc = dirAt(this.faceYaw(faceActor, fSt), 1, 0);
@@ -830,7 +835,7 @@ const Stage = {
         const tc2 = o4.pos.clone().sub(fP || T), fc2 = dirAt(fSt ? this.faceYaw(faceActor, fSt) : tg.yaw, 1, 0);
         const front2 = (tc2.x * fc2.x + tc2.z * fc2.z) / (Math.hypot(tc2.x, tc2.z) || 1);
         // ...but a face is not worth a wrecked shot: take it only when it costs little
-        if (front2 < -0.15 && faceOnly.score > (best.score || -1e9) - 5) best = faceOnly; }
+        if (front2 < 0.15 && faceOnly.score > (best.score || -1e9) - 7) best = faceOnly; }
       if (drifted && this.framePick && this.framePick.beat === this.lastBeat) {
         const keep = this.frameScanScoreOf(tiers, this.framePick);
         if (keep !== null && best.score - keep < 0.5) { best = { az: this.framePick.az, mul: this.framePick.mul, lift: this.framePick.lift, score: keep, has: true }; } }
@@ -951,7 +956,7 @@ const Stage = {
   },
   insideSolid(p, self) {
     if (!this.solidsNow) return false; const v = this._v || (this._v = new THREE.Vector3());
-    for (const o of this.solidsNow) { if (o.userData.soft || (o.material && o.material.side === THREE.BackSide)) continue; if (self && this.isOwn(o, self)) continue; const bb = o.geometry.boundingBox || (o.geometry.computeBoundingBox(), o.geometry.boundingBox); if (!bb) continue; v.copy(p); o.worldToLocal(v); const sx = o.getWorldScale(this._s || (this._s = new THREE.Vector3())); const m = 0.4 / Math.max(0.05, Math.max(sx.x, sx.y, sx.z)); if (v.x > bb.min.x - m && v.x < bb.max.x + m && v.y > bb.min.y - m && v.y < bb.max.y + m && v.z > bb.min.z - m && v.z < bb.max.z + m) return true; }
+    for (const o of this.solidsNow) { if (o.userData.soft || (o.material && o.material.side === THREE.BackSide)) continue; if (self && this.isOwn(o, self)) continue; if (!this.inTheWay(this.solidBox(o))) continue; const bb = o.geometry.boundingBox || (o.geometry.computeBoundingBox(), o.geometry.boundingBox); if (!bb) continue; v.copy(p); o.worldToLocal(v); const sx = o.getWorldScale(this._s || (this._s = new THREE.Vector3())); const m = 0.4 / Math.max(0.05, Math.max(sx.x, sx.y, sx.z)); if (v.x > bb.min.x - m && v.x < bb.max.x + m && v.y > bb.min.y - m && v.y < bb.max.y + m && v.z > bb.min.z - m && v.z < bb.max.z + m) return true; }
     return false;
   },
   isOwn(o, self) { if (!self) return false; if (Array.isArray(self)) { for (const q of self) if (q && this.isOwn(o, q)) return true; return false; }
@@ -993,10 +998,15 @@ const Stage = {
     // lost" -- which put the lens on the back of her head for four face beats running
     return strictLow ? head : ok > 0;
   },
+  // a thing is in the lens's way if it is big enough to be in the way and high enough to be in
+  // front of the lens rather than under it. Six fallen teeth on the floor beside the dreamer were
+  // counting as six obstructions, and the search spent the whole beat running away from them
+  inTheWay(box) { return box.max.y > 1 && Math.max(box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z) > 0.55; },
   lensCrowding(pos, self) {
     const sol = this.solidsNow; if (!sol || !sol.length) return 0; let n = 0; const seen = new Set();
     for (const o of sol) { if (this.isOwn(o, self)) continue; let owner = o; while (owner.parent && owner.parent !== this.root) owner = owner.parent; if (seen.has(owner)) continue;
-      if (this.solidBox(o).distanceToPoint(pos) < 2.4) { seen.add(owner); n++; } }
+      const bx = this.solidBox(o); if (!this.inTheWay(bx)) continue;
+      if (bx.distanceToPoint(pos) < 2.4) { seen.add(owner); n++; } }
     return n;
   },
   solidBox(o) {
@@ -1010,7 +1020,7 @@ const Stage = {
     const w = this._v2 || (this._v2 = new THREE.Vector3()); let extra = 0;
     for (let step = 0; step < 4; step++) {
       let hit = false;
-      for (const o of sol) { if (this.isOwn(o, self)) continue; if (o.userData.soft && !o.userData.opaque) continue; if (this.solidBox(o).distanceToPoint(pos) < 1.45) { hit = true; break; } }
+      for (const o of sol) { if (this.isOwn(o, self)) continue; if (o.userData.soft && !o.userData.opaque) continue; const bx = this.solidBox(o); if (!this.inTheWay(bx)) continue; if (bx.distanceToPoint(pos) < 1.45) { hit = true; break; } }
       if (!hit) break;
       pos = pos.clone().add(dir.clone().multiplyScalar(0.9)); extra += 0.9; if (extra > 3.6) break;
     }
