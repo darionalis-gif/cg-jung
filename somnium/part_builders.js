@@ -1,5 +1,32 @@
 /* ---------------- materials & geometry helpers ---------------- */
 const MAT_CACHE = new Map();
+// A crowd figure is a dozen draw calls and there are forty of them in a party. Merge the parts
+// that move together into one geometry with the colours baked into its vertices: half the calls,
+// and at fifteen pixels a head nobody can see the elbow that stops bending.
+function mergeParts(parts, o = {}) {
+  const pos = [], nor = [], col = [], idx = []; let base = 0; const c = new THREE.Color();
+  for (const { geo, color, m } of parts) {
+    const g2 = geo.index ? geo.toNonIndexed() : geo; const p = g2.attributes.position, nAttr = g2.attributes.normal;
+    const nm = new THREE.Matrix3().getNormalMatrix(m); const v = new THREE.Vector3();
+    c.set(color); const lin = c.clone().convertSRGBToLinear ? c : c;
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i).applyMatrix4(m); pos.push(v.x, v.y, v.z);
+      if (nAttr) { v.fromBufferAttribute(nAttr, i).applyMatrix3(nm).normalize(); nor.push(v.x, v.y, v.z); } else nor.push(0, 1, 0);
+      col.push(lin.r, lin.g, lin.b); }
+    for (let i = 0; i < p.count; i++) idx.push(base + i);
+    base += p.count; }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  const mm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, metalness: 0.04, transparent: !!o.transparent, opacity: o.opacity ?? 1, flatShading: false });
+  const mesh0 = new THREE.Mesh(g, mm); mesh0.castShadow = true; mesh0.receiveShadow = true; return mesh0;
+}
+function partOf(geo, color, x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1) {
+  const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion(), new THREE.Vector3(sx, sy, sz));
+  return { geo, color, m };
+}
 function mat(color, o = {}) {
   const key = color + '|' + JSON.stringify(o);
   if (MAT_CACHE.has(key)) return MAT_CACHE.get(key);
@@ -58,8 +85,11 @@ function humanoid(a, o = {}) {
   const chest = mesh(G.cap(0.17 * S, 0.3, 12), shirt, 0, 0.2, 0); chest.scale.set(1.05, 1, 0.72); torso.add(chest);
   if (!o.simple) { const neck = mesh(G.cyl(0.05, 0.06, 0.1, 8), skinM, 0, 0.43, 0); torso.add(neck); }
   const headG = new THREE.Group(); headG.position.set(0, 0.46, 0); torso.add(headG);
-  const head = mesh(G.sph(0.125, o.simple ? 8 : 16), skinM, 0, 0.12, 0); headG.add(head);
-  const hairM = mesh(G.sph(0.15, o.simple ? 8 : 16), mat(hair, opts), 0, 0.175, -0.025); hairM.scale.set(1, 0.72, 1); headG.add(hairM);
+  let head, hairM;
+  if (o.simple) { const hm = mergeParts([partOf(G.sph(0.125, 8), skin, 0, 0.12, 0), partOf(G.sph(0.15, 8), hair, 0, 0.175, -0.025, 1, 0.72, 1)], { transparent: a.ghost, opacity: a.ghost ? 0.45 : 1 });
+    headG.add(hm); head = hm; hairM = hm; }
+  else { head = mesh(G.sph(0.125, 16), skinM, 0, 0.12, 0); headG.add(head);
+    hairM = mesh(G.sph(0.15, 16), mat(hair, opts), 0, 0.175, -0.025); hairM.scale.set(1, 0.72, 1); headG.add(hairM); }
   const face = [];
   if (!o.simple) { for (const sx of [-1, 1]) { const e = mesh(G.sph(0.016, 8), mat(o.eye || '#1a1a1a'), sx * 0.051, 0.137, 0.127); headG.add(e); face.push(e); }
     const mo = mesh(G.sph(0.021, 8), mat(shade(skin, 0.72)), 0, 0.097, 0.138); headG.add(mo); face.push(mo); }
@@ -85,14 +115,20 @@ function humanoid(a, o = {}) {
     // a deltoid on the body itself, so the shoulder is filled whatever the arm does
     // a shoulder ball and an elbow ball fill a joint nobody can see open on a figure in a crowd
     if (!o.simple) { const del = mesh(G.sph(upR * 1.45, 10), sleeveM, sx * pivotX * 0.94, 0.375, 0); del.scale.set(1, 0.92, 0.95); torso.add(del); }
-    const up = new THREE.Group(); up.position.set(sx * pivotX, 0.38, 0); torso.add(up); const ua = mesh(G.cap(upR, 0.22, 8), sleeveM, 0, -0.15, 0); up.add(ua);
+    const up = new THREE.Group(); up.position.set(sx * pivotX, 0.38, 0); torso.add(up);
+    const sleeveC = coated ? (a.detail.wearColor || shade(col, 0.7)) : (o.bare ? skin : col);
+    const cuffC = coated ? (a.detail.wearColor || shade(col, 0.7)) : ((o.bare || o.shortSleeves) ? skin : col);
+    if (o.simple) up.add(mergeParts([partOf(G.cap(upR, 0.22, 8), sleeveC, 0, -0.15, 0), partOf(G.cap(loR, 0.29, 8), cuffC, 0, -0.46, 0)], { transparent: a.ghost, opacity: a.ghost ? 0.45 : 1 }));
+    else up.add(mesh(G.cap(upR, 0.22, 8), sleeveM, 0, -0.15, 0));
     // a ball on the pivot itself: whatever the arm swings to, the joint cannot open onto a gap
     if (!o.simple) up.add(mesh(G.sph(upR * 1.24, 10), sleeveM, 0, 0, 0));
-    const lo = new THREE.Group(); lo.position.set(0, -0.3, 0); up.add(lo); lo.add(mesh(G.cap(loR, 0.2, 8), cuffM, 0, -0.13, 0)); if (!o.simple) lo.add(mesh(G.sph(loR * 1.2, 8), cuffM, 0, 0, 0)); lo.add(mesh(G.sph(0.05, o.simple ? 6 : 8), skinM, 0, -0.29, 0.01));
+    const lo = new THREE.Group(); lo.position.set(0, -0.3, 0); up.add(lo); // a hand and a shoe on a figure in a crowd are two more draw calls a head at fifteen pixels;
+    // cropping one at three times showed no gap where they had been
+    if (!o.simple) { lo.add(mesh(G.cap(loR, 0.2, 8), cuffM, 0, -0.13, 0)); lo.add(mesh(G.sph(loR * 1.2, 8), cuffM, 0, 0, 0)); lo.add(mesh(G.sph(0.05, 8), skinM, 0, -0.29, 0.01)); }
     arms.push(up); fore.push(lo);
     const th = new THREE.Group(); th.position.set(sx * 0.1, 0, 0); hips.add(th); th.add(mesh(G.cap(0.075 * S, 0.3, 8), pants, 0, -0.22, 0));
     const sh = new THREE.Group(); sh.position.set(0, -0.44, 0); th.add(sh); sh.add(mesh(G.cap(0.06 * S, 0.3, 8), pants, 0, -0.2, 0));
-    const ft = mesh(G.box(0.1, 0.06, 0.24), shoe, 0, -0.44, 0.06); sh.add(ft);
+    const ft = o.simple ? sh : mesh(G.box(0.1, 0.06, 0.24), shoe, 0, -0.44, 0.06); if (!o.simple) sh.add(ft);
     legs.push(th); shins.push(sh); feet.push(ft);
   }
   if (o.spikes) for (let i = 0; i < 5; i++) torso.add(mesh(G.cone(0.05, 0.25, 5), mat(shade(col, 0.6)), 0, 0.4 - i * 0.12, -0.18).rotateX(-1.2));
@@ -361,7 +397,7 @@ B.gun = a => { const g = new THREE.Group(); const m = mat(a.color, { metal: 0.7,
   g.add(mesh(G.box(0.05, 0.11, 0.1), m, 0, 1.17, -0.06));
   const sight = mesh(G.box(0.012, 0.05, 0.02), m, 0, 1.28, 0.7); g.add(sight);
   const guard = mesh(new THREE.TorusGeometry(0.035, 0.008, 6, 10), m, 0, 1.13, -0.02); guard.rotation.y = Math.PI / 2; g.add(guard);
-  g.userData.height = 1.32; g.userData.airborne = true; g.userData.carryTilt = [-0.95, 0.35]; return g; };
+  g.userData.height = 1.32; g.userData.airborne = true; g.userData.carryTilt = [-0.5, 0.28]; return g; };
 B.knife = a => { const g = new THREE.Group(); g.add(mesh(G.box(0.03, 0.5, 0.005), mat(a.color, { metal: 0.9, rough: 0.2 }), 0, 1.35, 0), mesh(G.box(0.04, 0.2, 0.03), mat('#3a2a1a'), 0, 1.0, 0)); g.userData.height = 1.6; g.userData.airborne = true; return g; };
 B.box = a => { const g = new THREE.Group(); const w = a.detail.width || 1, h = a.detail.height || 1, d = a.detail.depth || 1; g.add(mesh(G.box(w, h, d), mat(a.color, { emissive: a.glow ? a.color : '#000', ei: 0.6 }), 0, h / 2, 0)); g.userData.height = h; return g; };
 B.sphere = a => { const g = new THREE.Group(); g.add(mesh(G.sph(0.6, 16), mat(a.color, { emissive: a.glow ? a.color : '#000', ei: 0.6 }), 0, 0.6, 0)); g.userData.height = 1.2; return g; };

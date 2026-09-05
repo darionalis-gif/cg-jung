@@ -154,7 +154,7 @@ const Stage = {
         for (const r2 of solo) r2.g.position.set(r2.a.pos[0], r2.a.pos[1], r2.a.pos[2]); }
       } this.applyWorld(scene.world); const mid0 = scene.beats[0] ? scene.beats[0].dur * 0.5 : 0; this.setTime(mid0); this.aimSkyLive(); this.setTime(0); this.playing = true;
   },
-  setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this._rush = 0; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
+  setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this._rush = 0; this._unblockDir = null; this._lastAim = null; this._lastCamOff = null; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
   beatAt(t) { const bs = this.scene.beats; for (let i = bs.length - 1; i >= 0; i--) if (t >= bs[i].start) return i; return 0; },
   /* ---- evaluate all actor and world state at this.time ---- */
   evalActors(t) {
@@ -263,7 +263,14 @@ const Stage = {
   },
   evaluate(dt, snap) {
     const t = this.time, S = this.scene, τ = t; const states = this.evalActors(t); this.states = states; const w = this.evalWorld(t); this.applyWorld(w);
-    const bi = this.beatAt(t); if (bi !== this.lastBeat) { const prev = this.lastBeat; this.lastBeat = bi; if (this.onBeat) this.onBeat(bi); if (prev >= 0 && !snap) this.camBlend = 0; this.reaimSky = true; }
+    const bi = this.beatAt(t); if (bi !== this.lastBeat) { const prev = this.lastBeat; this.lastBeat = bi; if (this.onBeat) this.onBeat(bi); // a beat is a cut. Nothing set snap at a boundary during playback, so the lens flew from the
+      // last set-up into the new one -- up to a hundred and eighty degrees of whip pan inside one
+      // sentence, and the still the harness takes is a pose the viewer never sees.
+      if (prev >= 0 && !snap) this.cam.snap = true;
+      // and nothing that remembers the last shot may survive the cut, or which side of the subject
+      // this beat is shot from depends on what the one before it happened to need
+      this._unblockDir = null; this._lastAim = null; this._lastCamOff = null; this._rush = 0;
+      this.reaimSky = true; }
     if (!snap && dt > 0) { for (const x of S.beats[bi].actions) { if (!x.effect || x.effect === 'none') continue; const at = S.beats[bi].start + x.at * S.beats[bi].dur; if (t - dt < at && t >= at) this.triggerEffect(x.effect); } }
     // actors
     for (const [id, rec] of this.actors) { const st = states.get(id), g = rec.g, a = rec.a, ud = g.userData; g.visible = st.op > 0.01; g.position.set(st.pos[0], st.pos[1] - (st.pos[1] > 0.25 && ud.propBase && !a.carriedBy ? ud.propBase * (st.size / a.size) : 0), st.pos[2]);
@@ -271,7 +278,10 @@ const Stage = {
 
         { const cr0 = this.actors.get(a.carriedBy); if (cr0) { g.userData.carrier = cr0.g; g.userData.heldBy = cr0.g; } }
         const cr = this.actors.get(a.carriedBy); const sw = cr && cr.g.userData.armSwing; if (sw) { const ang = sw[a.id.length % 2 ? 1 : 0]; const r0 = st.yaw * Math.PI / 180, reach = 0.5 * (states.get(a.carriedBy) || st).size;
-        g.position.x += Math.sin(r0) * -Math.sin(ang) * reach; g.position.z += Math.cos(r0) * -Math.sin(ang) * reach; g.position.y += (1 - Math.cos(ang)) * reach * 0.6; } } g.rotation.set(a.carriedBy && ud.carryTilt ? ud.carryTilt[0] : 0, g.rotation.y, a.carriedBy && ud.carryTilt ? ud.carryTilt[1] : 0);
+        g.position.x += Math.sin(r0) * -Math.sin(ang) * reach; g.position.z += Math.cos(r0) * -Math.sin(ang) * reach; g.position.y += (1 - Math.cos(ang)) * reach * 0.6;
+          // and out from the hip: a 1.2 m rifle hung on the hand's own axis runs through the thigh
+          // and out below the knee, and the lens the sentence is about comes out of a chest
+          if (ud.carryTilt) { const sd = a.id.length % 2 ? 1 : -1; g.position.x += Math.cos(r0) * 0.24 * sd; g.position.z += -Math.sin(r0) * 0.24 * sd; } } } g.rotation.set(a.carriedBy && ud.carryTilt ? ud.carryTilt[0] : 0, g.rotation.y, a.carriedBy && ud.carryTilt ? ud.carryTilt[1] : 0);
       // the tilt has to turn the prop about the hand, not about a group origin that centerY has
       // put a metre below it, or the rifle swings out of the grip and lands on the floor
       if (a.carriedBy && ud.carryTilt && ud.centerY) { const sc0 = ud.noScale ? 1 : st.size / a.size;
@@ -312,8 +322,9 @@ const Stage = {
     // frame by beat 3: re-aim it at every cut, when the new beat's camera has been solved
     // a body in the sky has one place in the world; only walking indoors moves it, and only onto
     // the wall. Re-deriving it from the camera at every cut teleported it a hundred metres.
-    if (this.reaimSky) { this.reaimSky = false; const inRoom = !!this.roomAround(this.camera.position);
-      if (inRoom || this._skyIndoor) { this.aimSkyLive(); this._skyIndoor = inRoom; } }
+    // "re-aim it at every cut" is what the comment said and what the guard prevented: outdoors from
+    // beginning to end, the disc was aimed once at load and then walked off the side of the frame
+    if (this.reaimSky) { this.reaimSky = false; this._skyIndoor = !!this.roomAround(this.camera.position); this.aimSkyLive(); }
     // every point light in the scene is evaluated for every fragment of a full-screen ground and
     // sky. Five street lamps and a fire put a 400 ms floor under a beat with ten thousand
     // triangles in it; the lamps at the far end of the road contribute nothing to what is on
@@ -357,8 +368,11 @@ const Stage = {
       // ...and the folded shin has to lie ALONG the ground, not fold up behind the knee: at 159
       // degrees the only thing touching the sand was the knee and the figure read as hovering
       T.legs = [-0.12, 1.32]; T.shins = [-1.62, -1.36]; T.y = -0.52; T.ground = true;
-      T.armsX = [-0.95 + br, -0.7 - br * 0.6]; T.armsZ = [0.24, -0.34]; T.fore = [-1.15, -0.85];
-      T.bodyX = 0.32 + br * 0.5; T.hipsZ = 0.05; T.headY = Math.sin(t * 0.5) * 0.22; T.torsoS = 1 + Math.sin(t * 1.5) * 0.014; }
+      // and the hands work: a beat whose sentence is about building castles had four figures that
+      // did not move a pixel in six seconds
+      const wk = Math.sin(t * 1.6), wk2 = Math.sin(t * 1.6 + 1.1);
+      T.armsX = [-0.95 + wk * 0.3, -0.7 + wk2 * 0.3]; T.armsZ = [0.24, -0.34]; T.fore = [-1.15 - wk * 0.25, -0.85 - wk2 * 0.25];
+      T.bodyX = 0.32 + br * 0.5 + wk * 0.05; T.hipsZ = 0.05; T.headY = Math.sin(t * 0.5) * 0.22; T.torsoS = 1 + Math.sin(t * 1.5) * 0.014; }
     else if (s === 'lie') { const br = Math.sin(t * 0.9) * 0.03;
       T.bodyX = -1.5; T.y = 0.2 - 0.96 + 0.18; T.ground = true;
       T.legs = [0.06, -0.09]; T.shins = [0, -0.05];
@@ -502,7 +516,9 @@ const Stage = {
     // is when the face outranks keeping a bystander in shot, which "somebody somewhere speaks" is not
     // ...and it is the face ALONE when nobody else in the beat is doing anything: two people
     // grieving is a two-shot, and turning to one of their faces loses the other
-    const bowed = beat.actions.some(x => x.actor === c.target && (x.state === 'fold' || x.state === 'grieve' || x.state === 'kneel'));
+    // a child kneeling in the sand is not hiding their face from a lens above them, and a soldier
+    // with his head down in a crowd is not either: only a face actually folded over gets the low lens
+    const bowed = beat.actions.some(x => x.actor === c.target && (x.state === 'fold' || x.state === 'grieve'));
     const faceIsSubject = beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state))) && FACED.has((rec && rec.a.kind) || '')
       && !beat.actions.some(x => x.actor && x.actor !== c.target && x.say);
     // and when the camera's own subject is silent while exactly one person in the beat talks, that
@@ -637,7 +653,7 @@ const Stage = {
       for (const [wid, wr] of this.actors) { if (wr.a.kind !== 'water' && wr.a.kind !== 'river') continue;
         const ws = states.get(wid); if (!ws || ws.op < 0.3) continue;
         if (wideNamed.some(q => q.id === wid)) continue;
-        const bw = new THREE.Box3().setFromObject(wr.g); if (!Number.isFinite(bw.min.x)) continue;
+        const bw = this.groupBox(wr.g); if (!Number.isFinite(bw.min.x)) continue;
         wideNamed.push({ id: wid, g: wr.g, box: bw }); }
       for (const w of wideNamed) { if (framed.some(q => q.id === w.id)) continue;
         const near = w.box.clampPoint(c0, new THREE.Vector3()); near.y = Math.max(near.y, 0.2);
@@ -655,14 +671,10 @@ const Stage = {
     // whatever the sentence names by its own label, even when the beat gives it nothing to do: the
     // beat about an extremely long tea table was showing the wall behind it, because the framer's
     // weights key on actions alone and no beat ever gave the table one
-    { const txt = ' ' + String(beat.text || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ') + ' ';
-      for (const a3 of this.scene.actors) { if (framed.some(q => q.id === a3.id)) continue;
-        const lab = String(a3.label || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-        if (lab.length < 4 || a3.carriedBy) continue;
-        const words = lab.split(' ').filter(v => v.length >= 4);
-        if (!words.length || !words.every(v => txt.includes(' ' + v + ' ') || txt.includes(' ' + v + 's '))) continue;
+    { const named = this.textNamed(beat);
+      for (const a3 of named) { if (framed.some(q => q.id === a3.id)) continue;
         const r5 = this.actors.get(a3.id), s6 = states.get(a3.id); if (!r5 || !s6 || s6.op < 0.3) continue;
-        const bb3 = new THREE.Box3().setFromObject(r5.g); if (!Number.isFinite(bb3.min.x)) continue;
+        const bb3 = this.groupBox(r5.g); if (!Number.isFinite(bb3.min.x)) continue;
         const p3 = bb3.clampPoint(c0, new THREE.Vector3()); p3.y = Math.max(p3.y, Math.min(1, bb3.max.y));
         if (p3.distanceTo(c0) > 45) continue;
         framed.push({ id: a3.id, g: r5.g, w: 1, faced: false, speaks: false, h: Math.max(0.6, bb3.max.y - bb3.min.y), p: p3 }); } }
@@ -680,7 +692,7 @@ const Stage = {
         // almost level, not the usual half-rise
         // a head bowed thirty-six degrees hides its face from any lens at or above its own height: to
         // see a face fold you have to be under it, looking up
-        const fl = Math.hypot(p.x - l.x, p.z - l.z); const up = l.y + (bowed ? -0.25 : Math.max(0.6, fl * 0.5));
+        const fl = Math.hypot(p.x - l.x, p.z - l.z); const up = bowed ? Math.max(1.1, l.y - 0.25) : l.y + Math.max(0.6, fl * 0.5);
         if (p.y > up) { // lower the lens but keep the range the shot was framed at
           p.y = up; const wantFlat = Math.sqrt(Math.max(0.25, len0 * len0 - (up - l.y) * (up - l.y)));
           const nowFlat = Math.hypot(p.x - l.x, p.z - l.z) || 0.001; const k = wantFlat / nowFlat;
@@ -864,7 +876,7 @@ const Stage = {
             for (let j2 = i2 + 1; j2 < framed.length; j2++) { const f2 = framed[j2]; if (f2.w < 1 || !f2.seen) continue;
               const v1 = f1.p.clone().sub(out.pos), v2 = f2.p.clone().sub(out.pos);
               const l1 = v1.length(), l2 = v2.length(); if (l1 < 0.1 || l2 < 0.1) continue;
-              if (Math.abs(l1 - l2) < 1.2) continue;
+              if (Math.abs(l1 - l2) < 0.6) continue;
               const cosA = v1.dot(v2) / (l1 * l2); if (cosA < 0.9976) continue;
               stacked += 1; } }
           let against = 0; if (towards.length) { const toCam0 = out.pos.clone().sub(out.look); toCam0.y = 0; toCam0.normalize();
@@ -878,7 +890,7 @@ const Stage = {
           let faceCost = 0; if (facesMatter) { const tf = framed.find(f => f.id === c.target); if (tf && tf.seen) faceCost = (1 - front) * 0.9;
             for (const f of framed) { if (!f.speaks || f.id === c.target || !f.seen) continue; const st3 = states.get(f.id); const fc = dirAt(this.faceYaw(f.id, st3), 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.6; } }
           const crowd = this.lensCrowding(out.pos, selfs);
-          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(faceActor ? 2.6 : 1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(40, hog * 2.4) + Math.min(14, Math.log1p(hog) * 1.2) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(3.6, stacked * 2.2) + lostNamed * 3.2;
+          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(faceActor ? 2.6 : 1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(40, hog * 2.4) + Math.min(14, Math.log1p(hog) * 1.2) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(7, stacked * 3.4) + lostNamed * 3.2;
           const score = n - cost - cropAtLens * 1.6 - (wallAcross ? 25 : 0);
           let frontF = front, fSeen = tgtSeen;
           if (fP) { const tc = out.pos.clone().sub(fP); const fc = dirAt(this.faceYaw(faceActor, fSt), 1, 0);
@@ -997,7 +1009,12 @@ const Stage = {
         this.framePick.tryAt = this.time;
         let bq = pos, bl = look, bAz = null, bMul = 1, bLift = 0;
         let bb = bad * 10 + uglier(pos, look);
-        outer2: for (const mul of [1, 1.25, 1.6]) for (const lift of [0, 1.6]) for (const az of [0, 20, -20, 40, -40, 70, -70, 110, -110, 150, -150, 180]) {
+        // the first pass at a cut looks everywhere; the ones after it are corrections to a shot
+        // that is already nearly right, and running the whole grid three times made the cut frame
+        // the most expensive in the film
+        const muls = it ? [1, 1.5] : [1, 1.25, 1.6], lifts = it ? [0] : [0, 1.6];
+        const azs = it ? [0, 40, -40, 90, -90, 150, -150] : [0, 20, -20, 40, -40, 70, -70, 110, -110, 150, -150, 180];
+        outer2: for (const mul of muls) for (const lift of lifts) for (const az of azs) {
           const cand = this.turnShot(pos, look, az, mul); if (lift) cand.y += lift;
           const o6 = dress(settle(cand, look)); const n6 = lost(o6.pos, o6.look) * 10 + uglier(o6.pos, o6.look);
           if (n6 < bb - 0.5) { bb = n6; bq = o6.pos; bl = o6.look; bAz = az; bMul = mul; bLift = lift; if (n6 < 1) break outer2; } }
@@ -1086,6 +1103,25 @@ const Stage = {
       const bx = this.solidBox(o); if (!this.inTheWay(bx)) continue;
       if (bx.distanceToPoint(pos) < 2.4) { seen.add(owner); n++; } }
     return n;
+  },
+  // the same tick cache the solids use: setFromObject on a crowd of twenty-six walks a few hundred
+  // meshes, and this was being asked of every actor the sentence names on every frame
+  groupBox(g) {
+    const c = this._gbC || (this._gbC = new WeakMap());
+    let e = c.get(g); if (e && e.tick === this.boxTick) return e.box;
+    const box = new THREE.Box3().setFromObject(g); c.set(g, { tick: this.boxTick, box }); return box;
+  },
+  // and which actors a sentence names by label does not change inside a beat
+  textNamed(beat) {
+    if (this._tnBeat === beat && this._tn) return this._tn;
+    const txt = ' ' + String(beat.text || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ') + ' ';
+    const out = [];
+    for (const a3 of this.scene.actors) { if (a3.carriedBy) continue;
+      const lab = String(a3.label || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); if (lab.length < 4) continue;
+      const words = lab.split(' ').filter(v => v.length >= 4); if (!words.length) continue;
+      if (!words.every(v => txt.includes(' ' + v + ' ') || txt.includes(' ' + v + 's '))) continue;
+      out.push(a3); }
+    this._tnBeat = beat; this._tn = out; return out;
   },
   solidBox(o) {
     const c = this._sbC || (this._sbC = new WeakMap());
@@ -1204,7 +1240,9 @@ const Stage = {
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
     const vhalf = cam.fov * Math.PI / 360; const rise = Math.tan(vhalf) * 0.2;
     for (const rec of sky) {
-      const a = rec.a; if (a.hidden) continue; const D = Math.max(70, Math.hypot(a.pos[0], a.pos[2]));
+      const a = rec.a; if (a.hidden) continue; // far enough that thirty metres of walking does not slide it across the frame; fitSky keeps its
+      // apparent size, so distance costs nothing
+      const D = Math.max(700, Math.hypot(a.pos[0], a.pos[2]) * 6);
       // a moon is not visible from inside a room. Pasting the disc on the far wall made a three
       // metre red circle standing in the hospital ward, which is not what anybody asked for and
       // not what the director's own reply promised
@@ -1227,7 +1265,7 @@ const Stage = {
       // horizon stays near it, one written high rides higher
       const elev = Math.atan2(Math.max(0, a.pos[1]), Math.max(1, Math.hypot(a.pos[0], a.pos[2])));
       const band = clamp(elev / (Math.PI / 5), 0, 1);
-      const lo = Math.min(0.55, hy + 0.02 + band * 0.16), hi = Math.max(lo + 0.05, Math.min(0.72, lo + 0.2));
+      const lo = clamp(hy + 0.02 + band * 0.16, -0.55, 0.42), hi = Math.max(lo + 0.05, Math.min(0.62, lo + 0.2));
       for (let k = 0; k < 16; k++) { const ndc = p.clone().project(cam); if (ndc.y >= lo && ndc.y <= hi) break; p.y += (ndc.y > hi ? -1 : 1) * Math.max(1.2, Math.abs(ndc.y - (ndc.y > hi ? hi : lo)) * 26); if (p.y < 8) { p.y = 8; break; } if (p.y > 260) { p.y = 260; break; } }
       const aimed = [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)];
       rec.g.userData.aimed = aimed;

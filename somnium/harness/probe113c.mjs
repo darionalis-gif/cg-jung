@@ -26,7 +26,7 @@ for (const id of ids) {
     while (S.time < T - 0.05 && performance.now() - t0 < 300000) {
       await new Promise(r => requestAnimationFrame(r));
       const p = S.camera.position, l = S.cam.look;
-      rows.push([+S.time.toFixed(3), S.beatAt(S.time), Math.atan2(p.x - l.x, p.z - l.z) * 180 / Math.PI, Math.hypot(p.x - l.x, p.y - l.y, p.z - l.z)]);
+      rows.push([+S.time.toFixed(3), S.beatAt(S.time), Math.atan2(p.x - l.x, p.z - l.z) * 180 / Math.PI, Math.hypot(p.x - l.x, p.y - l.y, p.z - l.z), +p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)]);
     }
     return rows;
   }, total);
@@ -40,7 +40,14 @@ for (const id of ids) {
     let fastest = 0, fj = 0;
     for (let i = 0; i < rs.length; i++) { let j = i; let acc = 0; while (j + 1 < rs.length && rs[j + 1][0] - rs[i][0] <= 1.0) { acc += Math.abs(un(rs[j + 1][2], rs[j][2])); j++; } if (acc > fastest) { fastest = acc; fj = rs[i][0]; } }
     const rr = rs.map(r => r[3]);
-    console.log(`  beat ${+k + 1}: total swing ${swing.toFixed(0)}°, fastest second ${fastest.toFixed(0)}°/s at t=${fj.toFixed(1)}, range ${Math.min(...rr).toFixed(1)}..${Math.max(...rr).toFixed(1)} m`);
+    // how long after the beat starts does the lens reach the pose it ends the beat at?
+    const end = rs[rs.length - 1];
+    const dd = r => Math.hypot(r[4] - end[4], r[5] - end[5], r[6] - end[6]);
+    let arrive = rs[0][0]; for (const r of rs) if (dd(r) > 0.5) arrive = r[0];
+    const travel = dd(rs[0]);
+    let mx = 0; for (let i = 1; i < rs.length; i++) mx = Math.max(mx, Math.hypot(rs[i][4] - rs[i - 1][4], rs[i][5] - rs[i - 1][5], rs[i][6] - rs[i - 1][6]));
+    console.log(`  beat ${+k + 1}: swing ${swing.toFixed(0)}°, fastest second ${fastest.toFixed(0)}°/s at t=${fj.toFixed(1)}, range ${Math.min(...rr).toFixed(1)}..${Math.max(...rr).toFixed(1)} m` +
+      ` | lens ${travel.toFixed(1)} m from its end-of-beat pose at the boundary, within 0.5 m only after ${(arrive - rs[0][0]).toFixed(1)} s of a ${(end[0] - rs[0][0]).toFixed(0)} s beat; biggest single-frame step ${mx.toFixed(2)} m`);
   }
   out[id] = trace;
 }

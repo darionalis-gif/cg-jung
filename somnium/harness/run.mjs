@@ -78,7 +78,12 @@ for (const id of IDS) {
     await page.evaluate(() => { window.__somnium.Stage.playing = true; }); await page.waitForTimeout(700);
     const p2 = await page.evaluate(() => window.__somnium.pixels()); await page.evaluate(() => { window.__somnium.Stage.playing = false; });
     const diff = p1.reduce((s, v, k) => s + Math.abs(v - p2[k]), 0) / p1.length;
-    const settled2 = await settle();
+    // and NOT a second settle: with time frozen the lens goes on easing toward a pose the viewer
+    // only reaches if the beat continues, so the still stopped being the frame anybody sees. What
+    // is recorded instead is how far the lens still had to travel at the moment playback stopped.
+    const settled2 = await page.evaluate(async () => { const S = window.__somnium.Stage;
+      const a0 = S.camera.position.clone(); await new Promise(r => requestAnimationFrame(r));
+      return +S.camera.position.distanceTo(a0).toFixed(3); });
     const m = await page.evaluate(() => window.__somnium.Stage.metrics());
     const file = `beat-${String(i + 1).padStart(2, '0')}.png`; await page.screenshot({ path: path.join(dir, file) });
     shots.push({ beat: i + 1, file, start: +t.toFixed(1), dur: beats[i].dur, text: beats[i].text, motion: +diff.toFixed(2), settleFrames: [settled, settled2], metrics: m });
