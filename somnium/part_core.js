@@ -76,7 +76,7 @@ Rules that matter:
 1. Fidelity first. Every place, person, creature and thing the dream names is an actor with a recognisable label. Events happen in the order the dream tells them; nothing is invented that contradicts the text; where the dream is vague, choose the plainest reading. Emotions are staged through colour, light, fog, weather, camera distance and effect, not left out. "say" carries only words the report quotes or reports; when the report says someone yelled, shouted or argued without saying what, use the state yell and no invented words.
 2. Cover the whole dream: 5 to 14 beats, each carrying a verbatim excerpt of the report in "text" (fix nothing, quote in order; the excerpts joined should reproduce the report). One clear event per beat, and the thing the sentence is about must be on screen and legible in that beat.
 3. The dreamer is an actor with id "me" (kind person, label "me") whenever the dream is in the first person; the camera usually follows "me" (mode follow, distance 6-10, height 2-4) and cuts to fixed or wide shots for big scenery, and to orbit for a moment to be looked at. Keep whoever acts in the beat inside the frame: look at them or follow them. A fixed camera position must be outside every building, room, hill and wall and at least 3 m from any person or crowd; never look at a scene through a wall. States: melt flattens a whole figure, fold crumples only the head and face, collapse drops a figure to the ground, kneel and sit need no seat.
-4. Space is real: put the actors of a beat within a few metres of each other; a person who walks moves 1.4 m per second, a run 4 m/s; scenery is around, not under, the people. Buildings are at least 6 m apart and never straddle the road. A small town, a village, a suburb or a slum is made of house and shop actors, not building or city. Interiors: put a "room" actor around the people (width/depth/height) and set ground "floor"; when the people leave a room, vanish the room in that beat or cut to a camera outside. Underground (a cave, a hold, a cellar): keep ground "soil" or "stone" at y 0 with the people on it, sky "void", a cave actor around them, and a lamp, candle or fire for light; do not put people below y 0 except at the bottom of a pit. People stand on sand or grass next to water, never inside a water disc unless they swim. Anything the report says a person holds, carries, wears or has in their hand MUST be given carriedBy: that person's id, and then gets no pos and no move of its own — it rides in their hand wherever they go. "He had a rifle in his hand" is a gun with carriedBy the man; "the big lens on my camera" is a box with carriedBy the dreamer; a bag of money, a lamp, a rock about to be dropped, a book, an umbrella: all carriedBy. A prop with a pos of its own is a thing lying on the ground, so use pos only when the report leaves it lying somewhere. Do not stand one person directly between the camera's target and the lens, and do not put a wall, a headboard or a tall prop between them either. Someone whose face a beat is about (they speak, yell, grieve, shake or fold) needs the camera's distance in clear space in front of them: keep them at least that far from any wall of the room they are in, near the middle of the floor, not backed against the far side. People "crowded around" a table stand within 1 m of its long sides, on both sides, not in a clump beside it. Something that falls from a person standing at a table falls on the camera's side of it, not behind the top: put the person at the near long side and the camera outside the table, or the fall is hidden by the tabletop. A grating, a lid or a cover over a hole shares the pit's x and z, so the hole is in it; a fence set beside a pit reads as a fence next to a hole. Visitors at a bedside stand along the open side of the bed, within 1.5 m of the person lying in it, not across the room. Someone the report says is ill, injured, hospitalised or in bed IS the person in the bed: give them the bed's own x and z, y 0.6, and state lie -- not a standing figure a few metres away, and never a position outside the walls of the room they are in. A person lying in a bed needs a colour that separates them from it. If an actor carries the label that names where a beat happens (a mountain range called Antarctica, a hospital, a cave), some beat must actually frame it: put it within about 40 m of the people and give it a beat whose camera can see it, or leave it out. Whoever the sentence says speaks, asks, tells, answers or shouts gets a say in that beat, in their own words from the report: a person standing idle while the sentence has them talking is a person the stage cannot show is talking. Whoever the sentence says speaks, asks, tells, answers or shouts gets a say in that beat, in their own words from the report: a person left idle while the sentence has them talking is a person the stage cannot show is talking. A "say" is spoken aloud by that person, in the first person, as a speech bubble over their head: "I've seen you before" -- never the report's third-person account of it ("he says he has seen me before"), which reads as the speaker talking about someone else. Anything the report dwells on is its own labelled actor, not a word inside another actor's label: the big lens on the camera, the dishes, the money, the teeth. Use the base sizes: a sand castle is castle at size 0.12, a tooth is tooth at size 1-2 (0.14 m at size 1; past 2 it reads as a stone, not a tooth), a puddle is water at size 0.1, a lens or a camera is box at size 0.2 with a label. People riding in a vehicle move with it: give them the same move in the same beat, with y about 1 for a car and 1.2 for a helicopter, and state sit. An aircraft that flies over a place must end its move above that place, inside the radius of the forest, field or water that names it, not somewhere else on the map. A helicopter or plane flying over scenery the report names flies at y 12-20, never 40: higher than that and the woods, the town or the water it is flying over cannot be in the same shot as the aircraft.
+4. Space is real: put the actors of a beat within a few metres of each other; a person who walks moves 1.4 m per second, a run 4 m/s; scenery is around, not under, the people. Buildings are at least 6 m apart and never straddle the road. A small town, a village, a suburb or a slum is made of house and shop actors, not building or city. Interiors: put a "room" actor around the people (width/depth/height) and set ground "floor"; when the people leave a room, vanish the room in that beat or cut to a camera outside. Underground (a cave, a hold, a cellar): keep ground "soil" or "stone" at y 0 with the people on it, sky "void", a cave actor around them, and a lamp, candle or fire for light; do not put people below y 0 except at the bottom of a pit. People stand on sand or grass next to water, never inside a water disc unless they swim. Anything the report says a person holds, carries, wears or has in their hand MUST be given carriedBy: that person's id, and then gets no pos and no move of its own — it rides in their hand wherever they go. "He had a rifle in his hand" is a gun with carriedBy the man; "the big lens on my camera" is a box with carriedBy the dreamer; a bag of money, a lamp, a rock about to be dropped, a book, an umbrella: all carriedBy. A prop with a pos of its own is a thing lying on the ground, so use pos only when the report leaves it lying somewhere. Do not stand one person directly between the camera's target and the lens, and do not put a wall, a headboard or a tall prop between them either. Someone whose face a beat is about (they speak, yell, grieve, shake or fold) needs the camera's distance in clear space in front of them: keep them at least that far from any wall of the room they are in, near the middle of the floor, not backed against the far side. People "crowded around" a table stand within 1 m of its long sides, on both sides, not in a clump beside it. Something that falls from a person standing at a table falls on the camera's side of it, not behind the top: put the person at the near long side and the camera outside the table, or the fall is hidden by the tabletop. A grating, a lid or a cover over a hole shares the pit's x and z, so the hole is in it; a fence set beside a pit reads as a fence next to a hole. Visitors at a bedside stand along the open side of the bed, within 1.5 m of the person lying in it, not across the room. Someone the report says is ill, injured, hospitalised or in bed IS the person in the bed: give them the bed's own x and z, y 0.6, and state lie -- not a standing figure a few metres away, and never a position outside the walls of the room they are in. A person lying in a bed needs a colour that separates them from it. If an actor carries the label that names where a beat happens (a mountain range called Antarctica, a hospital, a cave), some beat must actually frame it: put it within about 40 m of the people and give it a beat whose camera can see it, or leave it out. Whoever the sentence says speaks, asks, tells, answers or shouts gets a say in that beat, in their own words from the report: a person standing idle while the sentence has them talking is a person the stage cannot show is talking. Whoever the sentence says speaks, asks, tells, answers or shouts gets a say in that beat, in their own words from the report: a person left idle while the sentence has them talking is a person the stage cannot show is talking. A "say" is spoken aloud by that person, in the first person, as a speech bubble over their head: "I've seen you before" -- never the report's third-person account of it ("he says he has seen me before"), which reads as the speaker talking about someone else. Anything the report dwells on is its own labelled actor, not a word inside another actor's label: the big lens on the camera, the dishes, the money, the teeth. Whatever a sentence is ABOUT gets an action in that beat even if it only stands there (a table people are crowded around, the surf that hurls the pebbles, the town that is reached): the stage guarantees a shot holds what the beat's actions name, and an actor with nothing to do in the beat about it is one the camera has no reason to include. Use the base sizes: a sand castle is castle at size 0.12, a tooth is tooth at size 1-2 (0.14 m at size 1; past 2 it reads as a stone, not a tooth), a puddle is water at size 0.1, a lens or a camera is box at size 0.2 with a label. People riding in a vehicle move with it: give them the same move in the same beat, with y about 1 for a car and 1.2 for a helicopter, and state sit. An aircraft that flies over a place must end its move above that place, inside the radius of the forest, field or water that names it, not somewhere else on the map. A helicopter or plane flying over scenery the report names flies at y 12-20, never 40: higher than that and the woods, the town or the water it is flying over cannot be in the same shot as the aircraft.
 5. The audience must always be able to see the actors, even in a night or underground scene: keep ambient at or above a dim grey-blue like #3a4060, sunIntensity at or above 0.4, fogDensity at or below 0.03 unless the sentence is about not being able to see, and never below-black skies. Darkness is a mood, not a blindfold.
 6. Stage transitions of place as a beat with a "blackout" effect at 0 plus "world" changes and moves, or by having the old scenery vanish and the new appear. Whatever the beat is about must be on stage for most of it: give an "appear" an "at" of 0.15 or less. Actors that are not yet in the story start hidden and get "appear"; actors that leave get "vanish" (both happen within about a quarter of the beat unless you give "for"). Hidden actors still need a pos. A crowd's yaw turns its members: point a crowd at whatever it is watching, crowded around or complaining at, not at the scenery behind it. A named person who stands among a crowd of the same kind must be told apart from it: give them a different color, a different wear or wearColor, or stand them a couple of metres clear. A moon or sun is a disc at exactly its pos: put it 60-150 m away, only 15-40 m up so it hangs low over the horizon, and on the side the camera of the beats that show it will be facing (for a follow camera that is behind the actor, so a moon the dreamer walks toward goes in front of them).
 7. Output ONLY the JSON object, no commentary, no markdown fences.`;
@@ -100,8 +100,10 @@ function insideAnyRoom(raw, p) {
     if (Math.abs(p[0] - q[0]) < w && Math.abs(p[2] - q[2]) < dp) return true; }
   return false;
 }
-function skyPos(p, inRoom) { let [x, y, z] = p; if (inRoom) return [x, y, z]; let h = Math.hypot(x, z); if (h < 25) { const k = 25 / Math.max(0.001, h); x *= k; z *= k; h = 25; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } if (h * 0.13 < 8) { const k = 8 / (h * 0.13); x *= k; z *= k; h *= k; }
-  return [x, clamp(y, 8, Math.max(8, h * 0.13)), z]; }
+function skyPos(p, inRoom) { let [x, y, z] = p; if (inRoom) return [x, y, z]; let h = Math.hypot(x, z); if (h < 25) { const k = 25 / Math.max(0.001, h); x *= k; z *= k; h = 25; } if (h > 200) { const k = 200 / h; x *= k; z *= k; h = 200; } if (h * 0.36 < 8) { const k = 8 / (h * 0.36); x *= k; z *= k; h *= k; }
+  // the vocabulary asks for a moon 15-40 m up at 60-150 m out and this clamp allowed 13, so every
+  // height the script or the director chat wrote was quietly thrown away and the reply overclaimed
+  return [x, clamp(y, 8, Math.max(8, h * 0.36)), z]; }
 function opt(v, a, b) { v = +v; return Number.isFinite(v) && v > 0 ? clamp(v, a, b) : 0; }
 function num(v, d, a = -1e6, b = 1e6) { v = +v; return Number.isFinite(v) ? clamp(v, a, b) : d; }
 function vec(v, d) { return Array.isArray(v) && v.length >= 3 && v.slice(0, 3).every(x => Number.isFinite(+x)) ? v.slice(0, 3).map(x => clamp(+x, -500, 500)) : d.slice(); }
@@ -310,34 +312,52 @@ function normalizeScene(raw, dreamText) {
     for (const b of beats) for (const x of b.actions) { if (!x.actor || !x.move) continue;
       const a = actors.find(q => q.id === x.actor); if (!a || (a.kind !== 'person' && a.kind !== 'crowd')) continue;
       const q = pull(x.move); if (q) x.move = q; } }
-  // "confronted by a loud man" is not a figure seventeen metres up the street. Somebody who walks
-  // into the dream in a beat, with no move of their own, walks into it at a talking distance and a
-  // little off the line, or the sentence that introduces them plays as two specks and the near one
-  // hiding the far one.
+  // "confronted by a loud man" is not a figure seventeen metres up the street, and somebody who
+  // "arrives" has to have somewhere to arrive from. Whoever walks into the dream in a beat, with no
+  // move of their own, comes in at eight metres and walks to talking distance, beside where the
+  // dreamer will BE when the sentence happens rather than where the beat found her.
   { const roomOf = q => actors.find(rm => (rm.kind === 'room' || rm.kind === 'corridor')
       && Math.abs(q[0] - rm.pos[0]) < (rm.detail.width || 8) * rm.size / 2
       && Math.abs(q[2] - rm.pos[2]) < (rm.detail.depth || (rm.kind === 'corridor' ? 30 : 8)) * rm.size / 2) || null;
     const STILL = new Set(['lie', 'sit', 'swim', 'fly', 'float', 'fall']);
-    // and where the dreamer IS in that beat, not where the script first put them: by the fourth
-    // beat she has walked half the street, and a man placed beside her opening position arrives
-    // fifteen metres away all over again
     const at = new Map(actors.map(q => [q.id, { p: q.pos.slice(), yaw: q.yaw }]));
+    const endOf = (b, id) => { const m = b.actions.find(x => x.actor === id && x.move); const q = at.get(id);
+      return m ? m.move.slice() : (q ? q.p.slice() : null); };
+    const advance = b => { for (const y of b.actions) { const q = y.actor && at.get(y.actor); if (!q) continue; if (y.move) q.p = y.move.slice(); if (y.yaw !== undefined) q.yaw = y.yaw; } };
     for (const b of beats) {
       const tid = b.camera.target; const w = at.get(tid); const t = actors.find(q => q.id === tid);
-      if (!t || !w || t.kind !== 'person' || w.p[1] < -0.5 || w.p[1] > 0.35) { for (const y of b.actions) { const q = y.actor && at.get(y.actor); if (!q) continue; if (y.move) q.p = y.move.slice(); if (y.yaw !== undefined) q.yaw = y.yaw; } continue; }
-      for (const x of b.actions) { if (!x.actor || x.actor === tid || !x.appear || x.move) continue;
-        const a = actors.find(q => q.id === x.actor); if (!a || a.kind !== 'person') continue;
-        if (a.pos[1] < -0.5 || a.pos[1] > 0.35 || STILL.has(x.state)) continue;
-        if (roomOf(a.pos) !== roomOf(w.p)) continue;
-        const d = Math.hypot(a.pos[0] - w.p[0], a.pos[2] - w.p[2]); if (d < 4.5 || d > 60) continue;
-        const ang = (w.yaw + 22) * Math.PI / 180;
-        const nx = Math.round((w.p[0] + Math.sin(ang) * 2.6) * 10000) / 10000;
-        const nz = Math.round((w.p[2] + Math.cos(ang) * 2.6) * 10000) / 10000;
-        // and their own moves are left alone: this is where they come in, not a nudge to carry
-        // through the rest of the dream -- shifting a fifteen-metre relocation into every later
-        // destination walked the brother out of the manhole he is meant to be kneeling at
-        a.pos[0] = nx; a.pos[2] = nz; const q2 = at.get(a.id); if (q2) q2.p = a.pos.slice(); }
-      for (const y of b.actions) { const q = y.actor && at.get(y.actor); if (!q) continue; if (y.move) q.p = y.move.slice(); if (y.yaw !== undefined) q.yaw = y.yaw; } } }
+      if (t && w && t.kind === 'person' && w.p[1] >= -0.5 && w.p[1] <= 0.35) {
+        // the dreamer's own turn in this beat decides where "in front of her" is
+        for (const y of b.actions) if (y.actor === tid && y.yaw !== undefined) w.yaw = y.yaw;
+        const tp = endOf(b, tid);
+        for (const x of b.actions) { if (!x.actor || x.actor === tid || !x.appear || x.move) continue;
+          const a = actors.find(q => q.id === x.actor); if (!a || a.kind !== 'person') continue;
+          if (a.pos[1] < -0.5 || a.pos[1] > 0.35 || STILL.has(x.state)) continue;
+          if (roomOf(a.pos) !== roomOf(tp)) continue;
+          const d = Math.hypot(a.pos[0] - tp[0], a.pos[2] - tp[2]); if (d < 4.5 || d > 60) continue;
+          const ang = (w.yaw + 22) * Math.PI / 180, sn = Math.sin(ang), cs = Math.cos(ang);
+          const r4 = v => Math.round(v * 10000) / 10000;
+          a.pos[0] = r4(tp[0] + sn * 8); a.pos[2] = r4(tp[2] + cs * 8);
+          // and they walk the rest of the way in, so an arrival is an arrival. Writing the move onto
+          // the appear action is also what stops this pass finding them again on the next pass.
+          if (!x.state || x.state === 'idle') { x.state = 'walk'; x.for = 0.6; }
+          x.move = [r4(tp[0] + sn * 3.2), 0, r4(tp[2] + cs * 3.2)];
+          const q2 = at.get(a.id); if (q2) q2.p = a.pos.slice(); } }
+      // two people talking look at each other. say and the face states steer the camera and nothing
+      // steered the actors, so four beats of a conversation played shoulder to shoulder.
+      { const talkers = b.actions.filter(x => x.actor && x.say && (actors.find(q => q.id === x.actor) || {}).kind === 'person');
+        if (talkers.length) { const here = id => endOf(b, id);
+          for (const x of talkers) { const A = actors.find(q => q.id === x.actor); const pa = here(x.actor); if (!A || !pa) continue;
+            let other = null, best = 7;
+            for (const y of b.actions) { if (!y.actor || y.actor === x.actor) continue;
+              const B = actors.find(q => q.id === y.actor); if (!B || B.kind !== 'person') continue;
+              const pb = here(y.actor); if (!pb) continue; const dd = Math.hypot(pb[0] - pa[0], pb[2] - pa[2]);
+              if (dd < 0.4 || dd > best) continue; best = dd; other = { id: y.actor, p: pb, act: y }; }
+            if (!other) continue;
+            const face = (from, to) => Math.round(Math.atan2(to[0] - from[0], to[2] - from[2]) * 180 / Math.PI * 100) / 100;
+            if (x.yaw === undefined) x.yaw = face(pa, other.p);
+            if (other.act.yaw === undefined) other.act.yaw = face(other.p, pa); } } }
+      advance(b); } }
   // and last of all, because every pass above can leave somebody standing beside a crowd: a named
   // person the same colour as the people around them cannot be picked out of the frame at all.
   // Light against a dark crowd, dark against a light one -- not always the same yellow.
@@ -417,6 +437,16 @@ function normalizeScene(raw, dreamText) {
         // standing just outside a crowd of your own colour is as anonymous as standing in it: the
         // medic among sixteen identical green backs is a named man nobody can pick out
         if (d > R + 0.5) continue;
+        // ...but a crowd "around" a fourteen-metre table is a ring that necessarily encloses
+        // everyone standing at it. Ejecting the dreamer from her own table is worse than leaving
+        // her in the ring, and a colour of her own already solves what this pass is for.
+        { let atFurniture = false;
+          for (const f of actors) { if (!['table', 'bed', 'desk', 'sofa'].includes(f.kind)) continue;
+            const hw = Math.max((f.detail.width || 1.6) * f.size, 0.4) / 2, hd = Math.max((f.detail.depth || 0.9) * f.size, 0.4) / 2;
+            const r0 = f.yaw * Math.PI / 180, cs = Math.cos(r0), sn = Math.sin(r0);
+            const lx = (a.pos[0] - f.pos[0]) * cs - (a.pos[2] - f.pos[2]) * sn, lz = (a.pos[0] - f.pos[0]) * sn + (a.pos[2] - f.pos[2]) * cs;
+            if (Math.abs(lx) < hw + 1.3 && Math.abs(lz) < hd + 1.3) { atFurniture = true; break; } }
+          if (atFurniture) continue; }
         // a named person inside the ring is behind somebody from most bearings whatever colour they
         // are, and the camera that goes looking for them ends up inside the crowd, shooting backs.
         // They stand at its edge instead: near enough to be with it, outside enough to be seen.
@@ -433,6 +463,14 @@ function normalizeScene(raw, dreamText) {
             const qx = cw.pos[0] + Math.sin(ang) * out0, qz = cw.pos[2] + Math.cos(ang) * out0;
             if (free(qx, qz)) { px = qx; pz = qz; done = true; break; } }
           if (done) break; }
+        // whatever is at their mouth or in their hands goes with them: five teeth left hanging
+        // where her mouth used to be are five teeth the beat about her teeth cannot show
+        { const ddx = px - a.pos[0], ddz = pz - a.pos[2];
+          for (const q of actors) { if (q === a || q.kind === 'person' || q.kind === 'crowd' || q.pos[1] < 0.5) continue;
+            if (Math.hypot(q.pos[0] - a.pos[0], q.pos[2] - a.pos[2]) > 1.2) continue;
+            q.pos[0] = Math.round((q.pos[0] + ddx) * 10000) / 10000; q.pos[2] = Math.round((q.pos[2] + ddz) * 10000) / 10000;
+            for (const b2 of beats) for (const y of b2.actions) { if (y.actor !== q.id || !y.move) continue;
+              y.move = [Math.round((y.move[0] + ddx) * 10000) / 10000, y.move[1], Math.round((y.move[2] + ddz) * 10000) / 10000]; } } }
         a.pos[0] = px; a.pos[2] = pz;
         // and if they were the crowd's own colour, give them one a viewer can tell apart
         } } }
