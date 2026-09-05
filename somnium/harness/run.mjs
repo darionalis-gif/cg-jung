@@ -66,20 +66,22 @@ for (const id of IDS) {
   for (let i = 0; i < beats.length; i++) {
     const mid = t + beats[i].dur * 0.5;
     await page.evaluate(m => { window.__somnium.Stage.setTime(m); window.__somnium.Stage.playing = false; }, mid); await page.waitForTimeout(250);
+    const settle = () => page.evaluate(async () => { const S = window.__somnium.Stage; let last = null;
+      for (let k = 0; k < 150; k++) { await new Promise(r => requestAnimationFrame(r));
+        const now = S.camera.position.clone().add(S.cam.look);
+        if (last && now.distanceTo(last) < 0.002) return k; last = now; } return -1; });
+    // let the camera come to rest BEFORE the first sample too: motion used to be measured from a
+    // frame taken while the shot was still being solved, so in the beats that solve slowly it was
+    // reporting camera travel rather than anything the actors did
+    const settled = await settle();
     const p1 = await page.evaluate(() => window.__somnium.pixels());
     await page.evaluate(() => { window.__somnium.Stage.playing = true; }); await page.waitForTimeout(700);
     const p2 = await page.evaluate(() => window.__somnium.pixels()); await page.evaluate(() => { window.__somnium.Stage.playing = false; });
     const diff = p1.reduce((s, v, k) => s + Math.abs(v - p2[k]), 0) / p1.length;
-    // let the camera come to rest before reading it: the report used to be written while the shot
-    // was still being solved, so its numbers and the screenshot described different instants and
-    // every diagnosis made from the two together was chasing a ghost
-    await page.evaluate(async () => { const S = window.__somnium.Stage; let last = null;
-      for (let k = 0; k < 40; k++) { await new Promise(r => requestAnimationFrame(r));
-        const now = S.camera.position.clone().add(S.cam.look);
-        if (last && now.distanceTo(last) < 0.002) return; last = now; } });
+    const settled2 = await settle();
     const m = await page.evaluate(() => window.__somnium.Stage.metrics());
     const file = `beat-${String(i + 1).padStart(2, '0')}.png`; await page.screenshot({ path: path.join(dir, file) });
-    shots.push({ beat: i + 1, file, start: +t.toFixed(1), dur: beats[i].dur, text: beats[i].text, motion: +diff.toFixed(2), metrics: m });
+    shots.push({ beat: i + 1, file, start: +t.toFixed(1), dur: beats[i].dur, text: beats[i].text, motion: +diff.toFixed(2), settleFrames: [settled, settled2], metrics: m });
     t += beats[i].dur;
   }
   // consecutive frames while playing, from the first beat in which someone moves, to judge the animation itself

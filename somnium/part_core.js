@@ -428,7 +428,10 @@ function normalizeScene(raw, dreamText) {
       for (const x of b.actions) { if (!x.actor || x.actor === tid) continue;
         const o = actors.find(q => q.id === x.actor); if (!o || (o.kind !== 'person' && o.kind !== 'crowd')) continue;
         if (Math.hypot(o.pos[0] - t.pos[0], o.pos[2] - t.pos[2]) > 9) continue; others.push(o); }
-      if (others.length) { let ox = 0, oz = 0; for (const o of others) { ox += o.pos[0] - t.pos[0]; oz += o.pos[2] - t.pos[2]; }
+      // she is talking to the two people the sentence names, not to the party: a crowd five metres
+      // to the right dragged her forty degrees off them and every shot after it was over her shoulder
+      const named = others.filter(o => o.kind === 'person'); const use = named.length ? named : others;
+      if (use.length) { let ox = 0, oz = 0; for (const o of use) { ox += o.pos[0] - t.pos[0]; oz += o.pos[2] - t.pos[2]; }
         if (Math.hypot(ox, oz) > 0.3) { const want = Math.round(Math.atan2(ox, oz) * 180 / Math.PI * 100) / 100;
           if (blocked(want) < blocked(t.yaw) - 0.05) t.yaw = ((want % 360) + 360) % 360; } } }
     let back = 0;
