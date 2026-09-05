@@ -15,7 +15,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 const KIND_INFO = {
   person: 'a mannequin 1.8 m tall (skin/hair via detail)', crowd: 'count people within radius (default 12 in 3 m)', animal: 'by detail.species; dog 0.5 m, horse 1.3 m, bird flies, fish swims, snake, spider', monster: 'a 2.8 m spiked figure with red eyes', ghost: 'a translucent glowing floating person', skeleton: 'a bone-white figure', hand: 'a 1 m hand', eye: 'a 1 m eyeball', tooth: 'a single tooth 0.14 m with two roots (size 2-3 so a falling tooth can be seen)',
   house: 'a one/two-storey house 8×7 m, 3.2 m walls and a roof (use for cottages, shops, huts, slum dwellings)', shop: 'a shopfront: a house with a big lit window and a sign (detail.text)', building: 'a multi-storey block 10×10×14 m with a window grid (apartment, hotel, school, factory, hospital, office)', tower: 'a round stone tower 22 m tall', castle: 'a small crenellated castle 4 m tall; a sand castle is size 0.12 so it stands knee-high beside the people building it', city: 'count skyline blocks scattered within radius (default 24 in 60 m); use only for a real city', room: 'an interior box width×depth×height (default 8×8×3) with a floor, a door, a window and a ceiling lamp; put the people inside it', wall: 'a wall width×height', door: 'a door 2.2 m in a frame; state open swings it', window: 'a window 1.4 m', stairs: 'ten steps rising detail.height (3 m)', corridor: 'a lit corridor width×depth×height (3×30×3)', bridge: 'a footbridge width×depth (3×20)', road: 'a road strip width×depth (8×120) with a centre line, flat on the ground', path: 'a footpath strip (2×60)', grating: 'a flat metal grating you can see through, width×depth (2.2×2.2), lying on the ground; put it at the same pos as a pit so the hole is in it', fence: 'a wooden fence width (8 m)', tent: 'a canvas tent 2.4 m (size 1-2; an aid station or a big tent is a house)', grave: 'a headstone', church: 'a church 14 m with a spire', elevator: 'an elevator car', ladder: 'a ladder detail.height (4 m)',
-  tree: 'a tree 5-7 m', forest: 'count trees within radius (30 in 25 m)', bush: 'a bush 1.3 m', flower: 'count flowers within radius', field: 'a flat patch radius (30 m) with tufts; also a beach, a lawn, a meadow', mountain: 'three snow-capped peaks 40-80 m (place 150+ m away)', hill: 'a rounded hill radius (20 m); put forests and houses beside it, not on it', rock: 'a boulder 1.3 m', cliff: 'a rock face width×height×depth (40×30×20)', cave: 'a dark cave mouth 6 m in a rock shell; put the actors in front of or inside the mouth', pit: 'a hole in the ground radius (1.5 m) and detail.height deep (4 m), dimly lit inside; people at its bottom stand at y = -height and are only seen from a camera looking steeply down (orbit with height larger than distance)', water: 'a round pool/lake radius (15 m), flat, animated; an ocean or a sea is water with detail.open true, placed on the waterline with yaw pointing from the land out to sea, and then runs to the horizon instead of being a pond', river: 'a water strip width×depth (8×120)', cloud: 'a cloud at 12 m up, drifting', moon: 'a glowing disc exactly at pos (use y 25-60, 60-150 m away; never fogged)', sun: 'a bright disc exactly at pos', star: 'a small glowing star at pos', fire: 'a fire 1.6 m with light and flames', smoke: 'a column of smoke 6 m', lamp: 'a street lamp detail.height (4 m) with light', candle: 'a candle with a small flame',
+  tree: 'a tree 5-7 m', forest: 'count trees within radius (30 in 25 m)', bush: 'a bush 1.3 m', flower: 'count flowers within radius', field: 'a flat patch radius (30 m) with tufts; also a beach, a lawn, a meadow', mountain: 'three snow-capped peaks 40-80 m (place 150+ m away)', hill: 'a rounded hill radius (20 m); put forests and houses beside it, not on it', rock: 'a boulder 1.3 m', cliff: 'a rock face width×height×depth (40×30×20)', cave: 'a dark cave mouth 6 m in a rock shell; put the actors in front of or inside the mouth', pit: 'a hole in the ground radius (1.5 m) and detail.height deep (4 m), dimly lit inside; people at its bottom stand at y = -height; frame them with an orbit whose height is about the same as its distance and let the stage find the angle -- do not author a height larger than the distance, which is a plan view that reduces everyone at the rim to a hat', water: 'a round pool/lake radius (15 m), flat, animated; an ocean or a sea is water with detail.open true, placed on the waterline with yaw pointing from the land out to sea, and then runs to the horizon instead of being a pond', river: 'a water strip width×depth (8×120)', cloud: 'a cloud at 12 m up, drifting', moon: 'a glowing disc exactly at pos (use y 25-60, 60-150 m away; never fogged)', sun: 'a bright disc exactly at pos', star: 'a small glowing star at pos', fire: 'a fire 1.6 m with light and flames', smoke: 'a column of smoke 6 m', lamp: 'a street lamp detail.height (4 m) with light', candle: 'a candle with a small flame',
   car: 'a car 4.2 m (wheels turn when it moves)', bus: 'a bus 10 m', truck: 'a truck 7 m (also wagon, cart)', train: 'a four-car train', plane: 'an airliner 12 m span (fly it 30+ m up)', helicopter: 'a helicopter with a spinning rotor', boat: 'a sailing boat 6 m', bike: 'a bicycle',
   bed: 'a bed 2.1 m', table: 'a table width×depth (1.6×0.9); an extremely long table is detail.width 8-14 at size 1 (beyond that it stops reading as a table), never a big size; put food, a candle or a book on one when people are sitting at it', chair: 'a chair', sofa: 'a sofa 2 m', desk: 'a desk', mirror: 'a standing mirror 1.7 m', phone: 'a phone held at 1 m', book: 'a book', sign: 'a signpost 3 m whose board shows detail.text', tv: 'a television', computer: 'a computer', clock: 'a wall clock', key: 'a key', ring: 'a ring', balloon: 'a balloon on a string', umbrella: 'an umbrella', food: 'a plate of food', bag: 'a bag', gun: 'a rifle 0.9 m held at 1.2 m', knife: 'a blade (also axe, sword)', lens: 'a camera lens: a barrel with a glass front (size 0.2-0.4); use it for a lens or a telescope so it does not read as another box', box: 'a box width×height×depth (1×1×1)', sphere: 'a sphere 1.2 m', cylinder: 'a column detail.height (3 m)', pyramid: 'a pyramid detail.height (3 m)', orb: 'a glowing floating orb', portal: 'a glowing ring 3 m', thing: 'a generic object 0.6 m on the ground, only for what no other kind can carry; the label does the work'
 };
@@ -217,20 +217,117 @@ function normalizeScene(raw, dreamText) {
       for (const a of actors) { if (a === p || a.pos[1] < -0.5) continue; if (a.kind === 'pit' || COVERS.has(a.kind) || LID(a)) continue;
         const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
         const own = (a.detail.radius || 0) * a.size; if (d < r + own + 0.4) { const n = d > 0.01 ? [dx / d, dz / d] : [1, 0]; const out = r + own + 1.1; a.pos = [p.pos[0] + n[0] * out, a.pos[1], p.pos[2] + n[1] * out]; } } } }
+  // a beat that arrives somewhere should show the place, not spend itself on the journey
+  const PLACE = new Set(['room', 'corridor', 'house', 'shop', 'building', 'church', 'cave', 'city', 'tower']);
+  { const cur = new Map(actors.map(a => [a.id, a.pos.slice()]));
+    for (const b of beats) {
+      const jump = b.actions.some(x => x.effect === 'blackout') || b.actions.some(x => x.world && x.world.ground !== undefined)
+        || b.actions.some(x => x.appear && PLACE.has((actors.find(q => q.id === x.actor) || {}).kind));
+      for (const x of b.actions) { if (!x.actor || !x.move) continue; const from = cur.get(x.actor); if (!from) continue;
+        if (jump) { const far = Math.hypot(x.move[0] - from[0], x.move[2] - from[2]), drop = Math.abs(x.move[1] - from[1]);
+          if ((far > 15 || drop > 5) && x.for > 0.4) x.for = 0.3; }
+        cur.set(x.actor, x.move.slice()); } } }
+  // an appear so late in its beat that it cannot be seen is a mistake; one at 0.4 or 0.6 is a
+  // sequence -- one by one each tooth fell out -- and dragging them all to the front destroys it
+  // somebody calling down a hole is standing at the hole. When a beat has people at the bottom of
+  // a pit and people above, the ones above belong on its rim: written thirty metres up the street
+  // they drag the shot away from the hole and neither half of the sentence is in it.
+  { const pits = actors.filter(a => a.kind === 'pit');
+    if (pits.length) for (const b of beats) {
+      const ids = new Set(b.actions.filter(x => x.actor).map(x => x.actor));
+      let deep = null;
+      for (const id of ids) { const a = actors.find(q => q.id === id); if (!a || a.pos[1] > -1) continue;
+        for (const p of pits) if (Math.hypot(a.pos[0] - p.pos[0], a.pos[2] - p.pos[2]) < (p.detail.radius || 1.5) * p.size + 2) deep = p; }
+      if (!deep) continue;
+      const R = (deep.detail.radius || 1.5) * deep.size, rim = R + 0.9;
+      for (const id of ids) { const a = actors.find(q => q.id === id);
+        if (!a || a.kind !== 'person' || a.pos[1] < -0.5) continue;
+        const dx = a.pos[0] - deep.pos[0], dz = a.pos[2] - deep.pos[2], d = Math.hypot(dx, dz);
+        if (d <= rim + 1.6) continue;
+        const k = rim / (d || 1), to = [deep.pos[0] + dx * k, a.pos[1], deep.pos[2] + dz * k];
+        // walk them there in this beat rather than rewriting where they stand for the whole dream:
+        // the opening of the dream had them somewhere else, and it is still true
+        // never overwrite a move the script wrote: "then we were down in the hold" walks him into
+        // the cave, and putting him back on the manhole rim performs the sentence on the surface
+        const mine = b.actions.find(x => x.actor === id && x.move);
+        if (mine) continue;
+        { const own = b.actions.find(x => x.actor === id) || {};
+          b.actions.push({ actor: id, at: 0, for: Math.min(0.55, own.at !== undefined ? Math.max(0.2, own.at) : 0.4), move: to, path: 'line' }); } } } }
+  // a rider goes where the machine goes. The vocabulary asks for the same move on both, and when
+  // the script gives the helicopter one destination and the two men in it another forty metres
+  // away, the beat plays with the cabin empty and its passengers hanging in the air beside it.
+  // Someone off the ground in a seated state is in the vehicle, whatever coordinates were written;
+  // someone seated at ground level is on a chair and is left alone.
+  for (const b of beats) {
+    const vs = []; for (const x of b.actions) { if (!x.actor || !x.move) continue; const v = actors.find(q => q.id === x.actor); if (v && VEHICLE.has(v.kind)) vs.push(x.move); }
+    if (vs.length !== 1) continue; const to = vs[0];
+    const riders = b.actions.filter(x => { if (!x.actor || !x.move) return false; const a = actors.find(q => q.id === x.actor);
+      if (!a || (a.kind !== 'person' && a.kind !== 'animal')) return false;
+      // the seated state has to be on this very action: a beat that walks a man to the helicopter
+      // and then seats him carries both, and only the second of them is a ride
+      if (x.state !== 'sit' && x.state !== 'lie') return false;
+      return x.move[1] >= 0.8 || to[1] >= 3; });
+    riders.forEach((x, k) => { const dx = (k - (riders.length - 1) / 2) * 0.8;
+      x.move = [Math.round((to[0] + dx) * 1000) / 1000, Math.round((to[1] + 0.2) * 1000) / 1000, Math.round(to[2] * 1000) / 1000]; });
+  }
+  // a named person standing inside a crowd of their own colour cannot be found in the frame
+  { const hex2 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    // the ring has to be wide enough to hold its own count without the members inside each other,
+    // and the radius has to be written down, or the builder and everything that reasons about the
+    // crowd disagree about where it reaches
+    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const n0 = Math.min(cw.detail.count || 12, 26);
+      let want0 = Math.max(cw.detail.radius || 0, 2, Math.sqrt(n0) * 0.9, Math.sqrt(n0 / 2.2));
+      // but not so far that it swallows a table the people are meant to be standing round
+      for (const f of actors) { if (!['table', 'bed', 'desk', 'sofa', 'car', 'truck', 'bus'].includes(f.kind)) continue;
+        const half = Math.max((f.detail.width || 1.6) * f.size, (f.detail.depth || 0.9) * f.size) / 2 + 0.7;
+        const d0 = Math.hypot(f.pos[0] - cw.pos[0], f.pos[2] - cw.pos[2]);
+        if (d0 - half > 2) want0 = Math.min(want0, d0 - half); }
+      cw.detail.radius = Math.round(want0 * 100) / 100; }
+    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const R = (cw.detail.radius || 5) * cw.size;
+      for (const a of actors) { if (a.kind !== 'person') continue;
+        const dx = a.pos[0] - cw.pos[0], dz = a.pos[2] - cw.pos[2]; const d = Math.hypot(dx, dz);
+        // standing just outside a crowd of your own colour is as anonymous as standing in it: the
+        // medic among sixteen identical green backs is a named man nobody can pick out
+        if (d > R + 0.5) continue;
+        // a named person inside the ring is behind somebody from most bearings whatever colour they
+        // are, and the camera that goes looking for them ends up inside the crowd, shooting backs.
+        // They stand at its edge instead: near enough to be with it, outside enough to be seen.
+        const out0 = R + 1.8;
+        // and out of the OTHER crowd too: pushing them clear of one ring straight into the next
+        // moved them again on the next pass, and where they ended up depended on the order the
+        // crowds happened to be declared in
+        const rings = actors.filter(q => q.kind === 'crowd').map(q => ({ x: q.pos[0], z: q.pos[2], r: (q.detail.radius || 5) * q.size + 0.5 }));
+        const free = (px, pz) => !rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r);
+        const a0 = d < 0.05 ? 0 : Math.atan2(dx, dz);
+        let px = cw.pos[0] + Math.sin(a0) * out0, pz = cw.pos[2] + Math.cos(a0) * out0;
+        if (!free(px, pz)) for (let step = 1; step <= 12; step++) { let done = false;
+          for (const sg of [1, -1]) { const ang = a0 + sg * step * (Math.PI / 12);
+            const qx = cw.pos[0] + Math.sin(ang) * out0, qz = cw.pos[2] + Math.cos(ang) * out0;
+            if (free(qx, qz)) { px = qx; pz = qz; done = true; break; } }
+          if (done) break; }
+        a.pos[0] = px; a.pos[2] = pz;
+        // and if they were the crowd's own colour, give them one a viewer can tell apart
+        } } }
   // the camera for a beat about somebody's face has to stand in front of that face. When the script
   // puts the other people there instead, every shot of the face is a shot of somebody's back.
   for (const b of beats) {
     const tid = b.camera.target; const t = actors.find(q => q.id === tid);
-    if (!t || t.kind !== 'person') continue;
+    if (!t || t.kind !== 'person' || t.pos[1] < -0.5) continue; // down a hole the rim decides where they stand
     if (!b.actions.some(x => x.actor === tid && (x.say || FACE_STATE.has(x.state)))) continue;
     const fx = Math.sin(t.yaw * Math.PI / 180), fz = Math.cos(t.yaw * Math.PI / 180);
     for (const x of b.actions) { if (!x.actor || x.actor === tid) continue;
-      const a = actors.find(q => q.id === x.actor); if (!a || a.kind !== 'person') continue;
+      const a = actors.find(q => q.id === x.actor); if (!a || a.kind !== 'person' || a.pos[1] < -0.5) continue;
       const dx = a.pos[0] - t.pos[0], dz = a.pos[2] - t.pos[2], d = Math.hypot(dx, dz);
-      if (d < 0.1 || d > 4.2) continue;
-      const cosA = (dx * fx + dz * fz) / d; if (cosA < 0.86) continue; // outside a thirty-degree wedge
-      const side = (dx * fz - dz * fx) >= 0 ? 1 : -1, ang = t.yaw * Math.PI / 180 + side * 0.96;
-      a.pos[0] = t.pos[0] + Math.sin(ang) * d; a.pos[2] = t.pos[2] + Math.cos(ang) * d; } }
+      if (d < 0.1 || d > 5.5) continue;
+      const cosA = (dx * fx + dz * fz) / d; if (cosA < 0.66) continue; // outside a forty-eight-degree wedge
+      // and not into a crowd, which would push them back in front on the next pass
+      const rings = actors.filter(q => q.kind === 'crowd').map(q => ({ x: q.pos[0], z: q.pos[2], r: (q.detail.radius || 5) * q.size + 0.5 }));
+      const side = (dx * fz - dz * fx) >= 0 ? 1 : -1;
+      let put = null;
+      for (const sg of [side, -side]) { const ang = t.yaw * Math.PI / 180 + sg * 1.16;
+        const px = t.pos[0] + Math.sin(ang) * d, pz = t.pos[2] + Math.cos(ang) * d;
+        if (!rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r)) { put = [px, pz]; break; } }
+      if (put) { a.pos[0] = put[0]; a.pos[2] = put[1]; } } }
   for (const b of beats) for (const x of b.actions) if (x.appear && x.at > 0.82) x.at = 0.7;
   let t = 0; for (const b of beats) { b.start = t; t += b.dur; }
   // a flight over the timberland has to end above the timberland
@@ -283,108 +380,21 @@ function normalizeScene(raw, dreamText) {
     for (const b of beats) for (const x of b.actions) { if (!x.actor || !x.move) continue;
       const a = actors.find(q => q.id === x.actor); if (!a || (a.kind !== 'person' && a.kind !== 'crowd')) continue;
       const q = pull(x.move); if (q) x.move = q; } }
-  // somebody calling down a hole is standing at the hole. When a beat has people at the bottom of
-  // a pit and people above, the ones above belong on its rim: written thirty metres up the street
-  // they drag the shot away from the hole and neither half of the sentence is in it.
-  { const pits = actors.filter(a => a.kind === 'pit');
-    if (pits.length) for (const b of beats) {
-      const ids = new Set(b.actions.filter(x => x.actor).map(x => x.actor));
-      let deep = null;
-      for (const id of ids) { const a = actors.find(q => q.id === id); if (!a || a.pos[1] > -1) continue;
-        for (const p of pits) if (Math.hypot(a.pos[0] - p.pos[0], a.pos[2] - p.pos[2]) < (p.detail.radius || 1.5) * p.size + 2) deep = p; }
-      if (!deep) continue;
-      const R = (deep.detail.radius || 1.5) * deep.size, rim = R + 0.9;
-      for (const id of ids) { const a = actors.find(q => q.id === id);
-        if (!a || a.kind !== 'person' || a.pos[1] < -0.5) continue;
-        const dx = a.pos[0] - deep.pos[0], dz = a.pos[2] - deep.pos[2], d = Math.hypot(dx, dz);
-        if (d <= rim + 1.6) continue;
-        const k = rim / (d || 1), to = [deep.pos[0] + dx * k, a.pos[1], deep.pos[2] + dz * k];
-        // walk them there in this beat rather than rewriting where they stand for the whole dream:
-        // the opening of the dream had them somewhere else, and it is still true
-        const mine = b.actions.find(x => x.actor === id && x.move);
-        if (mine) mine.move = to;
-        else { const own = b.actions.find(x => x.actor === id) || {};
-          b.actions.push({ actor: id, at: 0, for: Math.min(0.55, own.at !== undefined ? Math.max(0.2, own.at) : 0.4), move: to, path: 'line' }); } } } }
-  // a rider goes where the machine goes. The vocabulary asks for the same move on both, and when
-  // the script gives the helicopter one destination and the two men in it another forty metres
-  // away, the beat plays with the cabin empty and its passengers hanging in the air beside it.
-  // Someone off the ground in a seated state is in the vehicle, whatever coordinates were written;
-  // someone seated at ground level is on a chair and is left alone.
-  for (const b of beats) {
-    const vs = []; for (const x of b.actions) { if (!x.actor || !x.move) continue; const v = actors.find(q => q.id === x.actor); if (v && VEHICLE.has(v.kind)) vs.push(x.move); }
-    if (vs.length !== 1) continue; const to = vs[0];
-    const riders = b.actions.filter(x => { if (!x.actor || !x.move) return false; const a = actors.find(q => q.id === x.actor);
-      if (!a || (a.kind !== 'person' && a.kind !== 'animal')) return false;
-      // the seated state has to be on this very action: a beat that walks a man to the helicopter
-      // and then seats him carries both, and only the second of them is a ride
-      if (x.state !== 'sit' && x.state !== 'lie') return false;
-      return x.move[1] >= 0.8 || to[1] >= 3; });
-    riders.forEach((x, k) => { const dx = (k - (riders.length - 1) / 2) * 0.8;
-      x.move = [Math.round((to[0] + dx) * 1000) / 1000, Math.round((to[1] + 0.2) * 1000) / 1000, Math.round(to[2] * 1000) / 1000]; });
-  }
-  // a named person standing inside a crowd of their own colour cannot be found in the frame
-  { const hex2 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
-    // the ring has to be wide enough to hold its own count without the members inside each other,
-    // and the radius has to be written down, or the builder and everything that reasons about the
-    // crowd disagree about where it reaches
-    for (const cw of actors) { if (cw.kind !== 'crowd') continue; const n0 = Math.min(cw.detail.count || 12, 26);
-      let want0 = Math.max(cw.detail.radius || 0, 2, Math.sqrt(n0) * 0.9, Math.sqrt(n0 / 2.2));
-      // but not so far that it swallows a table the people are meant to be standing round
-      for (const f of actors) { if (!['table', 'bed', 'desk', 'sofa', 'car', 'truck', 'bus'].includes(f.kind)) continue;
-        const half = Math.max((f.detail.width || 1.6) * f.size, (f.detail.depth || 0.9) * f.size) / 2 + 0.7;
-        const d0 = Math.hypot(f.pos[0] - cw.pos[0], f.pos[2] - cw.pos[2]);
-        if (d0 - half > 2) want0 = Math.min(want0, d0 - half); }
-      cw.detail.radius = Math.round(want0 * 100) / 100; }
+  // and last of all, because every pass above can leave somebody standing beside a crowd: a named
+  // person the same colour as the people around them cannot be picked out of the frame at all.
+  // Light against a dark crowd, dark against a light one -- not always the same yellow.
+  { const hex3 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
     for (const cw of actors) { if (cw.kind !== 'crowd') continue; const R = (cw.detail.radius || 5) * cw.size;
+      const B = hex3(cw.color), tg = (B[0] * 0.299 + B[1] * 0.587 + B[2] * 0.114) < 128 ? 232 : 34;
+      const mix = (v, t) => Math.round(v + (t - v) * 0.6).toString(16).padStart(2, '0');
       for (const a of actors) { if (a.kind !== 'person') continue;
-        const dx = a.pos[0] - cw.pos[0], dz = a.pos[2] - cw.pos[2]; const d = Math.hypot(dx, dz);
-        // standing just outside a crowd of your own colour is as anonymous as standing in it: the
-        // medic among sixteen identical green backs is a named man nobody can pick out
-        if (d > R + 3) continue;
-        if (d > R + 0.5) { const A2 = hex2(a.color), B2 = hex2(cw.color);
-          if (Math.abs(A2[0] - B2[0]) + Math.abs(A2[1] - B2[1]) + Math.abs(A2[2] - B2[2]) < 90) {
-            const mix2 = (v, t) => Math.round(v + (t - v) * 0.55).toString(16).padStart(2, '0');
-            a.color = '#' + mix2(A2[0], 235) + mix2(A2[1], 210) + mix2(A2[2], 60);
-            if (a.detail.wear && a.detail.wearColor) { const W2 = hex2(a.detail.wearColor);
-              a.detail.wearColor = '#' + mix2(W2[0], 235) + mix2(W2[1], 205) + mix2(W2[2], 55); } }
-          continue; }
-        // a named person inside the ring is behind somebody from most bearings whatever colour they
-        // are, and the camera that goes looking for them ends up inside the crowd, shooting backs.
-        // They stand at its edge instead: near enough to be with it, outside enough to be seen.
-        const out0 = R + 1.8;
-        // and out of the OTHER crowd too: pushing them clear of one ring straight into the next
-        // moved them again on the next pass, and where they ended up depended on the order the
-        // crowds happened to be declared in
-        const rings = actors.filter(q => q.kind === 'crowd').map(q => ({ x: q.pos[0], z: q.pos[2], r: (q.detail.radius || 5) * q.size + 0.5 }));
-        const free = (px, pz) => !rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r);
-        const a0 = d < 0.05 ? 0 : Math.atan2(dx, dz);
-        let px = cw.pos[0] + Math.sin(a0) * out0, pz = cw.pos[2] + Math.cos(a0) * out0;
-        if (!free(px, pz)) for (let step = 1; step <= 12; step++) { let done = false;
-          for (const sg of [1, -1]) { const ang = a0 + sg * step * (Math.PI / 12);
-            const qx = cw.pos[0] + Math.sin(ang) * out0, qz = cw.pos[2] + Math.cos(ang) * out0;
-            if (free(qx, qz)) { px = qx; pz = qz; done = true; break; } }
-          if (done) break; }
-        a.pos[0] = px; a.pos[2] = pz;
-        // and if they were the crowd's own colour, give them one a viewer can tell apart
-        const A = hex2(a.color), B = hex2(cw.color);
-        if (Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) < 90) {
-          const mix = (v, t) => Math.round(v + (t - v) * 0.55).toString(16).padStart(2, '0');
-          a.color = '#' + mix(A[0], 235) + mix(A[1], 210) + mix(A[2], 60);
-          // and a coat covers the body colour entirely, so it has to be told too
-          if (a.detail.wear && a.detail.wearColor) { const W = hex2(a.detail.wearColor);
-            a.detail.wearColor = '#' + mix(W[0], 235) + mix(W[1], 205) + mix(W[2], 55); } } } } }
-  // a beat that arrives somewhere should show the place, not spend itself on the journey
-  const PLACE = new Set(['room', 'corridor', 'house', 'shop', 'building', 'church', 'cave', 'city', 'tower']);
-  { const cur = new Map(actors.map(a => [a.id, a.pos.slice()]));
-    for (const b of beats) {
-      const jump = b.actions.some(x => x.effect === 'blackout') || b.actions.some(x => x.world && x.world.ground !== undefined)
-        || b.actions.some(x => x.appear && PLACE.has((actors.find(q => q.id === x.actor) || {}).kind));
-      for (const x of b.actions) { if (!x.actor || !x.move) continue; const from = cur.get(x.actor); if (!from) continue;
-        if (jump) { const far = Math.hypot(x.move[0] - from[0], x.move[2] - from[2]), drop = Math.abs(x.move[1] - from[1]);
-          if ((far > 15 || drop > 5) && x.for > 0.4) x.for = 0.3; }
-        cur.set(x.actor, x.move.slice()); } } }
-  // an appear so late in its beat that it cannot be seen is a mistake; one at 0.4 or 0.6 is a
-  // sequence -- one by one each tooth fell out -- and dragging them all to the front destroys it
+        if (Math.hypot(a.pos[0] - cw.pos[0], a.pos[2] - cw.pos[2]) > R + 4.5) continue;
+        const A = hex3(a.color);
+        if (Math.abs(A[0] - B[0]) + Math.abs(A[1] - B[1]) + Math.abs(A[2] - B[2]) >= 90) continue;
+        a.color = '#' + mix(A[0], tg) + mix(A[1], tg) + mix(A[2], tg);
+        // a coat covers the body colour entirely, so it has to be told too
+        if (a.detail.wear && a.detail.wearColor) { const W = hex3(a.detail.wearColor);
+          a.detail.wearColor = '#' + mix(W[0], tg) + mix(W[1], tg) + mix(W[2], tg); } } } }
   // a pass that reads its own output has to see the same numbers: round everything the passes
   // above may have arrived at by a slightly different route
   { const r4 = v => Math.round(v * 10000) / 10000;

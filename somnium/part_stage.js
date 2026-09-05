@@ -673,12 +673,12 @@ const Stage = {
           // head across the bottom of the shot. It is a heavy cost and not a rejection: three
           // people two metres apart at a three-metre camera cannot all be held, and refusing every
           // such shot outright sent the camera a full half-circle round to the subject's back.
-          let cropAtLens = 0, atTheLens = false; for (const f of framed) { if (f.w < 1 || f.seen) continue;
+          let cropAtLens = 0, atTheLens = false; for (const f of framed) { if (f.w < 1) continue;
             const dl = f.p.distanceTo(out.pos), reach = out.pos.distanceTo(out.look);
-            if (dl < Math.max(3.2, reach * 0.55)) cropAtLens += 1;
-            // and a body half the shot's distance away, filling the frame and cut off by its edge,
-            // is not a cost to weigh: there is nothing in the shot behind it
-            if (dl < Math.max(2.2, reach * 0.35)) atTheLens = true; }
+            if (!f.seen && dl < Math.max(3.2, reach * 0.55)) cropAtLens += 1;
+            // a body half the shot's distance away and filling the frame: whether it is cut off by
+            // the edge or squarely in the middle, what is behind it is not in the shot
+            if (f.id !== c.target && dl < Math.max(2.2, reach * 0.35) && (f.h || 1.8) / Math.max(0.6, dl) > 0.9) atTheLens = true; }
           if (atTheLens) { if (this.debugFrames) this.frameScan.push({ az, mul, lift, rejected: 'atTheLens' }); continue; }
           for (const b of bodies) {
             const bc = b.box.getCenter(this._bc2 || (this._bc2 = new THREE.Vector3()));
@@ -709,7 +709,7 @@ const Stage = {
           let faceCost = 0; if (facesMatter) { const tf = framed.find(f => f.id === c.target); if (tf && tf.seen) faceCost = (1 - front) * 0.9;
             for (const f of framed) { if (!f.speaks || f.id === c.target || !f.seen) continue; const st3 = states.get(f.id); const fc = dirAt(this.faceYaw(f.id, st3), 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.6; } }
           const crowd = this.lensCrowding(out.pos, selfs);
-          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(12, hog * 2.4) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(1.6, stacked * 0.9) + lostNamed * 3.2;
+          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(12, hog * 2.4) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(3.6, stacked * 2.2) + lostNamed * 3.2;
           const score = n - cost - cropAtLens * 1.6 - (wallAcross ? 25 : 0);
           if (faceIsSubject && front > 0.35 && tgtSeen && (!faceOnly || score > faceOnly.score)) faceOnly = { az, mul, lift, score, has: true }; if (this.debugFrames) this.frameScan.push({ az, mul, lift, n: +n.toFixed(2), backToLens, lostTarget, faceCost: +faceCost.toFixed(2), crop: cropAtLens, crowd, score: +score.toFixed(2) });
           const cand2 = { az, mul, lift, score, n, has: true };
@@ -772,12 +772,21 @@ const Stage = {
       if (!badPose && badCam) this._snapNow = true;
       let bad = badPose;
       if (this.debugFrames) this.saveDbg = { bad, n: must.length, ids: must.map(f => f.id + (this.inShot(pos, look, f.p, f.g) ? '+' : '-')), saves: this.framePick.saves || 0 };
-      if (bad) {
-        let bq = pos, bl = look, bb = bad, bAz = null, bMul = 1, bLift = 0;
+      // the rescue has to judge a shot the way the search does, or it elects the shots the search
+      // refused: a body filling the frame, a wall across it, a lens inside a crowd
+      const uglier = (p1, l1) => { let q = this.lensCrowding(p1, selfs) * 1.1; const reach = p1.distanceTo(l1);
+        for (const f of framed) { const dl = f.p.distanceTo(p1), cov = (f.h || 1.8) / Math.max(0.6, dl);
+          if (f.id === c.target) continue;
+          if (cov > 1.2) q += 7;
+          else if (f.w >= 1 && dl < Math.max(2.2, reach * 0.35) && cov > 0.9) q += 5; }
+        return q; };
+      if (bad && (this.framePick.saves || 0) < 3) {
+        let bq = pos, bl = look, bAz = null, bMul = 1, bLift = 0;
+        let bb = bad * 10 + uglier(pos, look);
         outer2: for (const mul of [1, 1.25, 1.6]) for (const lift of [0, 1.6]) for (const az of [0, 20, -20, 40, -40, 70, -70, 110, -110, 150, -150, 180]) {
           const cand = this.turnShot(pos, look, az, mul); if (lift) cand.y += lift;
-          const o6 = dress(settle(cand, look)); const n6 = lost(o6.pos, o6.look);
-          if (n6 < bb) { bb = n6; bq = o6.pos; bl = o6.look; bAz = az; bMul = mul; bLift = lift; if (!n6) break outer2; } }
+          const o6 = dress(settle(cand, look)); const n6 = lost(o6.pos, o6.look) * 10 + uglier(o6.pos, o6.look);
+          if (n6 < bb - 0.5) { bb = n6; bq = o6.pos; bl = o6.look; bAz = az; bMul = mul; bLift = lift; if (n6 < 1) break outer2; } }
         if (bAz !== null) { this.framePick.saves = (this.framePick.saves || 0) + 1;
           this.framePick.az = ((this.framePick.az + bAz + 540) % 360) - 180; this.framePick.mul *= bMul; this.framePick.lift = (this.framePick.lift || 0) + bLift;
           this.framePick.smAz = this.framePick.az; this.framePick.smMul = this.framePick.mul; this.framePick.smLift = this.framePick.lift;
@@ -962,7 +971,11 @@ const Stage = {
           const aq = [+q.x.toFixed(2), +q.y.toFixed(2), +q.z.toFixed(2)]; rec.g.userData.aimed = aq; const st2 = this.states && this.states.get(a.id); if (st2) st2.pos = aq.slice(); rec.g.position.copy(q); rec.g.userData.indoor = true; }
         continue; }
       if (this.roomAround(new THREE.Vector3(a.pos[0], Math.min(a.pos[1], 2), a.pos[2]))) continue;
-      const dir = fwd.clone().add(up.clone().multiplyScalar(rise)).normalize();
+      // and off the centre line: a disc nailed to the middle of every frame reads as a sticker on
+      // the lens rather than something in the sky
+      const side = ((a.pos[0] * fwd.z - a.pos[2] * fwd.x) >= 0 ? 1 : -1) * 0.42;
+      const rightV = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
+      const dir = fwd.clone().add(up.clone().multiplyScalar(rise)).add(rightV.multiplyScalar(side)).normalize();
       const p = cam.position.clone().add(dir.multiplyScalar(D));
       if (p.y < 8) p.y = 8;
       // settle it into the upper third of the frame rather than on its edge
