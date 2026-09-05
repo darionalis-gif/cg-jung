@@ -767,7 +767,9 @@ B.crowd = a => { const g = new THREE.Group(); const n = Math.min(a.detail.count 
     for (let k = 0; k < 60; k++) { const ang = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * r; x = Math.cos(ang) * d; z = Math.sin(ang) * d; if (!taken.some(t => (t[0] - x) * (t[0] - x) + (t[1] - z) * (t[1] - z) < GAP * GAP)) { ok = true; break; } }
     if (!ok) { const ang = (i / n) * Math.PI * 2, d = r + GAP * 0.75; x = Math.cos(ang) * d; z = Math.sin(ang) * d; }
     taken.push([x, z]);
-    const p = humanoid({ ...a, color: shade(a.color, 0.7 + rnd() * 0.6), detail: { second: rnd() < 0.5 ? shade(a.color, 0.4) : '#3a3a48' } }, { simple: true }); p.position.set(x, 0, z); p.rotation.y = rnd() * 6.28; p.userData.phase = rnd() * 6.28; p.userData.baseYaw = p.rotation.y; if (i > 6) p.traverse(o => { if (o.isMesh) o.castShadow = false; }); g.add(p); g.userData.members.push(p); }
+    // a crowd member drawn into the shadow map doubles its draw calls for a shadow nobody reads
+    // apart from the others in the same crowd. They keep the contact blob and give up the rest.
+    const p = humanoid({ ...a, color: shade(a.color, 0.7 + rnd() * 0.6), detail: { second: rnd() < 0.5 ? shade(a.color, 0.4) : '#3a3a48' } }, { simple: true }); p.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } }); p.position.set(x, 0, z); p.rotation.y = rnd() * 6.28; p.userData.phase = rnd() * 6.28; p.userData.baseYaw = p.rotation.y; if (i > 6) p.traverse(o => { if (o.isMesh) o.castShadow = false; }); g.add(p); g.userData.members.push(p); }
   g.userData.height = 1.8; return g; };
 const SPECIES = { dog: [0.9, 0.5, 0.35, 0.35, 0.22], cat: [0.5, 0.3, 0.22, 0.2, 0.15], horse: [1.9, 1.3, 0.9, 0.7, 0.45], wolf: [1.1, 0.65, 0.45, 0.4, 0.26], bear: [1.8, 1.1, 0.5, 0.5, 0.5], deer: [1.3, 1.0, 0.7, 0.45, 0.3], cow: [2.0, 1.2, 0.6, 0.5, 0.6], lion: [1.6, 0.9, 0.55, 0.5, 0.42], rat: [0.3, 0.12, 0.06, 0.1, 0.1], rabbit: [0.4, 0.25, 0.15, 0.15, 0.15], chimp: [0.7, 0.8, 0.5, 0.35, 0.3], generic: [1.0, 0.6, 0.4, 0.35, 0.28] };
 B.animal = a => {
@@ -1043,7 +1045,7 @@ const Stage = {
       soft = /swiftshader|llvmpipe|software|mesa offscreen/i.test(name); } catch (e) { }
     this.softGL = soft;
     const r = new THREE.WebGLRenderer({ canvas, antialias: !soft, powerPreference: 'high-performance' });
-    r.setPixelRatio(soft ? 1 : Math.min(devicePixelRatio || 1, 2)); r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.25; r.outputColorSpace = THREE.SRGBColorSpace;
+    r.setPixelRatio(soft ? 1 : Math.min(devicePixelRatio || 1, 2)); r.shadowMap.enabled = true; r.shadowMap.type = soft ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap; r.shadowMap.autoUpdate = false; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.25; r.outputColorSpace = THREE.SRGBColorSpace;
     this.r = r; this.three = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(50, 1, 0.25, 1200);
     this.sky = new THREE.Mesh(new THREE.SphereGeometry(500, 24, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, toneMapped: true, uniforms: { top: { value: new THREE.Color('#0b1030') }, hor: { value: new THREE.Color('#2a2f5c') }, fogRaw: { value: new THREE.Vector3(0.09, 0.11, 0.24) } }, vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }', fragmentShader: 'uniform vec3 top;\nuniform vec3 hor;\nuniform vec3 fogRaw;\nvarying vec3 vP;\nvoid main(){\n float h = normalize(vP).y;\n float t = smoothstep(0.04, 0.5, h);\n gl_FragColor = vec4(mix(hor, top, t), 1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n gl_FragColor.rgb = mix(gl_FragColor.rgb, fogRaw, 1.0 - smoothstep(0.0, 0.16, h));\n}' }));
     this.three.add(this.sky);
@@ -1260,6 +1262,9 @@ const Stage = {
     if (this.playing) { this.time += dt; if (this.time >= this.scene.total) { this.time = this.scene.total; this.playing = false; if (this.onTime) this.onTime(this.time, true); } }
     this.evaluate(dt, false);
     if (this.lastFrameAt !== undefined) { const gap = now - this.lastFrameAt; if (gap > 0 && gap < 2000) { this.frameTimes.push(gap); if (this.frameTimes.length > 240) this.frameTimes.shift(); } }
+    // the shadow pass draws every caster a second time. Under a software rasteriser that is the
+    // single most expensive thing in the frame, and a shadow that lags by two frames is invisible.
+    this.r.shadowMap.needsUpdate = ((this._shTick = (this._shTick || 0) + 1) % 3) === 1;
     this.lastFrameAt = now;
     this.submitTimes = this.submitTimes || []; this.submitTimes.push(performance.now() - now); if (this.submitTimes.length > 240) this.submitTimes.shift();
   },

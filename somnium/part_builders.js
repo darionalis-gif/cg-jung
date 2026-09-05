@@ -111,7 +111,9 @@ B.crowd = a => { const g = new THREE.Group(); const n = Math.min(a.detail.count 
     for (let k = 0; k < 60; k++) { const ang = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * r; x = Math.cos(ang) * d; z = Math.sin(ang) * d; if (!taken.some(t => (t[0] - x) * (t[0] - x) + (t[1] - z) * (t[1] - z) < GAP * GAP)) { ok = true; break; } }
     if (!ok) { const ang = (i / n) * Math.PI * 2, d = r + GAP * 0.75; x = Math.cos(ang) * d; z = Math.sin(ang) * d; }
     taken.push([x, z]);
-    const p = humanoid({ ...a, color: shade(a.color, 0.7 + rnd() * 0.6), detail: { second: rnd() < 0.5 ? shade(a.color, 0.4) : '#3a3a48' } }, { simple: true }); p.position.set(x, 0, z); p.rotation.y = rnd() * 6.28; p.userData.phase = rnd() * 6.28; p.userData.baseYaw = p.rotation.y; if (i > 6) p.traverse(o => { if (o.isMesh) o.castShadow = false; }); g.add(p); g.userData.members.push(p); }
+    // a crowd member drawn into the shadow map doubles its draw calls for a shadow nobody reads
+    // apart from the others in the same crowd. They keep the contact blob and give up the rest.
+    const p = humanoid({ ...a, color: shade(a.color, 0.7 + rnd() * 0.6), detail: { second: rnd() < 0.5 ? shade(a.color, 0.4) : '#3a3a48' } }, { simple: true }); p.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } }); p.position.set(x, 0, z); p.rotation.y = rnd() * 6.28; p.userData.phase = rnd() * 6.28; p.userData.baseYaw = p.rotation.y; if (i > 6) p.traverse(o => { if (o.isMesh) o.castShadow = false; }); g.add(p); g.userData.members.push(p); }
   g.userData.height = 1.8; return g; };
 const SPECIES = { dog: [0.9, 0.5, 0.35, 0.35, 0.22], cat: [0.5, 0.3, 0.22, 0.2, 0.15], horse: [1.9, 1.3, 0.9, 0.7, 0.45], wolf: [1.1, 0.65, 0.45, 0.4, 0.26], bear: [1.8, 1.1, 0.5, 0.5, 0.5], deer: [1.3, 1.0, 0.7, 0.45, 0.3], cow: [2.0, 1.2, 0.6, 0.5, 0.6], lion: [1.6, 0.9, 0.55, 0.5, 0.42], rat: [0.3, 0.12, 0.06, 0.1, 0.1], rabbit: [0.4, 0.25, 0.15, 0.15, 0.15], chimp: [0.7, 0.8, 0.5, 0.35, 0.3], generic: [1.0, 0.6, 0.4, 0.35, 0.28] };
 B.animal = a => {
