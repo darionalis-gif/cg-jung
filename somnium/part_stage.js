@@ -630,7 +630,8 @@ const Stage = {
     // after the search had already scored a different one, so the search kept electing shots the
     // clamps then broke; every candidate is dressed the same way now and scored as it will be seen.
     const dress = out => { let p = out.pos, l = out.look;
-      if (facesMatter && c.mode !== 'pov' && !out.steep) { const len0 = p.distanceTo(l);
+      // an authored fixed camera has its own height, chosen by whoever wrote the shot
+      if (facesMatter && c.mode !== 'pov' && !out.steep && !(c.mode === 'fixed' && c.pos)) { const len0 = p.distanceTo(l);
         // a bowed head hides its own face from any lens above it: fold and grieve want the camera
         // almost level, not the usual half-rise
         // a head bowed thirty-six degrees hides its face from any lens at or above its own height: to
@@ -647,7 +648,11 @@ const Stage = {
         // on a wide, the distance the director asked for IS the composition: hold the shot within
         // 15 % of it, and only let the guard dolly further out when that would lose a named actor
         const got0 = p.distanceTo(l);
-        const holds = q => { for (const f of framed) { if (f.w < 1) continue; if (!this.inShot(q, l, f.p, f.g)) return false; } return true; };
+        // ...for the people the sentence is about. Going wide to keep two idle crowds in the frame
+        // is how a five-metre shot of a face becomes a twelve-metre shot of a party
+        const holds = q => { for (const f of framed) { if (f.w < 1) continue;
+          if (faceActor && f.id !== faceActor && !f.speaks && ((states.get(f.id) || {}).moving || 0) < 0.3) continue;
+          if (!this.inShot(q, l, f.p, f.g)) return false; } return true; };
         if (got0 > reach0 * 1.15) {
           const tight = l.clone().lerp(p, reach0 * 1.15 / got0);
           // and when the beat simply will not fit inside the director's range, the range gives way:
@@ -663,6 +668,9 @@ const Stage = {
         else if (gotH > 0.05 && gotH < minH) { const k = minH / gotH; p.x = l.x + (p.x - l.x) * k; p.z = l.z + (p.z - l.z) * k; } }
       // and never leave the lens inside a building: the shot that put a shop front over half the
       // frame had the camera standing in the shop, looking out through its own wall
+      // and no clamp above may drop the lens through the floor: a bowed head lowers the lens to
+      // a quarter metre below the look point, and a look point on the ground put it under the sand
+      { const fl2 = Math.min(0.4, T.y + 0.5); if (p.y < fl2) p.y = fl2; }
       { let tries = 0; const dirIn = l.clone().sub(p); const len = dirIn.length() || 1; dirIn.divideScalar(len);
         while (tries < 7 && this.insideSolid(p, selfs)) { p = p.clone().add(dirIn.clone().multiplyScalar(0.9)); tries++; }
         if (tries && this.insideSolid(p, selfs)) p = l.clone().add(dirIn.clone().multiplyScalar(-1.6)).setY(Math.max(0.6, l.y + 1.2)); }
