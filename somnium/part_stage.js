@@ -60,6 +60,17 @@ const Stage = {
     // nearest the action and switch the rest off.
     this.pointLights = []; this.root.traverse(o => { if (o.isPointLight) { o.userData.baseInt = o.intensity; this.pointLights.push(o); } });
     this.solids = []; this.waterMats = [this.waterGround.material]; this.root.traverse(o => { if (o.userData.solid) this.solids.push(o); if (o.isMesh && o.material && o.material.userData.water) this.waterMats.push(o.material); }); this.boxTick = 0; this._rooms = null;
+    // a crowd had no contact shadow at all, so nineteen people at a party floated on the floor.
+    // One merged disc per crowd, laid down after the members have finished being spread out.
+    { const wp = new THREE.Vector3();
+      for (const rec of this.actors.values()) { const mem = rec.g.userData.members; if (!mem || !mem.length) continue;
+        rec.g.updateMatrixWorld(true); const parts = [];
+        for (const m of mem) { m.getWorldPosition(wp); rec.g.worldToLocal(wp);
+          parts.push(partOf(new THREE.CircleGeometry(0.34, 12).rotateX(-Math.PI / 2), '#1a1a20', wp.x, 0.03, wp.z)); }
+        if (!parts.length) continue;
+        const blob = mergeParts(parts, { transparent: true, opacity: 0.3 });
+        blob.material.depthWrite = false; blob.castShadow = false; blob.receiveShadow = false; blob.renderOrder = 1;
+        blob.userData.noShadow = true; rec.g.add(blob); } }
     // which beats carry the dream somewhere else, worked out from the script once rather than from
     // a position that is half way through the move by the time it is asked
     { this.longMove = new Map(); const at = new Map();
@@ -162,7 +173,7 @@ const Stage = {
         for (const r2 of solo) r2.g.position.set(r2.a.pos[0], r2.a.pos[1], r2.a.pos[2]); }
       } this.applyWorld(scene.world); const mid0 = scene.beats[0] ? scene.beats[0].dur * 0.5 : 0; this.setTime(mid0); this.aimSkyLive(); this.setTime(0); this.playing = true;
   },
-  setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this._rush = 0; this._unblockDir = null; this._lastAim = null; this._lastCamOff = null; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
+  setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this._rush = 0; this._unblockDir = null; this._lastAim = null; this._lastCamOff = null; this.shotHold = null; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
   beatAt(t) { const bs = this.scene.beats; for (let i = bs.length - 1; i >= 0; i--) if (t >= bs[i].start) return i; return 0; },
   /* ---- evaluate all actor and world state at this.time ---- */
   evalActors(t) {
@@ -385,7 +396,7 @@ const Stage = {
       // degrees the only thing touching the sand was the knee and the figure read as hovering
       // on both knees, with the hands down in front: one leg forward read as a runner's lunge,
       // and hands at the sides never touched the castle the sentence is about
-      T.legs = [-0.16, -0.16]; T.shins = [-1.62, -1.62]; T.y = -0.52; T.ground = true;
+      T.legs = [-0.16, -0.16]; T.shins = [-1.62, -1.62]; T.y = -0.67; T.ground = true;
       // and the hands work: a beat whose sentence is about building castles had four figures that
       // did not move a pixel in six seconds
       const wk = Math.sin(t * 1.6), wk2 = Math.sin(t * 1.6 + 1.1);
@@ -422,20 +433,23 @@ const Stage = {
       T.legs = [(0.35 - c0 * 0.5) * k, (-0.3 + c0 * 0.4) * k]; T.shins = [-0.2 * k, -0.25 * k];
       T.headX = -0.1 * k; T.headY = Math.sin(t * 0.5) * 0.2 * rec0; T.torsoS = 1 + Math.sin(t * 1.6) * 0.015; }
     else if (s === 'grieve') { // head down, shoulders in, a slow rock: dejection with a body to it
-      const br = Math.sin(t * 0.8) * 0.05;
-      T.headX = 0.55 + br; T.headZ = Math.sin(t * 0.45) * 0.08;
-      T.armsX = [-0.25 + br, -0.3 - br]; T.armsZ = [0.34, -0.34]; T.fore = [-0.6, -0.55];
-      T.bodyX = 0.3; T.bodyZ = Math.sin(t * 0.5) * 0.05; T.torsoS = 0.97 + Math.sin(t * 0.9) * 0.02;
-      T.legs = [0.05, -0.05]; keepHead = false; }
-    else if (s === 'pockets') { // hands in pockets: arms down and pinned back, weight on one hip, no swing
-      T.armsX = [0.12, 0.12]; T.armsZ = [0.3, -0.3]; T.fore = [-0.95, -0.95];
-      T.hipsZ = 0.05 + Math.sin(t * 0.5) * 0.02; T.bodyZ = -0.04; T.legs = [0.06, -0.06];
-      T.headY = Math.sin(t * 0.4) * 0.18; T.torsoS = 1 + Math.sin(t * 1.6) * 0.012; }
+      // ...with enough of it to see. At a twentieth of a radian a held state is a photograph, and a
+      // quarter of the round was standing perfectly still through the sentence it is the subject of.
+      const br = Math.sin(t * 0.8) * 0.16, sw = Math.sin(t * 0.37);
+      T.headX = 0.55 + br; T.headZ = Math.sin(t * 0.45) * 0.2;
+      T.armsX = [-0.25 + br, -0.3 - br * 0.7]; T.armsZ = [0.34 + sw * 0.06, -0.34 + sw * 0.06]; T.fore = [-0.6 - br * 0.5, -0.55 + br * 0.4];
+      T.bodyX = 0.3 + br * 0.35; T.bodyZ = sw * 0.11; T.torsoS = 0.97 + Math.sin(t * 0.9) * 0.05;
+      T.hipsZ = sw * 0.06; T.legs = [0.05, -0.05]; keepHead = false; }
+    else if (s === 'pockets') { // hands in pockets: arms down and pinned back, weight on one hip
+      const sw = Math.sin(t * 0.42), br = Math.sin(t * 1.5);
+      T.armsX = [0.12 + sw * 0.07, 0.12 - sw * 0.07]; T.armsZ = [0.3 + sw * 0.05, -0.3 + sw * 0.05]; T.fore = [-0.95, -0.95];
+      T.hipsZ = 0.05 + sw * 0.1; T.bodyZ = -0.04 - sw * 0.07; T.legs = [0.06 + sw * 0.05, -0.06 + sw * 0.05];
+      T.headY = Math.sin(t * 0.4) * 0.3; T.headX = br * 0.04; T.torsoS = 1 + br * 0.035; }
     else if (s === 'yell') { // shouting: chin up, chest out, a jabbing arm on the beat of the words
-      const j = Math.sin(t * 4.5);
-      T.headX = -0.22 + j * 0.07; T.bodyX = -0.12; T.torsoS = 1.05 + j * 0.03;
-      T.armsX = [-0.5 - Math.max(0, j) * 0.9, -0.15]; T.fore = [-1.1 + Math.max(0, j) * 0.7, -0.6];
-      T.armsZ = [0.28, -0.22]; T.hipsZ = j * 0.03; T.legs = [0.14, -0.1]; }
+      const j = Math.sin(t * 4.5), sw = Math.sin(t * 0.9);
+      T.headX = -0.22 + j * 0.14; T.bodyX = -0.12 + j * 0.09; T.torsoS = 1.05 + j * 0.07;
+      T.armsX = [-0.5 - Math.max(0, j) * 1.15, -0.15 - Math.max(0, -j) * 0.5]; T.fore = [-1.1 + Math.max(0, j) * 0.9, -0.6 - sw * 0.2];
+      T.armsZ = [0.28, -0.22]; T.hipsZ = j * 0.09; T.headY = sw * 0.16; T.legs = [0.14, -0.1]; }
     else { /* idle: breathe, shift weight, look around */ T.armsX = [Math.sin(t * 1.1) * 0.05, Math.sin(t * 1.3 + 1) * 0.05]; T.fore = [-0.3, -0.3]; T.hipsZ = Math.sin(t * 0.6) * 0.03; T.bodyZ = -Math.sin(t * 0.6) * 0.02; T.headY = Math.sin(t * 0.45) * 0.25; T.torsoS = 1 + Math.sin(t * 1.6) * 0.015; }
     if (keepHead && lookYaw !== null && lookYaw !== undefined) { T.headY = clamp(lookYaw, -1.1, 1.1); T.headX = 0; }
     g.userData.headYaw = P.headY;
@@ -745,7 +759,10 @@ const Stage = {
           // and when the beat simply will not fit inside the director's range, the range gives way:
           // a bedside of three at 4 m does not become two visitors cropped off the bottom edge
           if (holds(tight)) p = tight;
-          else if (got0 > reach0 * 1.35) { const wide = l.clone().lerp(p, reach0 * 1.35 / got0); if (holds(wide)) p = wide; } }
+          else if (got0 > reach0 * 1.35) { const wide = l.clone().lerp(p, reach0 * 1.35 / got0); if (holds(wide)) p = wide; }
+          // and never past twice what was asked, whatever it would hold: a ten metre shot performed
+          // at twenty-nine is not the shot, it is a map of where the beat happens
+          if (p.distanceTo(l) > reach0 * 1.9) p = l.clone().lerp(p, reach0 * 1.9 / p.distanceTo(l)); }
         const wantH = (c.distance || 8) * 1.3, minH = (c.distance || 8) * 0.7, gotH = Math.hypot(p.x - l.x, p.z - l.z);
         // ...and the horizontal ceiling gives way on the same terms. It did not, so a beat whose
         // three people were spread over sixteen metres was pulled back in to eleven and the camera
@@ -821,6 +838,23 @@ const Stage = {
     // not a reason to re-solve -- following them is what a follow camera is for -- and re-solving
     // for it is what had the lens crawling round the subject for the whole sentence. Only somebody
     // the beat names actually falling out of frame is worth a new shot, asked a few times a second.
+    // A shot is a relationship to its subject, held for the beat. Re-solving it on every frame is
+    // what had the lens easing across the room for whole sentences, what made the report disagree
+    // with a continuous playthrough by a beat's worth of motion, and where most of the frame went
+    // in occlusion raycasts. Elect the shot at the cut, then ride the subject with the same offset
+    // until somebody the sentence names actually leaves the frame.
+    let holding = null;
+    if (!snap && !authored && this.shotHold && this.shotHold.beat === this.lastBeat) {
+      const h = this.shotHold;
+      if (this.time - (h.checkAt || 0) > 0.45) { h.checkAt = this.time;
+        const p2 = T.clone().add(h.off), l2 = T.clone().add(h.lookOff);
+        for (const f of framed) { if (f.w < 1) continue; if (!this.seenWell(p2, l2, f, false)) { this.shotHold = null; break; } } }
+      if (this.shotHold) holding = this.shotHold;
+    }
+    if (holding) { pos = T.clone().add(holding.off); look = T.clone().add(holding.lookOff);
+      { const rm0 = this.roomAround(look); if (rm0 && pos.y > rm0.box.max.y - 0.3) pos.y = rm0.box.max.y - 0.3; }
+      const fl0 = Math.min(0.4, T.y + 0.5); if (pos.y < fl0) pos.y = fl0;
+    } else {
     let drifted = false;
     if (this.framePick && this.framePick.settled && this.time - (this.framePick.solveAt || this.framePick.at || 0) > 0.45) {
       this.framePick.solveAt = this.time;
@@ -857,7 +891,10 @@ const Stage = {
           bodies.push({ id: '#solid', box: bx2, h: Math.min(Math.max(h2, w2), 8), yaw: 0, shell: !!(ow.userData && ow.userData.shell) }); } }
       // one sweep, three verdicts: a shot that keeps both the speaker's face and the target beats
       // one that keeps only the face, which beats whatever is left
-      const tiers = [{ az: 0, mul: 1, lift: 0, score: -1e9, has: false }, { az: 0, mul: 1, lift: 0, score: -1e9, has: false }, { az: 0, mul: 1, lift: 0, score: -1e9, has: false }];
+      // five verdicts, not three, and the first two are the ones the authored branch already
+      // enforced as rejections: hold everybody the sentence names, and do not shoot the back of
+      // the head it is about. A free-searched beat gets the same guarantees an authored one does.
+      const tiers = [0, 0, 0, 0, 0].map(() => ({ az: 0, mul: 1, lift: 0, score: -1e9, has: false }));
       let faceOnly = null;
       {
       if (framed.length >= 1) {
@@ -929,16 +966,19 @@ const Stage = {
           let faceCost = 0; if (facesMatter) { const tf = framed.find(f => f.id === c.target); if (tf && tf.seen) faceCost = (1 - front) * 0.9;
             for (const f of framed) { if (!f.speaks || f.id === c.target || !f.seen) continue; const st3 = states.get(f.id); const fc = dirAt(this.faceYaw(f.id, st3), 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.6; } }
           const crowd = this.lensCrowding(out.pos, selfs);
-          const cost = Math.abs(az) / 900 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(faceActor ? 5 : 1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(40, hog * 2.4) + Math.min(14, Math.log1p(hog) * 1.2) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(7, stacked * 3.4) + lostNamed * 3.2;
+          const cost = Math.abs(az) / 300 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(faceActor ? 5 : 1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(40, hog * 2.4) + Math.min(14, Math.log1p(hog) * 1.2) + Math.min(3.5, tiny * 26) + against * 0.8 + Math.min(7, stacked * 3.4) + lostNamed * 3.2;
           const score = n - cost - cropAtLens * 1.6 - (wallAcross ? 25 : 0);
           let frontF = front, fSeen = tgtSeen;
           if (fP) { const tc = out.pos.clone().sub(fP); const fc = dirAt(this.faceYaw(faceActor, fSt), 1, 0);
             frontF = (tc.x * fc.x + tc.z * fc.z) / (Math.hypot(tc.x, tc.z) || 1); const ff = framed.find(q => q.id === faceActor); fSeen = !!(ff && ff.seen); }
           if (faceActor && frontF > 0.35 && fSeen && (!faceOnly || score > faceOnly.score)) faceOnly = { az, mul, lift, score, has: true }; if (this.debugFrames) this.frameScan.push({ az, mul, lift, n: +n.toFixed(2), backToLens, lostTarget, faceCost: +faceCost.toFixed(2), crop: cropAtLens, crowd, score: +score.toFixed(2) });
           const cand2 = { az, mul, lift, score, n, has: true };
-          if (!backToLens && !lostTarget && score > tiers[0].score) tiers[0] = cand2;
-          if (!backToLens) { const s1 = score - (lostTarget ? 1.3 : 0); if (s1 > tiers[1].score) tiers[1] = { ...cand2, score: s1 }; }
-          { const s0 = score - (backToLens ? 1.1 : 0) - (lostTarget ? 1.3 : 0); if (s0 > tiers[2].score) tiers[2] = { ...cand2, score: s0 }; }
+          const noneLost = lostNamed === 0;
+          if (noneLost && !backToLens && !lostTarget && score > tiers[0].score) tiers[0] = cand2;
+          if (noneLost && !lostTarget && score > tiers[1].score) tiers[1] = cand2;
+          if (!backToLens && !lostTarget && score > tiers[2].score) tiers[2] = cand2;
+          if (!backToLens) { const s1 = score - (lostTarget ? 1.3 : 0); if (s1 > tiers[3].score) tiers[3] = { ...cand2, score: s1 }; }
+          { const s0 = score - (backToLens ? 1.1 : 0) - (lostTarget ? 1.3 : 0); if (s0 > tiers[4].score) tiers[4] = { ...cand2, score: s0 }; }
           if (n === framed.length && az === 0 && mul === 1 && !lift && crowd === 0 && !backToLens && !lostTarget) break;
         } }
       }
@@ -1076,6 +1116,8 @@ const Stage = {
           const jump = bq.distanceTo(pos); pos = bq; look = bl;
           if (snap || jump <= 2) this._snapNow = true; else this._rush = 0.7;
           bad = must.length ? lost(pos, look) : 0; } else break; } }
+      this.shotHold = { beat: this.lastBeat, off: pos.clone().sub(T), lookOff: look.clone().sub(T), checkAt: this.time };
+    }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const rm2 = this.roomAround(look); if (rm2 && pos.y > rm2.box.max.y - 0.3) pos.y = rm2.box.max.y - 0.3; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
@@ -1268,7 +1310,9 @@ const Stage = {
     if (!this.solids || !this.solids.length) return false; this._ray2 = this._ray2 || new THREE.Raycaster(); const r = this._ray2; const dir = to.clone().sub(from); const len = dir.length(); if (len < 0.5) return false; dir.divideScalar(len); r.set(from, dir); r.near = 0.2; r.far = len - 0.3; const hits = r.intersectObjects(this.solidsNow || this.solids, false); for (const h of hits) { if (this.isOwn(h.object, self)) continue;
       // you can see through a grating: that is what a grating is. Counting its bars as walls put
       // the two men at the bottom of the hole off the report while they were plainly on screen
-      if (h.object.userData.soft || h.object.userData.seeThrough) continue;
+      // ...and only what you can actually see through: a cave shell is soft because it is a shell,
+      // not because the men inside it can be seen from outside
+      if (h.object.userData.seeThrough) continue;
       if (h.object.userData.cut && this.pits && this.pits.some(q => Math.hypot(h.point.x - q.x, h.point.z - q.z) <= q.r)) continue; if (self && self.userData && self.userData.ridesIn && this.isOwn(h.object, self.userData.ridesIn)) continue; return true; }
     return this.behindBodies(from, to, self);
   },
@@ -1352,7 +1396,7 @@ const Stage = {
       if (!rec.g.userData.far && rank > 2 && dist > 38) { lbl.hidden = true; continue; }
       const body = new THREE.Vector3(st.pos[0], st.pos[1] + (rec.a.carriedBy ? 0.35 : Math.min(rec.g.userData.baseHeight * (st.size / rec.a.size) * 0.5, 6)), st.pos[2]);
       if (!rec.g.userData.far && !this.anyPointSeen(camPos, body, rec, st, rank <= 2)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } if (v.y < -0.72 || v.y > 0.9) { lbl.hidden = true; continue; } const vx0 = v.x, vy0 = v.y; v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.78); if (rank > 1 && (Math.abs(v.x - vx0) > 0.07 || Math.abs(v.y - vy0) > 0.07)) { lbl.hidden = true; continue; } lbl.hidden = false; lbl.textContent = text; const capW = Math.min(340, W * 0.42); lbl.style.maxWidth = capW.toFixed(0) + 'px';
-      lbl.style.whiteSpace = 'nowrap'; if (lbl.scrollWidth > capW) lbl.style.whiteSpace = 'normal'; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = Math.max(44 + Math.max(lbl.offsetHeight, 22) / 2, (1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; pts.push({ id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H }); placed.push({ lbl, id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank }); }
+      lbl.style.whiteSpace = 'nowrap'; if (lbl.scrollWidth > capW) lbl.style.whiteSpace = 'normal'; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = Math.max(44 + Math.max(lbl.offsetHeight, 22) / 2, (1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; lbl.classList.toggle('say', !!st.say); pts.push({ id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H }); placed.push({ lbl, id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank }); }
     // a crowded frame keeps the labels of whoever is acting; the scenery gives up its name
     placed.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
     // a phone-sized stage cannot carry six chips and a subtitle and still be a picture
