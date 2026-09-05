@@ -161,22 +161,31 @@ const Stage = {
           if (d > 1.5) { const k = 1.5 / d; r3.a.pos[0] = h[0] + dx * k; r3.a.pos[2] = h[2] + dz * k; } }
         for (const r2 of solo) r2.g.position.set(r2.a.pos[0], r2.a.pos[1], r2.a.pos[2]); }
     // "crowded around an extremely long tea table" is ranked along both of its long sides, not
-    // bunched at one end of it with two thirds of the table empty
+    // bunched at one end of it with two thirds of the table empty. Every crowd near the table is
+    // ranked as one pool, so two crowds do not lay two ranks on the same line.
     { const tables = [];
       for (const rec of this.actors.values()) { if (rec.a.kind !== 'table') continue;
         const w = (rec.a.detail.width || 1.6) * rec.a.size, d = (rec.a.detail.depth || 0.9) * rec.a.size;
         if (w < 5 && d < 5) continue; tables.push({ rec, w, d }); }
       for (const t of tables) { const long = t.w >= t.d, half = (long ? t.w : t.d) / 2, off = (long ? t.d : t.w) / 2 + 0.85;
         const yaw = t.rec.a.yaw * Math.PI / 180, cs = Math.cos(yaw), sn = Math.sin(yaw);
+        const pool = [];
         for (const rec of this.actors.values()) { const mem = rec.g.userData.members; if (!mem || !mem.length) continue;
           if (Math.hypot(rec.a.pos[0] - t.rec.a.pos[0], rec.a.pos[2] - t.rec.a.pos[2]) > half + 4) continue;
-          const n = mem.length, per = Math.ceil(n / 2);
-          mem.forEach((m, i) => { const side = i < per ? 1 : -1, k = i < per ? i : i - per, cnt = i < per ? per : n - per;
-            const u = cnt < 2 ? 0 : (k / (cnt - 1) - 0.5) * 2 * (half - 0.6);
-            const lx = long ? u : side * off, lz = long ? side * off : u;
-            const wx = t.rec.a.pos[0] + lx * cs - lz * sn, wz = t.rec.a.pos[2] + lx * sn + lz * cs;
-            m.position.set(wx - rec.a.pos[0], m.position.y, wz - rec.a.pos[2]);
-            m.rotation.y = Math.atan2(t.rec.a.pos[0] - wx, t.rec.a.pos[2] - wz); }); } } }
+          for (const m of mem) pool.push({ m, rec }); }
+        const n = pool.length; if (!n) continue; const per = Math.ceil(n / 2);
+        pool.forEach((q, i) => { const side = i % 2 ? -1 : 1, k = i >> 1, cnt = i % 2 ? n - per : per;
+          const u = cnt < 2 ? 0 : (k / (cnt - 1) - 0.5) * 2 * (half - 0.6);
+          const lx = long ? u : side * off, lz = long ? side * off : u;
+          const wx = t.rec.a.pos[0] + lx * cs - lz * sn, wz = t.rec.a.pos[2] + lx * sn + lz * cs;
+          // the crowd's own group carries a yaw, so a world point has to be turned back into its
+          // frame: nine guests written straight into local coordinates landed mirrored through the
+          // table and stood in a block on the floor beside it
+          const gy = q.rec.a.yaw * Math.PI / 180, gc = Math.cos(gy), gs = Math.sin(gy);
+          const dx = wx - q.rec.a.pos[0], dz = wz - q.rec.a.pos[2];
+          q.m.position.set(dx * gc - dz * gs, q.m.position.y, dx * gs + dz * gc);
+          q.m.rotation.y = Math.atan2(t.rec.a.pos[0] - wx, t.rec.a.pos[2] - wz) - gy;
+          q.m.userData.baseYaw = q.m.rotation.y; }); } }
     // a crowd had no contact shadow at all, so nineteen people at a party floated on the floor.
     // One merged disc per crowd, laid down after the members have finished being spread out.
     { const wp = new THREE.Vector3();
@@ -309,7 +318,11 @@ const Stage = {
   },
   /* ---- per-frame ---- */
   frame() {
-    requestAnimationFrame(() => this.frame()); const now = performance.now(); let dt = Math.min(0.1, (now - this.clock) / 1000); this.clock = now; if (!this.scene) { this.r.render(this.three, this.camera); return; }
+    requestAnimationFrame(() => this.frame()); const now = performance.now(); let dt = Math.min(0.1, (now - this.clock) / 1000); this.clock = now;
+    // the harness asks for a fixed step so that the same second of a dream is reached by the same
+    // frames every run: on a software rasteriser the wall clock varies by a factor of two, and a
+    // shot elected on the first frame past a checkpoint is elected on wherever that frame landed
+    if (this.fixedDt) dt = this.fixedDt; if (!this.scene) { this.r.render(this.three, this.camera); return; }
     if (this.playing) { this.time += dt; if (this.time >= this.scene.total) { this.time = this.scene.total; this.playing = false; if (this.onTime) this.onTime(this.time, true); } }
     this.evaluate(dt, false);
     if (this.lastFrameAt !== undefined) { const gap = now - this.lastFrameAt; if (gap > 0 && gap < 2000) { this.frameTimes.push(gap); if (this.frameTimes.length > 240) this.frameTimes.shift(); } }
@@ -844,8 +857,35 @@ const Stage = {
         if (tries && this.insideSolid(p, selfs)) p = l.clone().add(dirIn.clone().multiplyScalar(-1.6)).setY(Math.max(0.6, l.y + 1.2)); }
       { const rm = this.roomAround(l); if (rm) this.intoRoom(p, rm, l); }
       return { pos: p, look: l }; };
+    let arrive = 0;
+    for (const x of beat.actions) { if (!x.appear && !x.vanish) continue;
+      arrive = Math.max(arrive, ((x.at || 0) + (x.for === undefined ? 1 : x.for)) * beat.dur); }
+    const local0 = this.time - beat.start;
+    // one look again once the world is actually here, rather than a re-search every checkpoint
+    // for half the beat: the cave fades in over two and a quarter seconds and the shot elected
+    // before it exists is elected on nothing.
+    const arriveTick = arrive > 0.05 ? Math.floor(Math.min(arrive + 0.1, beat.dur * 0.6) / 0.4) : -1;
+    // and the checkpoints are counted in story time, so the same second of the dream elects the
+    // same shot however many frames the machine drew to get there
+    const tick = Math.floor(local0 / 0.4);
     let authored = c.mode === 'fixed' && !!c.pos;
-    if (authored && framed.length) { const out0 = dress(settle(pos, look)); let seen = 0, fails = false;
+    // The author's own shot is checked, and when it fails a turn away from it is hunted for --
+    // eleven bearings by four ranges, each one raycast against every actor the sentence names.
+    // That is seventy milliseconds of JavaScript, and it was being spent on every frame of the
+    // beat instead of once at each checkpoint.
+    // ...and once at the cut is enough, plus one more look when the beat's own world has arrived.
+    // The author's framing does not change during the sentence; only what is standing in it does.
+    let authHeld = null;
+    if (!snap && authored && framed.length && this._authPick && this._authPick.beat === this.lastBeat) {
+      const ap = this._authPick;
+      if (!(arriveTick >= 0 && ap.tick < arriveTick && tick >= arriveTick)) authHeld = ap; }
+    if (authHeld) { this.nearAuthored = false;
+      if (authHeld.mode === 'turn') pos = this.turnShot(pos, look, authHeld.az, authHeld.mu);
+      else if (authHeld.mode === 'free') { authored = false;
+        const off0 = pos.clone().sub(look);
+        look = groupC ? new THREE.Vector3(groupC.x, eye.y, groupC.z) : eye.clone();
+        pos = look.clone().add(off0); } }
+    else if (authored && framed.length) { const out0 = dress(settle(pos, look)); let seen = 0, fails = false;
       // whoever the sentence names, not only whoever it gives something to do -- the same rule the
       // weights use, or an authored shot keeps a framing the free search would have refused
       const mustSee = new Set(framed.filter(f => f.w >= 1).map(f => f.id));
@@ -885,14 +925,15 @@ const Stage = {
               if ((vB.x * fcB.x + vB.z * fcB.z) / (Math.hypot(vB.x, vB.z) || 1) < 0.2) { ok2 = false; break; } } }
           if (ok2) { rescued = { az, mu }; break; } }
           if (rescued) break; }
-        if (rescued) { pos = this.turnShot(pos, look, rescued.az, rescued.mu); this.nearAuthored = false; }
+        if (rescued) { pos = this.turnShot(pos, look, rescued.az, rescued.mu); this.nearAuthored = false; this._authPick = { beat: this.lastBeat, tick, mode: 'turn', az: rescued.az, mu: rescued.mu }; }
         else { authored = false; this.nearAuthored = false;
           // the author aimed at a world point eighty metres from everyone the beat is about, and no
           // turn about that point can find them: keep the angle and the range that were written,
           // and move the whole shot onto the action
           const off0 = pos.clone().sub(look);
           look = groupC ? new THREE.Vector3(groupC.x, eye.y, groupC.z) : eye.clone();
-          pos = look.clone().add(off0); } } }
+          pos = look.clone().add(off0); this._authPick = { beat: this.lastBeat, tick, mode: 'free' }; } }
+      else { this.nearAuthored = false; this._authPick = { beat: this.lastBeat, tick, mode: 'ok' }; } }
       else this.nearAuthored = false;
     if (facesMatter && c.mode !== 'pov' && !(c.mode === 'fixed' && c.pos)) {
       const flat0 = Math.hypot(pos.x - look.x, pos.z - look.z); const maxUp = look.y + Math.max(0.6, flat0 * 0.21);
@@ -913,19 +954,8 @@ const Stage = {
     // ...and it settles until the beat's own world has finished arriving, which is a time the
     // script states rather than a fixed second: the cave fades in over 64.7 to 67.0 and a window
     // that closed at 65.2 elected the shot on a world a fifth opaque and then held it for eight.
-    let arrive = 0;
-    for (const x of beat.actions) { if (!x.appear && !x.vanish) continue;
-      arrive = Math.max(arrive, ((x.at || 0) + (x.for === undefined ? 1 : x.for)) * beat.dur); }
-    const local0 = this.time - beat.start;
-    // one look again once the world is actually here, rather than a re-search every checkpoint
-    // for half the beat: the cave fades in over two and a quarter seconds and the shot elected
-    // before it exists is elected on nothing.
-    const arriveTick = arrive > 0.05 ? Math.floor(Math.min(arrive + 0.1, beat.dur * 0.6) / 0.4) : -1;
-    // and the checkpoints are counted in story time, so the same second of the dream elects the
-    // same shot however many frames the machine drew to get there
-    const tick = Math.floor(local0 / 0.4);
     let holding = null;
-    if (!snap && !authored && this.shotHold && this.shotHold.beat === this.lastBeat) {
+    if (!snap && this.shotHold && this.shotHold.beat === this.lastBeat) {
       const h = this.shotHold;
       // a checkpoint is where the shot is reconsidered -- while the beat's world is still arriving
       // it is re-elected outright, and after that only if somebody the sentence names has left.
@@ -936,11 +966,11 @@ const Stage = {
         // two and a half metres a second the lens was still in the rock when the beat ended
         if (arriveTick >= 0 && was < arriveTick && tick >= arriveTick) { this.shotHold = null; this._worldCut = true; }
         else if (h.weak) this.shotHold = null;
-        else { const p2 = T.clone().add(h.off), l2 = T.clone().add(h.lookOff);
+        else { const p2 = h.rel ? T.clone().add(h.off) : h.off.clone(), l2 = h.rel ? T.clone().add(h.lookOff) : h.lookOff.clone();
           for (const f of framed) { if (f.w < 1) continue; if (!this.seenWell(p2, l2, f, false)) { this.shotHold = null; break; } } } }
       if (this.shotHold) holding = this.shotHold;
     }
-    if (holding) { pos = T.clone().add(holding.off); look = T.clone().add(holding.lookOff);
+    if (holding) { pos = holding.rel ? T.clone().add(holding.off) : holding.off.clone(); look = holding.rel ? T.clone().add(holding.lookOff) : holding.lookOff.clone();
       // the hold rides the subject, and the subject can carry it into a wall
       { const rm0 = this.roomAround(look); if (rm0) this.intoRoom(pos, rm0, look); }
       const fl0 = Math.min(0.4, T.y + 0.5); if (pos.y < fl0) pos.y = fl0;
@@ -1136,7 +1166,7 @@ const Stage = {
             if (n3 < score5 - 0.5) { score5 = n3; best = { ...best, az }; if (n3 < 1) break; } } } }
       this.framePick = { beat: this.lastBeat, az: best.az, mul: best.mul, lift: best.lift || 0, at: this.time, az0: best.az };
       { const o2 = poseOf(best.az, best.mul, best.lift); this.framePick.settled = o2.pos.distanceTo(o2.look); }
-    } else if (authored) { this.framePick = { beat: this.lastBeat, az: 0, mul: 1, lift: 0 };
+    } else if (authored) { if (!this.framePick || this.framePick.beat !== this.lastBeat) this.framePick = { beat: this.lastBeat, az: 0, mul: 1, lift: 0 };
     }
     { const sm = this.framePick; if (sm.smAz === undefined || snap || authored) { sm.smAz = sm.az; sm.smMul = sm.mul; sm.smLift = sm.lift || 0; }
       else { const kf = 1 - Math.exp(-dt * 2.2); sm.smAz += (((sm.az - sm.smAz + 540) % 360) - 180) * kf; sm.smMul += (sm.mul - sm.smMul) * kf; sm.smLift += ((sm.lift || 0) - sm.smLift) * kf; } }
@@ -1225,7 +1255,10 @@ const Stage = {
       // a shot the guarantee could not rescue is still held between checkpoints -- otherwise the
       // whole solve runs on every frame of that beat, which is fifteen milliseconds of JavaScript
       // and most of the frame -- but it is re-elected at every one of them rather than kept.
-      this.shotHold = { beat: this.lastBeat, off: pos.clone().sub(T), lookOff: look.clone().sub(T), tick, weak: this._shotOk === false };
+      // an authored shot is held where the author put it, not at an offset from a subject who
+      // walks out from under it
+      { const rel = !authored;
+        this.shotHold = { beat: this.lastBeat, rel, off: rel ? pos.clone().sub(T) : pos.clone(), lookOff: rel ? look.clone().sub(T) : look.clone(), tick, weak: this._shotOk === false }; }
       if (this._worldCut) { this._worldCut = false; if (this.cam.pos.distanceTo(pos) > 2) this._snapNow = true; }
     }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
@@ -1523,8 +1556,26 @@ const Stage = {
       const body = new THREE.Vector3(st.pos[0], st.pos[1] + (rec.a.carriedBy ? 0.35 : Math.min(rec.g.userData.baseHeight * (st.size / rec.a.size) * 0.5, 6)), st.pos[2]);
       // and the visibility raycast only for the chips that are going to survive the cap anyway:
       // asking it of every actor in the scene was a seventh of the frame in an interior
-      if (!rec.g.userData.far && rank <= 2 && !this.anyPointSeen(camPos, body, rec, st, true)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } if (v.y < -0.72 || v.y > 0.9) { lbl.hidden = true; continue; } const vx0 = v.x, vy0 = v.y; v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.78); if (rank > 1 && (Math.abs(v.x - vx0) > 0.07 || Math.abs(v.y - vy0) > 0.07)) { lbl.hidden = true; continue; } lbl.hidden = false; lbl.textContent = text; const capW = Math.min(340, W * 0.42); lbl.style.maxWidth = capW.toFixed(0) + 'px';
-      lbl.style.whiteSpace = 'nowrap'; if (lbl.scrollWidth > capW) lbl.style.whiteSpace = 'normal'; const lw = lbl.offsetWidth || 60; lbl.style.left = clamp((v.x + 1) / 2 * W, lw / 2 + 6, W - lw / 2 - 6).toFixed(1) + 'px'; lbl.style.top = Math.max(44 + Math.max(lbl.offsetHeight, 22) / 2, (1 - v.y) / 2 * H).toFixed(1) + 'px'; lbl.style.opacity = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); lbl.style.background = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; lbl.classList.toggle('say', !!st.say); pts.push({ id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H }); placed.push({ lbl, id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank }); }
+      if (!rec.g.userData.far && rank <= 2 && !this.anyPointSeen(camPos, body, rec, st, true)) { lbl.hidden = true; continue; } v.project(this.camera); if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1 || (dist > 90 && !rec.g.userData.far)) { lbl.hidden = true; continue; } if (v.y < -0.72 || v.y > 0.9) { lbl.hidden = true; continue; } const vx0 = v.x, vy0 = v.y; v.x = clamp(v.x, -0.96, 0.96); v.y = clamp(v.y, -0.62, 0.78); if (rank > 1 && (Math.abs(v.x - vx0) > 0.07 || Math.abs(v.y - vy0) > 0.07)) { lbl.hidden = true; continue; } lbl.hidden = false; const capW = Math.min(340, W * 0.42);
+      // measuring a chip means asking the browser to lay the page out, and asking for a width
+      // straight after writing a style forces that layout there and then. Twenty chips did it
+      // forty times a frame. Write everything first, measure in one pass, and cache the answer
+      // against the text -- which, between one word and the next, does not change.
+      if (lbl._t !== text) { lbl.textContent = text; lbl._t = text; }
+      if (lbl._c !== capW) { lbl.style.maxWidth = capW.toFixed(0) + 'px'; lbl._c = capW; }
+      // ...and a style written with the value it already has still invalidates the layer it is on,
+      // so a still camera repainted six chips twenty times a second for nothing
+      { const op = (clamp(1.3 - dist / 70, 0.25, 1) * st.op).toFixed(2); if (lbl._o !== op) { lbl.style.opacity = op; lbl._o = op; }
+        const bg = st.say ? 'rgba(179,78,44,.85)' : 'rgba(8,9,22,.55)'; if (lbl._b !== bg) { lbl.style.background = bg; lbl._b = bg; } }
+      lbl.classList.toggle('say', !!st.say); pts.push({ id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H }); placed.push({ lbl, id, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, dist, rank }); }
+    { const need = placed.filter(p => { const m = p.lbl._m; return !m || m.t !== p.lbl._t || m.c !== p.lbl._c; });
+      if (need.length) {
+        for (const p of need) p.lbl.style.whiteSpace = 'nowrap';
+        const sw = need.map(p => p.lbl.scrollWidth);
+        need.forEach((p, i) => { if (sw[i] > p.lbl._c) p.lbl.style.whiteSpace = 'normal'; });
+        const wh = need.map(p => [p.lbl.offsetWidth || 60, p.lbl.offsetHeight || 20]);
+        need.forEach((p, i) => { p.lbl._m = { t: p.lbl._t, c: p.lbl._c, w: wh[i][0], h: wh[i][1] }; }); }
+      for (const p of placed) { p.w = p.lbl._m.w; p.h = p.lbl._m.h; } }
     // a crowded frame keeps the labels of whoever is acting; the scenery gives up its name
     placed.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
     // a phone-sized stage cannot carry six chips and a subtitle and still be a picture
@@ -1537,7 +1588,7 @@ const Stage = {
         if (hv.z > 1) continue; const px = (hv.x + 1) / 2 * W, py = (1 - hv.y) / 2 * H;
         const r2 = Math.max(10, (hh * 0.3) / Math.max(1, d2) * H); heads.push({ x: px, y: py, r: r2 }); } }
     const rects = [];
-    for (const p of placed) { const w = p.lbl.offsetWidth || 60, h = p.lbl.offsetHeight || 20; let y = p.y; const x0 = p.x, y0 = p.y;
+    for (const p of placed) { const w = p.w, h = p.h; let y = p.y; const x0 = p.x, y0 = p.y;
       const clash = (xx, yy) => rects.some(r => Math.abs(r.x - xx) < (r.w + w) / 2 + 4 && Math.abs(r.y - yy) < h + 2)
         || heads.some(q => Math.abs(q.x - xx) < w / 2 + q.r && Math.abs(q.y - yy) < h / 2 + q.r)
         || pts.some(q => q.id !== p.id && Math.abs(q.x - xx) < w / 2 + 12 && q.y > yy - h && q.y < yy + h * 1.7);
@@ -1554,8 +1605,10 @@ const Stage = {
       if (!placedOk) { if (p.rank === 0) { y = p.y; x = p.x; } else { p.lbl.hidden = true; continue; } }
       if (p.rank > 0 && Math.hypot(x - x0, y - y0) > 76) { p.lbl.hidden = true; continue; }
       x = clamp(x, w / 2 + 6, Math.max(w / 2 + 6, W - w / 2 - 6)); y = clamp(y, 44 + h / 2, Math.max(44 + h / 2, H - h / 2 - 52));
-      if (x !== p.x) p.lbl.style.left = x.toFixed(1) + 'px';
-      p.x = x; p.lbl.style.top = y.toFixed(1) + 'px'; rects.push({ x: p.x, y, w, h }); }
+      { const lx = x.toFixed(1) + 'px', ly = y.toFixed(1) + 'px';
+        if (p.lbl._x !== lx) { p.lbl.style.left = lx; p.lbl._x = lx; }
+        if (p.lbl._y !== ly) { p.lbl.style.top = ly; p.lbl._y = ly; } }
+      p.x = x; rects.push({ x: p.x, y, w, h }); }
   },
   /* metrics for the harness: which actors of the current beat are on screen */
   metrics() {

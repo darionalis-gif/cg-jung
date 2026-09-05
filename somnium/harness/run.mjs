@@ -61,7 +61,7 @@ for (const id of IDS) {
   if (!d) { summary.push({ id, ok: false, errors }); log('generation failed', id, errors.slice(-3)); await ctx.close(); continue; }
   writeFileSync(path.join(dir, 'scene.json'), JSON.stringify(d.scene, null, 1)); writeFileSync(path.join(dir, 'raw.json'), JSON.stringify(d.raw, null, 1));
   const genSec = (Date.now() - t0) / 1000; const beats = d.scene.beats; const shots = [];
-  await page.evaluate(() => { window.__somnium.Stage.playing = false; });
+  await page.evaluate(() => { window.__somnium.Stage.playing = false; window.__somnium.Stage.fixedDt = 1 / 30; });
   let t = 0; const motion = [];
   for (let i = 0; i < beats.length; i++) {
     // a throw that is over by a quarter of the way through has recovered to a neutral stand by
