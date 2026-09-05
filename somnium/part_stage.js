@@ -84,6 +84,10 @@ const Stage = {
       // standalone figures need the same room from each other and from the furniture
       { const solo = [];
         for (const [id, r2] of this.actors) { if (r2.g.userData.members || !['person', 'monster', 'skeleton', 'ghost'].includes(r2.a.kind)) continue; solo.push(r2); }
+        // whatever the passes below decide, nobody is relocated: they are nudged apart. Five
+        // rounds of separation were walking people metres across a room, out of the arrangement
+        // the script and the normaliser had just agreed on.
+        const home = new Map(solo.map(r3 => [r3, r3.a.pos.slice()]));
         // a named figure standing inside a member of a crowd is drawn through them and hidden by
         // them: crowds were separated from crowds and soloists from soloists, never one from the other
         const members = []; { const wp = new THREE.Vector3();
@@ -115,7 +119,10 @@ const Stage = {
               const nx = Math.sign(dx2 || 1) * ((bx.max.x - bx.min.x) / 2 + 0.5) - dx2;
               const nz = Math.sign(dz2 || 1) * ((bx.max.z - bx.min.z) / 2 + 0.5) - dz2;
               if (Math.min(Math.abs(nx), Math.abs(nz)) > 5) break;
-              if (Math.abs(nx) <= Math.abs(nz)) A.a.pos[0] += nx; else A.a.pos[2] += nz;
+              // a nudge out of the furniture, not a relocation: this was moving people metres
+              // across the room and undoing what the script and the normaliser had arranged
+              const lim2 = 1.2;
+              if (Math.abs(nx) <= Math.abs(nz)) A.a.pos[0] += clamp(nx, -lim2, lim2); else A.a.pos[2] += clamp(nz, -lim2, lim2);
               moved = true; break; } }
           if (!moved) break; }
         // and whatever the de-clump moved, it must not have moved them through a wall: this is how
@@ -131,6 +138,9 @@ const Stage = {
             if (bd > reach) continue; // properly somewhere else, not shoved through the wall
             A.a.pos[0] = clamp(A.a.pos[0], best.min.x + pad, best.max.x - pad);
             A.a.pos[2] = clamp(A.a.pos[2], best.min.z + pad, best.max.z - pad); } }
+        for (const r3 of solo) { const h = home.get(r3); if (!h) continue;
+          const dx = r3.a.pos[0] - h[0], dz = r3.a.pos[2] - h[2], d = Math.hypot(dx, dz);
+          if (d > 1.5) { const k = 1.5 / d; r3.a.pos[0] = h[0] + dx * k; r3.a.pos[2] = h[2] + dz * k; } }
         for (const r2 of solo) r2.g.position.set(r2.a.pos[0], r2.a.pos[1], r2.a.pos[2]); }
       } this.applyWorld(scene.world); const mid0 = scene.beats[0] ? scene.beats[0].dur * 0.5 : 0; this.setTime(mid0); this.aimSkyLive(); this.setTime(0); this.playing = true;
   },

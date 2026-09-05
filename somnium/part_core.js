@@ -146,13 +146,13 @@ function normalizeScene(raw, dreamText) {
   for (const p0 of actors) { if (p0.kind !== 'pit') continue;
     if (!actors.some(a => a !== p0 && a.pos[1] < -1 && Math.hypot(a.pos[0] - p0.pos[0], a.pos[2] - p0.pos[2]) < ((p0.detail.radius || 1.5) * p0.size + 2))) continue;
     const depth = (p0.detail.height || 4) * p0.size;
-    const wantR = Math.max((p0.detail.radius || 1.5) * p0.size, depth * 0.5);
+    const wantR = Math.max((p0.detail.radius || 1.5) * p0.size, depth * 0.62);
     p0.detail.radius = Math.round((wantR / (p0.size || 1)) * 100) / 100; }
   // someone at the bottom of a pit has to be inside its mouth: outside it they are in solid ground
   for (const p of actors) { if (p.kind !== 'pit') continue; const R = (p.detail.radius || 1.5) * p.size;
     for (const a of actors) { if (a === p || a.pos[1] > -0.5) continue;
       const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
-      const lim = Math.max(0.15, R * 0.45); if (d <= lim) continue;
+      const lim = Math.max(0.15, Math.min(R * 0.45, 0.4)); if (d <= lim) continue;
       const k = lim / d; a.pos[0] = p.pos[0] + dx * k; a.pos[2] = p.pos[2] + dz * k; } }
   // "heavily wooded timberland" written as 55 trees over a 60 m radius is one tree per two hundred
   // square metres, which renders as parkland. Fill it to a wood's density, and if that would take
@@ -339,9 +339,14 @@ function normalizeScene(raw, dreamText) {
   for (const b of beats) {
     const cv = b.actions.map(x => actors.find(q => q.id === x.actor)).find(a => a && a.kind === 'cave');
     if (!cv) continue;
-    const who = b.actions.map(x => actors.find(q => q.id === x.actor)).filter(a => a && a.kind === 'person');
+    const who = [];
+    for (const x of b.actions) { if (!x.actor || (x.vanish && !x.move && !x.say && !x.state)) continue;
+      const a = actors.find(q => q.id === x.actor); if (!a || a.kind !== 'person') continue;
+      // where the beat puts them, not where the dream started them
+      const dest = x.move || (b.actions.find(y => y.actor === x.actor && y.move) || {}).move || a.pos;
+      if (!who.some(q => q.id === x.actor)) who.push({ id: x.actor, p: dest }); }
     if (!who.length) continue;
-    let cx = 0, cz = 0; for (const a of who) { cx += a.pos[0]; cz += a.pos[2]; } cx /= who.length; cz /= who.length;
+    let cx = 0, cz = 0; for (const a of who) { cx += a.p[0]; cz += a.p[2]; } cx /= who.length; cz /= who.length;
     const reach = 3 * cv.size;
     if (Math.hypot(cv.pos[0] - cx, cv.pos[2] - cz) > reach) { cv.pos[0] = cx; cv.pos[2] = cz; } }
   // a rider goes where the machine goes. The vocabulary asks for the same move on both, and when
@@ -399,13 +404,41 @@ function normalizeScene(raw, dreamText) {
         a.pos[0] = px; a.pos[2] = pz;
         // and if they were the crowd's own colour, give them one a viewer can tell apart
         } } }
+  // "keep the camera's distance in clear space in front of them" has been prose in the vocabulary
+  // for many rounds and nothing enforced it: a dreamer 2.9 m from a twelve-metre table, facing it,
+  // with a 3.5 m front-on shot asked for, has no legal camera position at all
+  { const wants = new Map();
+  for (const b of beats) {
+    const tid = b.camera.target; const t = actors.find(q => q.id === tid);
+    if (!t || t.kind !== 'person' || t.pos[1] < -0.5) continue;
+    if (!b.actions.some(x => x.actor === tid && (x.say || FACE_STATE.has(x.state)))) continue;
+    const need = Math.min(4.5, (b.camera.distance || 8) * 0.8);
+    const fx = Math.sin(t.yaw * Math.PI / 180), fz = Math.cos(t.yaw * Math.PI / 180);
+    let back = 0;
+    for (const f of actors) { if (!['table', 'bed', 'desk', 'sofa', 'wall', 'car', 'truck', 'bus'].includes(f.kind)) continue;
+      const hw = Math.max((f.detail.width || 1.6) * f.size, 0.4) / 2, hd = Math.max((f.detail.depth || 0.9) * f.size, 0.4) / 2;
+      const r = f.yaw * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r);
+      for (let k = 0.4; k <= need; k += 0.4) { const px = t.pos[0] + fx * k, pz = t.pos[2] + fz * k;
+        const lx = (px - f.pos[0]) * cs - (pz - f.pos[2]) * sn, lz = (px - f.pos[0]) * sn + (pz - f.pos[2]) * cs;
+        if (Math.abs(lx) < hw + 0.2 && Math.abs(lz) < hd + 0.2) { back = Math.max(back, need - k + 0.5); break; } } }
+    // once, and at most two metres: applied per beat it stacked, and walked the dreamer five
+    // metres out of her own party
+    if (back > 0.05) wants.set(tid, Math.min(1.2, Math.max(wants.get(tid) || 0, back))); }
+  for (const [tid, back] of wants) { const t = actors.find(q => q.id === tid); if (!t) continue;
+    const fx = Math.sin(t.yaw * Math.PI / 180), fz = Math.cos(t.yaw * Math.PI / 180);
+    let nx = t.pos[0] - fx * back, nz = t.pos[2] - fz * back;
+    for (const rm of actors) { if (rm.kind !== 'room' && rm.kind !== 'corridor') continue;
+      const hw2 = (rm.detail.width || 8) * rm.size / 2 - 0.7, hd2 = (rm.detail.depth || 8) * rm.size / 2 - 0.7;
+      if (Math.abs(t.pos[0] - rm.pos[0]) > hw2 + 0.7 || Math.abs(t.pos[2] - rm.pos[2]) > hd2 + 0.7) continue;
+      nx = clamp(nx, rm.pos[0] - hw2, rm.pos[0] + hw2); nz = clamp(nz, rm.pos[2] - hd2, rm.pos[2] + hd2); }
+    t.pos[0] = nx; t.pos[2] = nz; } }
   // the camera for a beat about somebody's face has to stand in front of that face. When the script
   // puts the other people there instead, every shot of the face is a shot of somebody's back.
   for (const b of beats) {
     const tid = b.camera.target; const t = actors.find(q => q.id === tid);
     if (!t || t.kind !== 'person' || t.pos[1] < -0.5) continue; // down a hole the rim decides where they stand
     if (!b.actions.some(x => x.actor === tid && (x.say || FACE_STATE.has(x.state)))) continue;
-    const fx = Math.sin(t.yaw * Math.PI / 180), fz = Math.cos(t.yaw * Math.PI / 180);
+    const fx = Math.sin(t.yaw * Math.PI / 180), fz = Math.cos(t.yaw * Math.PI / 180); const swung = new Set();
     for (const x of b.actions) { if (!x.actor || x.actor === tid) continue;
       const a = actors.find(q => q.id === x.actor); if (!a || a.kind !== 'person' || a.pos[1] < -0.5) continue;
       const dx = a.pos[0] - t.pos[0], dz = a.pos[2] - t.pos[2], d = Math.hypot(dx, dz);
@@ -414,11 +447,13 @@ function normalizeScene(raw, dreamText) {
       // and not into a crowd, which would push them back in front on the next pass
       const rings = actors.filter(q => q.kind === 'crowd').map(q => ({ x: q.pos[0], z: q.pos[2], r: (q.detail.radius || 5) * q.size + 0.5 }));
       const side = (dx * fz - dz * fx) >= 0 ? 1 : -1;
-      let put = null;
-      for (const sg of [side, -side]) { const ang = t.yaw * Math.PI / 180 + sg * 1.16;
+      // and one to each side: swung the same way, two of them fill the foreground together
+      const order = swung.has(side) && !swung.has(-side) ? [-side, side] : [side, -side];
+      let put = null, used = null;
+      for (const sg of order) { const ang = t.yaw * Math.PI / 180 + sg * 1.16;
         const px = t.pos[0] + Math.sin(ang) * d, pz = t.pos[2] + Math.cos(ang) * d;
-        if (!rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r)) { put = [px, pz]; break; } }
-      if (put) { a.pos[0] = put[0]; a.pos[2] = put[1]; } } }
+        if (!rings.some(q => Math.hypot(px - q.x, pz - q.z) < q.r)) { put = [px, pz]; used = sg; break; } }
+      if (put) { a.pos[0] = put[0]; a.pos[2] = put[1]; swung.add(used); } } }
   for (const b of beats) for (const x of b.actions) if (x.appear && x.at > 0.82) x.at = 0.7;
   let t = 0; for (const b of beats) { b.start = t; t += b.dur; }
   // a pass that reads its own output has to see the same numbers: round everything the passes
