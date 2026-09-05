@@ -310,6 +310,29 @@ function normalizeScene(raw, dreamText) {
     for (const b of beats) for (const x of b.actions) { if (!x.actor || !x.move) continue;
       const a = actors.find(q => q.id === x.actor); if (!a || (a.kind !== 'person' && a.kind !== 'crowd')) continue;
       const q = pull(x.move); if (q) x.move = q; } }
+  // "confronted by a loud man" is not a figure seventeen metres up the street. Somebody who walks
+  // into the dream in a beat, with no move of their own, walks into it at a talking distance and a
+  // little off the line, or the sentence that introduces them plays as two specks and the near one
+  // hiding the far one.
+  { const roomOf = q => actors.find(rm => (rm.kind === 'room' || rm.kind === 'corridor')
+      && Math.abs(q[0] - rm.pos[0]) < (rm.detail.width || 8) * rm.size / 2
+      && Math.abs(q[2] - rm.pos[2]) < (rm.detail.depth || (rm.kind === 'corridor' ? 30 : 8)) * rm.size / 2) || null;
+    const STILL = new Set(['lie', 'sit', 'swim', 'fly', 'float', 'fall']);
+    for (const b of beats) {
+      const tid = b.camera.target; const t = actors.find(q => q.id === tid);
+      if (!t || t.kind !== 'person' || t.pos[1] < -0.5 || t.pos[1] > 0.35) continue;
+      for (const x of b.actions) { if (!x.actor || x.actor === tid || !x.appear || x.move) continue;
+        const a = actors.find(q => q.id === x.actor); if (!a || a.kind !== 'person') continue;
+        if (a.pos[1] < -0.5 || a.pos[1] > 0.35 || STILL.has(x.state)) continue;
+        if (roomOf(a.pos) !== roomOf(t.pos)) continue;
+        const d = Math.hypot(a.pos[0] - t.pos[0], a.pos[2] - t.pos[2]); if (d < 4.5 || d > 60) continue;
+        const ang = (t.yaw + 22) * Math.PI / 180;
+        const nx = Math.round((t.pos[0] + Math.sin(ang) * 2.6) * 10000) / 10000;
+        const nz = Math.round((t.pos[2] + Math.cos(ang) * 2.6) * 10000) / 10000;
+        // and their own moves are left alone: this is where they come in, not a nudge to carry
+        // through the rest of the dream -- shifting a fifteen-metre relocation into every later
+        // destination walked the brother out of the manhole he is meant to be kneeling at
+        a.pos[0] = nx; a.pos[2] = nz; } } }
   // and last of all, because every pass above can leave somebody standing beside a crowd: a named
   // person the same colour as the people around them cannot be picked out of the frame at all.
   // Light against a dark crowd, dark against a light one -- not always the same yellow.
