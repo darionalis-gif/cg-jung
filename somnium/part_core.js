@@ -380,7 +380,16 @@ function normalizeScene(raw, dreamText) {
               const B = actors.find(q => q.id === y.actor); if (!B || B.kind !== 'person') continue;
               const pb = here(y.actor); if (!pb) continue; const dd = Math.hypot(pb[0] - pa[0], pb[2] - pa[2]);
               if (dd < 0.4 || dd > best) continue; best = dd; other = { id: y.actor, p: pb, act: y }; }
-            if (!other) continue;
+            // ...and the person they are talking to need not have been given anything to do. Three
+            // beats of "he says ..." gave the boy a line and the dreamer nothing, so no facing was
+            // written and the boy delivered the whole conversation with his back to him.
+            if (!other) { let near = null, bd = 10;
+              for (const B of actors) { if (B === A || B.kind !== 'person') continue;
+                const pb = endOf(b, B.id); if (!pb) continue;
+                const dd = Math.hypot(pb[0] - pa[0], pb[2] - pa[2]); if (dd < 0.4 || dd > bd) continue;
+                bd = dd; near = { id: B.id, p: pb }; }
+              if (near && x.yaw === undefined) x.yaw = Math.round(Math.atan2(near.p[0] - pa[0], near.p[2] - pa[2]) * 180 / Math.PI * 100) / 100;
+              continue; }
             const face = (from, to) => Math.round(Math.atan2(to[0] - from[0], to[2] - from[2]) * 180 / Math.PI * 100) / 100;
             if (x.yaw === undefined) x.yaw = face(pa, other.p);
             if (other.act.yaw === undefined) other.act.yaw = face(other.p, pa);

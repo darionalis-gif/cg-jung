@@ -92,7 +92,15 @@ function humanoid(a, o = {}) {
   const hairM = mesh(G.sph(0.15, o.simple ? 8 : 16), mat(hair, opts), 0, 0.175, -0.025); hairM.scale.set(1, 0.72, 1); headG.add(hairM);
   const face = [];
   if (!o.simple) { for (const sx of [-1, 1]) { const e = mesh(G.sph(0.016, 8), mat(o.eye || '#1a1a1a'), sx * 0.051, 0.137, 0.127); headG.add(e); face.push(e); }
-    const mo = mesh(G.sph(0.021, 8), mat(shade(skin, 0.72)), 0, 0.097, 0.138); headG.add(mo); face.push(mo); }
+    const mo = mesh(G.sph(0.021, 8), mat(shade(skin, 0.72)), 0, 0.097, 0.138); headG.add(mo); face.push(mo);
+    // a man shouting for four beats of a dream with his mouth shut is a man gesturing.  A mouth
+    // that opens, and the comic-strip lines that say the noise carries, so that "he yells at me"
+    // has something on screen besides a raised arm.
+    const shout = new THREE.Group(); shout.position.set(0, 0.1, 0.15); shout.visible = false; headG.add(shout);
+    for (let i = 0; i < 5; i++) { const a2 = -0.85 + i * 0.425;
+      const bar = mesh(G.box(0.022, 0.022, 0.17), mat('#fff6de', { emissive: '#fff2cf', ei: 1.4 }), Math.sin(a2) * 0.16, (i % 2 ? 0.05 : -0.045) + Math.abs(a2) * 0.03, Math.cos(a2) * 0.16);
+      bar.rotation.y = a2; bar.castShadow = false; bar.receiveShadow = false; shout.add(bar); }
+    g.userData.shout = shout; g.userData.mouth = mo; }
   const wear = (a.detail.wear || '').toLowerCase(); const wearM = mat(a.detail.wearColor || shade(col, 0.7), opts);
   if (wear === 'coat' || wear === 'raincoat' || wear === 'jacket' || wear === 'cloak' || wear === 'uniform') {
     const body = mesh(G.cap(0.185 * S, 0.34, 12), wearM, 0, 0.19, 0); body.scale.set(1.08, 1, 0.78); torso.add(body);
@@ -132,7 +140,7 @@ function humanoid(a, o = {}) {
     legs.push(th); shins.push(sh); feet.push(ft);
   }
   if (o.spikes) for (let i = 0; i < 5; i++) torso.add(mesh(G.cone(0.05, 0.25, 5), mat(shade(col, 0.6)), 0, 0.4 - i * 0.12, -0.18).rotateX(-1.2));
-  g.userData.limbs = { hips, torso, head: headG, skull: head, hair: hairM, face, arms, fore, legs, shins, feet }; g.userData.height = 1.75; g.userData.eyeY = 1.6; g.userData.shadow = 0.45;
+  g.userData.limbs = { hips, torso, head: headG, skull: head, hair: hairM, face, arms, fore, legs, shins, feet, shout: g.userData.shout || null, mouth: g.userData.mouth || null }; g.userData.height = 1.75; g.userData.eyeY = 1.6; g.userData.shadow = 0.45;
   return g;
 }
 B.person = a => humanoid(a);

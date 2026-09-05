@@ -47,10 +47,20 @@ for (const id of ids) {
   for (let i = 0; i < beats.length; i++) {
     // a throw that is over by a quarter of the way through has recovered to a neutral stand by
     // the middle of the beat: take the picture when the beat's own actions are happening
+    // ...and the mean of the windows is not where the verbs are either: four throws written at
+    // 0.1 for 0.3 are over by 0.4, and a floor of 0.32 caught every one of them with its arms back
+    // at its sides. Take the picture where the most of the beat's own action windows are open.
     const mid = (() => { const acts = (beats[i].actions || []).filter(x => x.actor && (x.move || x.state || x.say));
       if (!acts.length) return t + beats[i].dur * 0.5;
-      const f = acts.reduce((s2, x) => s2 + ((x.at || 0) + (x.for === undefined ? 1 : x.for) / 2), 0) / acts.length;
-      return t + beats[i].dur * Math.min(0.68, Math.max(0.32, f)); })();
+      let bf = 0.5, bs = -1e9;
+      for (let k = 1; k < 20; k++) { const fr = k / 20; let s = 0;
+        for (const x of acts) { const a0 = x.at || 0, a1 = a0 + (x.for === undefined ? 1 : x.for);
+          if (fr < a0 || fr > a1) continue;
+          const w = (x.say ? 2 : 0) + (x.state ? 2 : 0) + (x.move ? 1 : 0);
+          s += w * (1 - Math.abs(fr - (a0 + a1) / 2) / Math.max(0.05, (a1 - a0) / 2) * 0.5); }
+        s -= Math.abs(fr - 0.5) * 0.25;
+        if (s > bs) { bs = s; bf = fr; } }
+      return t + beats[i].dur * Math.min(0.85, Math.max(0.12, bf)); })();
     // A viewer arrives at this second by playing into it from the cut, so that is how the picture
     // is taken: seek to the beat's own boundary, let it cut, and play forward to the sample point.
     // Settling at frozen time gave the shot up to ninety-six frames of easing nobody else gets,

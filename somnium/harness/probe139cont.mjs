@@ -36,20 +36,10 @@ for (const id of ids) {
   { const { ctx, page } = await newPage(); await load(page, scene);
     let t = 0;
     for (let i = 0; i < beats.length; i++) {
-      // ...and the mean of the windows is not where the verbs are either: four throws written at
-      // 0.1 for 0.3 are over by 0.4, and a floor of 0.32 caught every one of them with its arms back
-      // at its sides. Take the picture where the most of the beat's own action windows are open.
       const mid = (() => { const acts = (beats[i].actions || []).filter(x => x.actor && (x.move || x.state || x.say));
         if (!acts.length) return t + beats[i].dur * 0.5;
-        let bf = 0.5, bs = -1e9;
-        for (let k = 1; k < 20; k++) { const fr = k / 20; let s = 0;
-          for (const x of acts) { const a0 = x.at || 0, a1 = a0 + (x.for === undefined ? 1 : x.for);
-            if (fr < a0 || fr > a1) continue;
-            const w = (x.say ? 2 : 0) + (x.state ? 2 : 0) + (x.move ? 1 : 0);
-            s += w * (1 - Math.abs(fr - (a0 + a1) / 2) / Math.max(0.05, (a1 - a0) / 2) * 0.5); }
-          s -= Math.abs(fr - 0.5) * 0.25;
-          if (s > bs) { bs = s; bf = fr; } }
-        return t + beats[i].dur * Math.min(0.85, Math.max(0.12, bf)); })();
+        const f = acts.reduce((s2, x) => s2 + ((x.at || 0) + (x.for === undefined ? 1 : x.for) / 2), 0) / acts.length;
+        return t + beats[i].dur * Math.min(0.68, Math.max(0.32, f)); })();
       await page.evaluate(t0 => { const S = window.__somnium.Stage; S.setTime(t0); S.playing = false; }, t);
       await page.waitForTimeout(120);
       await page.evaluate(async m => { const S = window.__somnium.Stage; S.playing = true;
@@ -108,5 +98,5 @@ for (const id of ids) {
   console.log(`  gap B vs A: cam mean ${(dc.reduce((x, y) => x + y, 0) / dc.length).toFixed(2)} m, max ${Math.max(...dc).toFixed(2)} m; grid mean ${(g.reduce((x, y) => x + y, 0) / g.length).toFixed(2)}, max ${Math.max(...g).toFixed(2)}`);
   all[id] = rows;
 }
-writeFileSync(path.join(HERE, 'out', 'probe123cont.json'), JSON.stringify(all, null, 1));
+writeFileSync(path.join(HERE, 'out', 'probe139cont.json'), JSON.stringify(all, null, 1));
 await browser.close(); server.close();

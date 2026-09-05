@@ -524,6 +524,13 @@ const Stage = {
       T.armsZ = [0.28, -0.22]; T.hipsZ = j * 0.09; T.headY = sw * 0.16; T.legs = [0.14, -0.1]; }
     else { /* idle: breathe, shift weight, look around */ T.armsX = [Math.sin(t * 1.1) * 0.05, Math.sin(t * 1.3 + 1) * 0.05]; T.fore = [-0.3, -0.3]; T.hipsZ = Math.sin(t * 0.6) * 0.03; T.bodyZ = -Math.sin(t * 0.6) * 0.02; T.headY = Math.sin(t * 0.45) * 0.25; T.torsoS = 1 + Math.sin(t * 1.6) * 0.015; }
     if (keepHead && lookYaw !== null && lookYaw !== undefined) { T.headY = clamp(lookYaw, -1.1, 1.1); T.headX = 0; }
+    // the noise itself: an open mouth on anybody shouting or speaking, and shout lines for a yell
+    if (L.mouth) { const yelling = s === 'yell', talking = yelling || g.userData.saying;
+      const j2 = yelling ? 0.6 + Math.max(0, Math.sin(t * 4.5)) * 0.55 : (talking ? 0.5 + Math.abs(Math.sin(t * 3.1)) * 0.5 : 0);
+      const oy = 1 + j2 * 1.9, oz = 1 + j2 * 0.5;
+      L.mouth.scale.set(1 + j2 * 0.5, oy, oz);
+      if (L.shout) { const on = yelling; if (L.shout.visible !== on) L.shout.visible = on;
+        if (on) { const k2 = 0.75 + j2 * 0.55; L.shout.scale.set(k2, k2, k2); } } }
     g.userData.headYaw = P.headY;
     // blend toward the target pose
     const f = snap ? 1 : 1 - Math.exp(-dt * 12); const lp = (a, b) => a + (b - a) * f;
@@ -594,6 +601,7 @@ const Stage = {
     // identical kneels was standing up for six frames because of it
     { const cut0 = (s === 'kneel' || s === 'sit') ? 1.1 : 0.35;
       if (L && st.moving > cut0 && ['idle', 'kneel', 'sit', 'shake', 'pockets', 'fold', 'grieve', 'yell', 'wave', 'throw', 'push'].includes(s)) s = st.moving > 2.5 ? 'run' : 'walk'; }
+    g.userData.saying = !!st.say;
     if (L) { const look = (s === 'idle' || s === 'sit' || s === 'kneel' || s === 'shake' || s === 'push' || s === 'wave' || s === 'walk' || s === 'limp' || s === 'pockets' || s === 'yell') ? this.headTarget(rec, st) : null; this.poseHuman(g, L, s, τ, dt, st.size, st.window, g.id * 0.37, st.moving, look, snap); return; }
     if (ud.members) { const ms = (s === 'walk' || s === 'run' || s === 'limp' || s === 'crawl') ? s : (st.moving > 0.05 ? 'walk' : s); ud.members.forEach(m => { const base = m.userData.basePos || (m.userData.basePos = m.position.clone()); m.position.copy(base); m.scale.setScalar(1); if (st.moving > 0.05 || ms === 'walk' || ms === 'run') m.rotation.y = 0; else m.rotation.y = m.userData.baseYaw || 0; this.poseHuman(m, m.userData.limbs, ms, τ, dt, 1, st.window, m.userData.phase, st.moving, null, snap); }); return; }
     if (ud.legs) { const mv = st.moving > 0.05 || s === 'walk' || s === 'run'; const gsp = (st.moving > 2.5 || s === 'run') ? 12 : 7; const AP = ud.animPhase === undefined ? (ud.animPhase = 0) : ud.animPhase; ud.animPhase = mv ? AP + dt * gsp : AP; const φ = ud.animPhase;
@@ -651,6 +659,14 @@ const Stage = {
     // search picks the frontal shot among the ones that hold everybody.
     const fSt = faceActor && faceActor !== c.target ? states.get(faceActor) : null;
     const fP = fSt ? new THREE.Vector3(fSt.pos[0], fSt.pos[1], fSt.pos[2]) : null;
+    // a face is a quarter of a metre across, so "her face started to fold" performed at seven
+    // metres is thirty pixels of it. The body is legible long before the face is, and the beats
+    // that ask for three and a half metres are exactly the ones the face is the whole content of.
+    let facePt = null, faceH = 0.24;
+    if (faceActor) { const s0 = fSt || states.get(faceActor);
+      if (s0) { const r0 = this.actors.get(faceActor);
+        facePt = new THREE.Vector3(s0.pos[0], s0.pos[1] + (r0 ? r0.g.userData.baseHeight * (s0.size / r0.a.size) * 0.88 : 1.6), s0.pos[2]);
+        faceH = 0.24 * (s0.size || 1); } }
     const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state) || ((tg.moving || 0) < 0.3 && x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
     let groupC = null, groupR = 0; { const active = beat.actions.filter(x => x.actor && (x.move || x.say || x.appear || (x.state && x.state !== 'idle'))).map(x => x.actor); const ids = [...new Set(active.concat([c.target]))]; const pts = []; for (const id of ids) { const st = states.get(id); const r2 = this.actors.get(id); if (!st || st.op < 0.3 || !r2 || r2.g.userData.big || r2.g.userData.flat) continue; if (r2.g.userData.members && id !== c.target) continue; if (Math.abs(st.pos[1] - T.y) > 3) continue; pts.push(new THREE.Vector3(st.pos[0], st.pos[1], st.pos[2])); } // ...but a beat about one person's face is a shot of that face: pulling the centre of the shot
       // out to the middle of the group put the lens where their front was not, and every candidate
@@ -840,6 +856,12 @@ const Stage = {
           // and never past twice what was asked, whatever it would hold: a ten metre shot performed
           // at twenty-nine is not the shot, it is a map of where the beat happens
           if (p.distanceTo(l) > reach0 * 1.9) p = l.clone().lerp(p, reach0 * 1.9 / p.distanceTo(l)); }
+        // ...and inward, which it never did. Every close shot the script asked for was delivered
+        // wider -- a 3.5 m orbit on the beat where the dreamer's face folds, performed at 7.4 --
+        // because the range only ever gave way outward, and it is the close shots that carry the
+        // faces, the teeth, the lens and the folding.
+        if (faceActor) { for (const k of [1.15, 1.4]) { const want = reach0 * k, got1 = p.distanceTo(l);
+          if (got1 <= want) break; const tight = l.clone().lerp(p, want / got1); if (holds(tight)) { p = tight; break; } } }
         const wantH = (c.distance || 8) * 1.3, minH = (c.distance || 8) * 0.7, gotH = Math.hypot(p.x - l.x, p.z - l.z);
         // ...and the horizontal ceiling gives way on the same terms. It did not, so a beat whose
         // three people were spread over sixteen metres was pulled back in to eleven and the camera
@@ -967,7 +989,17 @@ const Stage = {
         if (arriveTick >= 0 && was < arriveTick && tick >= arriveTick) { this.shotHold = null; this._worldCut = true; }
         else if (h.weak) this.shotHold = null;
         else { const p2 = h.rel ? T.clone().add(h.off) : h.off.clone(), l2 = h.rel ? T.clone().add(h.lookOff) : h.lookOff.clone();
-          for (const f of framed) { if (f.w < 1) continue; if (!this.seenWell(p2, l2, f, false)) { this.shotHold = null; break; } } } }
+          let drop = false;
+          for (const f of framed) { if (f.w < 1) continue; if (!this.seenWell(p2, l2, f, false)) { drop = true; break; } }
+          // ...and the face the sentence is about turning away from the lens is as much a reason to
+          // elect again as walking out of frame. The loud man is given a yaw half way through the
+          // beat that turns him a hundred and sixty degrees, and the shot that was right when it
+          // was taken had his back in the middle of it for the rest of the sentence.
+          if (!drop && faceActor) { const sF = states.get(faceActor);
+            if (sF) { const fcF = dirAt(this.faceYaw(faceActor, sF), 1, 0);
+              const vF = p2.clone().sub(new THREE.Vector3(sF.pos[0], sF.pos[1], sF.pos[2]));
+              if ((vF.x * fcF.x + vF.z * fcF.z) / (Math.hypot(vF.x, vF.z) || 1) < -0.25) drop = true; } }
+          if (drop) this.shotHold = null; } }
       if (this.shotHold) holding = this.shotHold;
     }
     if (holding) { pos = holding.rel ? T.clone().add(holding.off) : holding.off.clone(); look = holding.rel ? T.clone().add(holding.lookOff) : holding.lookOff.clone();
@@ -1014,7 +1046,7 @@ const Stage = {
       // five verdicts, not three, and the first two are the ones the authored branch already
       // enforced as rejections: hold everybody the sentence names, and do not shoot the back of
       // the head it is about. A free-searched beat gets the same guarantees an authored one does.
-      const tiers = [0, 0, 0, 0, 0].map(() => ({ az: 0, mul: 1, lift: 0, score: -1e9, has: false }));
+      const tiers = [0, 0, 0, 0, 0, 0, 0].map(() => ({ az: 0, mul: 1, lift: 0, score: -1e9, has: false }));
       let faceOnly = null;
       {
       if (framed.length >= 1) {
@@ -1029,6 +1061,9 @@ const Stage = {
           for (const f of framed) { if (!f.seen) continue; if (f.w < 1) { scenery = Math.min(1.4, scenery + f.w); } else n += f.w; if (f.id === c.target) { tgtSeen = true; n += 0.8; }
 
             if (f.w >= 1) { const d0 = f.p.distanceTo(out.pos); const apparent = (f.h || 1.8) / Math.max(1, d0); if (f.speaks && apparent < 0.15) tinyTalk += 0.15 - apparent; if (f.w >= 1 && (f.h || 0) > 1 && apparent < 0.085) { tiny += (0.085 - apparent) * (f.id === faceActor || f.id === c.target ? 1.8 : 1); if (this.debugFrames) small = f.id + ' small ' + apparent.toFixed(3) + ' @' + d0.toFixed(1); } if (d0 < 1.9) { tooSmall = true; if (this.debugFrames) small = f.id + ' near ' + d0.toFixed(1); } } }
+          let faceSmall = 0;
+          if (facePt) { const ff2 = framed.find(q => q.id === faceActor);
+            if (!ff2 || ff2.seen) { const ap = faceH / Math.max(1, facePt.distanceTo(out.pos)); if (ap < 0.05) faceSmall = 0.05 - ap; } }
           const lostTarget = !tgtSeen && framed.some(f => f.id === c.target && f.w >= 1);
           // when the sentence is about one face, somebody standing idle behind it is worth a
           // fraction of it. Counting them the same traded the subject's face for a full headcount
@@ -1087,15 +1122,26 @@ const Stage = {
             // dreamer made the boy's, so every candidate failed and the two of them were staged
             // shoulder to shoulder for the whole conversation.
             if (faceActor && f.id !== faceActor && !f.speaks) continue;
-            const s3 = states.get(f.id); if (!f.speaks && ((s3.moving || 0) > 0.3 || (f.id === c.target && !facesMatter) || ((this.actors.get(f.id) || {}).a || {}).kind === 'crowd')) continue; if (!f.seen) continue; const fc3 = dirAt(this.faceYaw(f.id, s3), 1, 0); const v3 = out.pos.clone().sub(new THREE.Vector3(s3.pos[0], s3.pos[1], s3.pos[2])); const fr3 = (v3.x * fc3.x + v3.z * fc3.z) / (Math.hypot(v3.x, v3.z) || 1); if (fr3 < (f.speaks ? 0.2 : (f.id === c.target ? 0.15 : -0.6))) backToLens = true; }
+            const s3 = states.get(f.id); if (!f.speaks && ((s3.moving || 0) > 0.3 || (f.id === c.target && !facesMatter) || ((this.actors.get(f.id) || {}).a || {}).kind === 'crowd')) continue; if (!f.seen) continue; const fc3 = dirAt(this.faceYaw(f.id, s3), 1, 0); const v3 = out.pos.clone().sub(new THREE.Vector3(s3.pos[0], s3.pos[1], s3.pos[2])); const fr3 = (v3.x * fc3.x + v3.z * fc3.z) / (Math.hypot(v3.x, v3.z) || 1); // ...and a profile is not the back of a head. Two people facing each other can only both be
+            // seen from the side, and calling anything short of a frontal shot "turned away" left the
+            // search with no candidate at all, so it took the one behind him. Reject from the ear back.
+            if (fr3 < (f.speaks ? 0.02 : (f.id === c.target ? 0.15 : -0.6))) backToLens = true; }
           if (tooSmall) { if (this.debugFrames) this.frameScan.push({ az, mul, lift, rejected: small }); continue; }
           anyOk = true;
           n += scenery; if (!tgtSeen && framed.some(f => f.id === c.target)) n -= 2;
           const toCam = out.pos.clone().sub(T); const facing = dirAt(tg.yaw, 1, 0); const front = (toCam.x * facing.x + toCam.z * facing.z) / (Math.hypot(toCam.x, toCam.z) || 1);
           let faceCost = 0; if (facesMatter) { const tf = framed.find(f => f.id === c.target); if (tf && tf.seen) faceCost = (1 - front) * 0.9;
             for (const f of framed) { if (!f.speaks || f.id === c.target || !f.seen) continue; const st3 = states.get(f.id); const fc = dirAt(this.faceYaw(f.id, st3), 1, 0); const v = out.pos.clone().sub(new THREE.Vector3(st3.pos[0], st3.pos[1], st3.pos[2])); const fr = (v.x * fc.x + v.z * fc.z) / (Math.hypot(v.x, v.z) || 1); faceCost += (1 - fr) * 0.6; } }
+          // ...and the face the sentence is about is not one contribution among several. At three
+          // quarters profile it is not a face, and "my face started to fold" was performed at
+          // seventy-eight degrees off the nose because holding one more bystander scored higher.
+          if (faceActor) { const fs2 = states.get(faceActor), ff3 = framed.find(q => q.id === faceActor);
+            if (fs2 && (!ff3 || ff3.seen)) { const fc4 = dirAt(this.faceYaw(faceActor, fs2), 1, 0);
+              const v4 = out.pos.clone().sub(new THREE.Vector3(fs2.pos[0], fs2.pos[1], fs2.pos[2]));
+              const fr4 = (v4.x * fc4.x + v4.z * fc4.z) / (Math.hypot(v4.x, v4.z) || 1);
+              faceCost += (1 - Math.max(0, fr4)) * (faceIsSubject ? 3 : 2.2); } }
           const crowd = this.lensCrowding(out.pos, selfs);
-          const cost = Math.abs(az) / 300 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(faceActor ? 5 : 1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(40, hog * 2.4) + Math.min(14, Math.log1p(hog) * 1.2) + Math.min(7, tiny * 34) + against * 0.8 + Math.min(7, stacked * 3.4) + lostNamed * 3.2;
+          const cost = Math.abs(az) / 300 + lift * 0.16 + Math.abs(mul - 1) * (mul > 1 ? 2.2 : 0.9) + crowd * 0.7 + Math.min(faceActor ? 8 : 1.4, faceCost) + (backToLens ? 0.8 : 0) + Math.min(1.2, tinyTalk * 6) + Math.min(40, hog * 2.4) + Math.min(14, Math.log1p(hog) * 1.2) + Math.min(7, tiny * 34) + Math.min(4, faceSmall * 70) + against * 0.8 + Math.min(7, stacked * 3.4) + lostNamed * 3.2;
           const score = n - cost - cropAtLens * 1.6 - (wallAcross ? 25 : 0);
           let frontF = front, fSeen = tgtSeen;
           if (fP) { const tc = out.pos.clone().sub(fP); const fc = dirAt(this.faceYaw(faceActor, fSt), 1, 0);
@@ -1106,11 +1152,18 @@ const Stage = {
           // shooting the backs of both heads on beats whose sentence is two people talking, because
           // holding an idle bystander outranked seeing the mouth the words come out of
           const noneLost = lostNamed === 0;
-          if (noneLost && !backToLens && !lostTarget && score > tiers[0].score) tiers[0] = cand2;
-          if (!backToLens && !lostTarget && score > tiers[1].score) tiers[1] = cand2;
-          if (noneLost && !lostTarget && score > tiers[2].score) tiers[2] = cand2;
-          if (!backToLens) { const s1 = score - (lostTarget ? 1.3 : 0); if (s1 > tiers[3].score) tiers[3] = { ...cand2, score: s1 }; }
-          { const s0 = score - (backToLens ? 1.1 : 0) - (lostTarget ? 1.3 : 0); if (s0 > tiers[4].score) tiers[4] = { ...cand2, score: s0 }; }
+          // ...and when the beat is a face, a face that cannot be read is a shot that has not been
+          // had. "And soon my face started to fold", written at three and a half metres, was
+          // performed at seven with the two bystanders held and the fold thirty pixels across.
+          // A legible face beats a full headcount; only when both can be had is both preferred.
+          const faceOK = faceSmall <= 0;
+          if (noneLost && !backToLens && !lostTarget && faceOK && score > tiers[0].score) tiers[0] = cand2;
+          if (!backToLens && !lostTarget && faceOK && score > tiers[1].score) tiers[1] = cand2;
+          if (noneLost && !backToLens && !lostTarget && score > tiers[2].score) tiers[2] = cand2;
+          if (!backToLens && !lostTarget && score > tiers[3].score) tiers[3] = cand2;
+          if (noneLost && !lostTarget && score > tiers[4].score) tiers[4] = cand2;
+          if (!backToLens) { const s1 = score - (lostTarget ? 1.3 : 0); if (s1 > tiers[5].score) tiers[5] = { ...cand2, score: s1 }; }
+          { const s0 = score - (backToLens ? 1.1 : 0) - (lostTarget ? 1.3 : 0); if (s0 > tiers[6].score) tiers[6] = { ...cand2, score: s0 }; }
           if (n === framed.length && az === 0 && mul === 1 && !lift && crowd === 0 && !backToLens && !lostTarget) break;
         } }
       }
@@ -1190,9 +1243,32 @@ const Stage = {
       // and whoever is speaking in the beat is not the one to drop: "when I speak to Timmy D." has
       // to have both of them in it, and if it cannot, it keeps the one talking
       // and the same trade as the search makes: an idle bystander is not worth the face
-      const lost = (p1, l1) => { let n = 0; for (const f of must) if (!shown(p1, l1, f)) n += (f.id === faceActor || f.speaks) ? 3 : 1; return n; };
+      const lost = (p1, l1) => { let n = 0; for (const f of must) if (!shown(p1, l1, f)) n += (f.id === faceActor || f.speaks) ? 3 : 1;
+        // ...and the face the sentence is about, turned away, is as much a loss as a body out of
+        // frame. The search elected a three-quarter front of the shouting man; the rescue then swung
+        // ninety degrees to recover two bystanders and put his back in the middle of the picture,
+        // because a back of a head cost nothing it could count.
+        if (faceActor) { const sF = states.get(faceActor), ff = must.find(q => q.id === faceActor);
+          if (sF && (!ff || shown(p1, l1, ff))) { const fcF = dirAt(this.faceYaw(faceActor, sF), 1, 0);
+            const vF = p1.clone().sub(new THREE.Vector3(sF.pos[0], sF.pos[1], sF.pos[2]));
+            // ...and only a face actually turned away, not one merely in profile: a man with his
+            // head down in the snow is in profile from the one bearing that also holds the platoon
+            // behind him, and calling that a loss swung the camera off the best frame in the round.
+            if ((vF.x * fcF.x + vF.z * fcF.z) / (Math.hypot(vF.x, vF.z) || 1) < -0.25) n += faceIsSubject ? 3 : 2; } }
+        return n; };
       // judge the camera the viewer is looking through, not the pose it is easing toward: a pose
       // that holds everybody is no help while the lens is still three metres behind it
+      // ...and a shot is not had if the thing nearest the lens on the way to the man the sentence
+      // is about is a lamp post the sentence never mentions
+      const splitBy = (p1, l1) => { let n = 0;
+        const rgt = this._rg || (this._rg = new THREE.Vector3()), q = this._sq || (this._sq = new THREE.Vector3());
+        for (const f of must) { const gg = f.g && f.g.userData; if (gg && (gg.flat || gg.big)) continue;
+          const h = Math.max(0.6, f.h || 1.8);
+          rgt.copy(l1).sub(p1); rgt.y = 0; const L = Math.hypot(rgt.x, rgt.z) || 1; rgt.set(-rgt.z / L, 0, rgt.x / L);
+          q.copy(f.p); q.y = f.p.y + h * 0.15; if (this.crossedBySolid(p1, q, f.g)) continue;
+          for (const k of [-0.26, 0.26]) { q.copy(f.p).addScaledVector(rgt, k); q.y = f.p.y + h * 0.15;
+            if (this.crossedBySolid(p1, q, f.g)) { n++; break; } } }
+        return n; };
       const badPose = must.length ? lost(pos, look) : 0;
       const badCam = must.length && !snap ? lost(this.cam.pos, this.cam.look) : 0;
       // when the pose holds everybody and the lens does not, the answer is not another pose: it is
@@ -1218,10 +1294,13 @@ const Stage = {
       // at a cut the rescue runs to convergence in the one frame rather than a step per frame:
       // the shot a seek lands on used to depend on how many frames the machine managed to draw
       // before the picture was taken, so the same scene solved differently on a slower box
-      for (let it = 0; it < (snap ? 3 : 1) && bad && (this.framePick.saves || 0) < 3 && mayTry; it++) {
+      // ...asked at the checkpoints, not on every frame: three raycasts per named actor per frame
+      // halved the frame rate of the dream with the most lamp posts in it
+      let splits = must.length && mayTry ? splitBy(pos, look) : 0;
+      for (let it = 0; it < (snap ? 3 : 1) && (bad || splits) && (this.framePick.saves || 0) < 3 && mayTry; it++) {
         this.framePick.tryAt = tick;
         let bq = pos, bl = look, bAz = null, bMul = 1, bLift = 0;
-        let bb = bad * 10 + uglier(pos, look);
+        let bb = bad * 10 + splits * 3 + uglier(pos, look);
         // the first pass at a cut looks everywhere; the ones after it are corrections to a shot
         // that is already nearly right, and running the whole grid three times made the cut frame
         // the most expensive in the film
@@ -1229,7 +1308,7 @@ const Stage = {
         const azs = it ? [0, 40, -40, 90, -90, 150, -150] : [0, 20, -20, 40, -40, 70, -70, 110, -110, 150, -150, 180];
         outer2: for (const mul of muls) for (const lift of lifts) for (const az of azs) {
           const cand = this.turnShot(pos, look, az, mul); if (lift) cand.y += lift;
-          const o6 = dress(settle(cand, look)); const n6 = lost(o6.pos, o6.look) * 10 + uglier(o6.pos, o6.look);
+          const o6 = dress(settle(cand, look)); const n6 = lost(o6.pos, o6.look) * 10 + splitBy(o6.pos, o6.look) * 3 + uglier(o6.pos, o6.look);
           if (n6 < bb - 0.5) { bb = n6; bq = o6.pos; bl = o6.look; bAz = az; bMul = mul; bLift = lift; if (n6 < 1) break outer2; } }
         if (bAz !== null) { this.framePick.saves = (this.framePick.saves || 0) + 1;
           // and the shot stays the shot: a rescue may correct the angle the beat opened on, not
@@ -1249,7 +1328,7 @@ const Stage = {
           // between are the ones that lose the subject, which is the whole thing being fixed
           const jump = bq.distanceTo(pos); pos = bq; look = bl;
           if (snap || jump <= 2) this._snapNow = true; else this._rush = 0.7;
-          bad = must.length ? lost(pos, look) : 0; } else break; } }
+          bad = must.length ? lost(pos, look) : 0; splits = must.length ? splitBy(pos, look) : 0; } else break; } }
       // ...and only a shot worth holding. A pose the guarantee could not rescue is one to keep
       // looking for a way out of, not one to ride for the rest of the sentence.
       // a shot the guarantee could not rescue is still held between checkpoints -- otherwise the
@@ -1475,6 +1554,22 @@ const Stage = {
       if (h.object.userData.cut && this.pits && this.pits.some(q => Math.hypot(h.point.x - q.x, h.point.z - q.z) <= q.r)) continue; if (self && self.userData && self.userData.ridesIn && this.isOwn(h.object, self.userData.ridesIn)) continue; return true; }
     return this.behindBodies(from, to, self);
   },
+  // a lamp post is thin, so a ray to the middle of a man goes past it and the report calls him
+  // visible while the picture has him split in two. Ask the shoulders as well as the middle, and
+  // only of the built world -- another actor in front of a third is the framer's business, not
+  // this one's.
+  crossedBySolid(from, to, own) {
+    if (!this.solids || !this.solids.length) return false;
+    this._ray3 = this._ray3 || new THREE.Raycaster(); const r = this._ray3;
+    const dir = to.clone().sub(from); const len = dir.length(); if (len < 0.5) return false;
+    dir.divideScalar(len); r.set(from, dir); r.near = 0.2; r.far = len - 0.3;
+    for (const h of r.intersectObjects(this.solidsNow || this.solids, false)) {
+      if (this.isOwn(h.object, own)) continue;
+      if (h.object.userData.seeThrough) continue;
+      if (h.object.userData.cut && this.pits && this.pits.some(q => Math.hypot(h.point.x - q.x, h.point.z - q.z) <= q.r)) continue;
+      return true; }
+    return false;
+  },
   // the segment against a standing cylinder, in the flat: cheap enough to ask of every candidate
   behindBodies(from, to, self) {
     const f = this.figuresNow; if (!f || !f.length) return false;
@@ -1610,6 +1705,16 @@ const Stage = {
         if (p.lbl._y !== ly) { p.lbl.style.top = ly; p.lbl._y = ly; } }
       p.x = x; rects.push({ x: p.x, y, w, h }); }
   },
+  // is this one actor on screen at this instant, asked of anything in the scene rather than only
+  // of the current beat's cast: the director's reply is checked against it
+  seenAt(id) { const rec = this.actors.get(id), st = this.states && this.states.get(id);
+    if (!rec || !st || st.op < 0.05) return false;
+    const top = rec.g.userData.baseHeight * (st.size / rec.a.size);
+    const v = new THREE.Vector3(st.pos[0], st.pos[1] + top / 2, st.pos[2]);
+    if (rec.g.userData.big || rec.g.userData.flat) { const bx = this.groupBox(rec.g); if (Number.isFinite(bx.min.x)) { bx.clampPoint(this.cam.look, v); v.y = Math.max(v.y, Math.min(bx.max.y, 1)); } }
+    const occ = rec.g.userData.members ? !this.anyPointSeen(this.camera.position, v, rec, st) : this.occluded(this.camera.position, v.clone(), rec.g);
+    v.project(this.camera);
+    return !occ && v.z < 1 && Math.abs(v.x) < 0.96 && v.y < 0.94 && v.y > -0.76; },
   /* metrics for the harness: which actors of the current beat are on screen */
   metrics() {
     if (!this.scene) return null; const bi = this.beatAt(this.time), b = this.scene.beats[bi]; const ids = new Set(b.actions.filter(x => x.actor && !(x.vanish && !x.say && !x.move && !x.appear)).map(x => x.actor)); ids.add(b.camera.target); if (b.camera.mode === 'pov') ids.delete(b.camera.target); const v = new THREE.Vector3(); const res = [];
