@@ -641,7 +641,9 @@ function normalizeScene(raw, dreamText) {
         if (Math.abs(lx) < hw + 0.2 && Math.abs(lz) < hd + 0.2) { back = Math.max(back, need - k + 0.5); break; } } }
     // once, and at most two metres: applied per beat it stacked, and walked the dreamer five
     // metres out of her own party
-    if (back > 0.05) wants.set(tid, Math.min(1.2, Math.max(wants.get(tid) || 0, back))); }
+    // all of it or none of it: half a push leaves the same complaint for the next pass to find,
+    // and a scene that normalises differently the second time is a scene the director chat breaks
+    if (back > 0.05 && back <= 2) wants.set(tid, Math.max(wants.get(tid) || 0, back)); }
   for (const [tid, back] of wants) { const t = actors.find(q => q.id === tid); if (!t) continue;
     const fx = Math.sin(t.yaw * Math.PI / 180), fz = Math.cos(t.yaw * Math.PI / 180);
     let nx = t.pos[0] - fx * back, nz = t.pos[2] - fz * back;
