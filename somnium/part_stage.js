@@ -324,7 +324,12 @@ const Stage = {
     // the wall. Re-deriving it from the camera at every cut teleported it a hundred metres.
     // "re-aim it at every cut" is what the comment said and what the guard prevented: outdoors from
     // beginning to end, the disc was aimed once at load and then walked off the side of the frame
-    if (this.reaimSky) { this.reaimSky = false; this._skyIndoor = !!this.roomAround(this.camera.position); this.aimSkyLive(); }
+    // and again whenever the camera has turned far enough that the disc would be off the side:
+    // a beat that pans ninety degrees leaves a moon aimed at the cut behind it
+    { const f2 = this._skyF || (this._skyF = new THREE.Vector3()); this.camera.getWorldDirection(f2);
+      if (!this._skyAim) this._skyAim = f2.clone();
+      if (this.reaimSky || f2.dot(this._skyAim) < 0.9) { this.reaimSky = false; this._skyAim.copy(f2);
+        this._skyIndoor = !!this.roomAround(this.camera.position); this.aimSkyLive(); } }
     // every point light in the scene is evaluated for every fragment of a full-screen ground and
     // sky. Five street lamps and a fire put a 400 ms floor under a beat with ten thousand
     // triangles in it; the lamps at the far end of the road contribute nothing to what is on
