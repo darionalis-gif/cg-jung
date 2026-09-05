@@ -25,6 +25,8 @@ const WEAR = new Set(['coat', 'raincoat', 'jacket', 'uniform', 'cloak', 'dress',
 const FACE_STATE = new Set(['yell', 'grieve', 'wave', 'fold', 'shake', 'pockets']);
 const AIRBORNE_STATES = new Set(['fly', 'float', 'fall', 'swim']);
 const FACED = new Set(['person', 'crowd', 'animal', 'monster', 'ghost', 'skeleton']);
+// poses a figure keeps standing in once the action that set them is over
+const POSE_HELD = new Set(['kneel', 'sit', 'lie', 'fold', 'grieve', 'yell', 'shake', 'pockets', 'wave', 'throw', 'push']);
 const VEHICLE = new Set(['car', 'bus', 'truck', 'train', 'plane', 'helicopter', 'boat', 'bike']);
 const SEAT = { car: 0.9, bus: 1.2, truck: 1.4, train: 1.3, plane: 2.6, helicopter: 1.7, boat: 0.9, bike: 0.8 };
 const SKIES = ['night','dusk','dawn','day','overcast','void','underwater','storm'];
@@ -135,6 +137,11 @@ function normalizeScene(raw, dreamText) {
   // a tooth at size 2 is the size of a head. The vocabulary says 1-2 and the builder is bigger
   // than the vocabulary thinks it is.
   for (const a of actors) if (a.kind === 'tooth' && a.size > 1.2) a.size = 1.2;
+  // "a boy, 8 or 10 years old" measured the same height as the grown man beside him. The vocabulary
+  // asks for 0.6-0.8 and the report does not always give it, so read the child off the label.
+  for (const a of actors) { if (a.kind !== 'person') continue;
+    if (!/\b(boy|girl|child|kid|son|daughter|baby|infant|toddler|schoolgirl|schoolboy|youngster)\b/i.test(a.label || a.id.replace(/_/g, ' '))) continue;
+    if (a.size > 0.82) a.size = /\b(baby|infant|toddler)\b/i.test(a.label || '') ? 0.5 : 0.72; }
   // open water covers the half-plane ahead of its waterline: nobody stands out at sea unless they swim
   // whatever these passes shove sideways, the beats that walk that actor somewhere have to follow it,
   // or the scene is staged fifty metres from where it is played
@@ -376,7 +383,12 @@ function normalizeScene(raw, dreamText) {
             if (!other) continue;
             const face = (from, to) => Math.round(Math.atan2(to[0] - from[0], to[2] - from[2]) * 180 / Math.PI * 100) / 100;
             if (x.yaw === undefined) x.yaw = face(pa, other.p);
-            if (other.act.yaw === undefined) other.act.yaw = face(other.p, pa); } } }
+            if (other.act.yaw === undefined) other.act.yaw = face(other.p, pa);
+            // ...and one facing, not two. The boy was given the turn toward the dreamer at 0.1 and
+            // a flat 190 at 0.1 by a second action of his own in the same beat, and the second one
+            // won, so the conversation was played to the back of his head.
+            for (const [who, keep] of [[x.actor, x], [other.id, other.act]])
+              for (const z of b.actions) { if (z !== keep && z.actor === who && z.yaw !== undefined) delete z.yaw; } } } }
       advance(b); } }
   // and last of all, because every pass above can leave somebody standing beside a crowd: a named
   // person the same colour as the people around them cannot be picked out of the frame at all.

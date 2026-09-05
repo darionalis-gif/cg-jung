@@ -246,6 +246,8 @@ const WEAR = new Set(['coat', 'raincoat', 'jacket', 'uniform', 'cloak', 'dress',
 const FACE_STATE = new Set(['yell', 'grieve', 'wave', 'fold', 'shake', 'pockets']);
 const AIRBORNE_STATES = new Set(['fly', 'float', 'fall', 'swim']);
 const FACED = new Set(['person', 'crowd', 'animal', 'monster', 'ghost', 'skeleton']);
+// poses a figure keeps standing in once the action that set them is over
+const POSE_HELD = new Set(['kneel', 'sit', 'lie', 'fold', 'grieve', 'yell', 'shake', 'pockets', 'wave', 'throw', 'push']);
 const VEHICLE = new Set(['car', 'bus', 'truck', 'train', 'plane', 'helicopter', 'boat', 'bike']);
 const SEAT = { car: 0.9, bus: 1.2, truck: 1.4, train: 1.3, plane: 2.6, helicopter: 1.7, boat: 0.9, bike: 0.8 };
 const SKIES = ['night','dusk','dawn','day','overcast','void','underwater','storm'];
@@ -356,6 +358,11 @@ function normalizeScene(raw, dreamText) {
   // a tooth at size 2 is the size of a head. The vocabulary says 1-2 and the builder is bigger
   // than the vocabulary thinks it is.
   for (const a of actors) if (a.kind === 'tooth' && a.size > 1.2) a.size = 1.2;
+  // "a boy, 8 or 10 years old" measured the same height as the grown man beside him. The vocabulary
+  // asks for 0.6-0.8 and the report does not always give it, so read the child off the label.
+  for (const a of actors) { if (a.kind !== 'person') continue;
+    if (!/\b(boy|girl|child|kid|son|daughter|baby|infant|toddler|schoolgirl|schoolboy|youngster)\b/i.test(a.label || a.id.replace(/_/g, ' '))) continue;
+    if (a.size > 0.82) a.size = /\b(baby|infant|toddler)\b/i.test(a.label || '') ? 0.5 : 0.72; }
   // open water covers the half-plane ahead of its waterline: nobody stands out at sea unless they swim
   // whatever these passes shove sideways, the beats that walk that actor somewhere have to follow it,
   // or the scene is staged fifty metres from where it is played
@@ -597,7 +604,12 @@ function normalizeScene(raw, dreamText) {
             if (!other) continue;
             const face = (from, to) => Math.round(Math.atan2(to[0] - from[0], to[2] - from[2]) * 180 / Math.PI * 100) / 100;
             if (x.yaw === undefined) x.yaw = face(pa, other.p);
-            if (other.act.yaw === undefined) other.act.yaw = face(other.p, pa); } } }
+            if (other.act.yaw === undefined) other.act.yaw = face(other.p, pa);
+            // ...and one facing, not two. The boy was given the turn toward the dreamer at 0.1 and
+            // a flat 190 at 0.1 by a second action of his own in the same beat, and the second one
+            // won, so the conversation was played to the back of his head.
+            for (const [who, keep] of [[x.actor, x], [other.id, other.act]])
+              for (const z of b.actions) { if (z !== keep && z.actor === who && z.yaw !== undefined) delete z.yaw; } } } }
       advance(b); } }
   // and last of all, because every pass above can leave somebody standing beside a crowd: a named
   // person the same colour as the people around them cannot be picked out of the frame at all.
@@ -1034,8 +1046,10 @@ B.eye = a => { const g = new THREE.Group(); g.add(mesh(G.sph(0.5, 16), mat('#f4f
 B.tooth = a => { const g = new THREE.Group(); const m = mat(a.color, { rough: 0.35 }); const crown = mesh(G.cap(0.035, 0.03, 8), m, 0, 0.1, 0); crown.rotation.z = Math.PI / 2; crown.scale.set(1, 1.1, 0.9); g.add(crown); for (const sx of [-1, 1]) { const root = mesh(G.cone(0.02, 0.075, 7), m, sx * 0.022, 0.035, 0); root.rotation.x = Math.PI; g.add(root); } g.userData.height = 0.14; return g; };
 B.house = a => { const g = new THREE.Group(); const w = a.detail.width || 8, d = a.detail.depth || 7, h = a.detail.height || 3.2; const wallM = mat(a.color); const box = mesh(G.box(w, h, d), wallM, 0, h / 2, 0); g.add(box);
   const roof = mesh(G.cyl(0, Math.max(w, d) * 0.72, h * 0.6, 4), mat(a.detail.second || shade(a.color, 0.45), { flat: true }), 0, h + h * 0.3, 0); roof.rotation.y = Math.PI / 4; roof.scale.set(w / Math.max(w, d), 1, d / Math.max(w, d)); g.add(roof);
-  g.add(mesh(G.box(1, 2.1, 0.12), mat(shade(a.color, 0.35)), 0, 1.05, d / 2 + 0.06));
-  const win = mat('#ffe9a8', { emissive: '#ffd27a', ei: 0.8 }); for (const sx of [-1, 1]) g.add(mesh(G.box(1.1, 1.1, 0.1), win, sx * w * 0.3, h * 0.55, d / 2 + 0.05));
+  // a door and a window laid with their back face exactly on the wall z-fight with it: a jagged
+  // stair of light and dark along the sill of every hut in the round. Stand them 1 cm proud.
+  g.add(mesh(G.box(1, 2.1, 0.12), mat(shade(a.color, 0.35)), 0, 1.06, d / 2 + 0.07));
+  const win = mat('#ffe9a8', { emissive: '#ffd27a', ei: 0.8 }); for (const sx of [-1, 1]) g.add(mesh(G.box(1.1, 1.1, 0.1), win, sx * w * 0.3, h * 0.55, d / 2 + 0.06));
   g.userData.height = h * 1.6; g.userData.big = true; return g; };
 B.shop = a => { const g = B.house({ ...a, detail: { ...a.detail, width: a.detail.width || 7, depth: a.detail.depth || 6, height: a.detail.height || 3.4 } }); const d = a.detail.depth || 6; g.add(mesh(G.box(3.2, 1.6, 0.1), mat('#ffe9a8', { emissive: '#ffd27a', ei: 0.9 }), 1.5, 1.4, d / 2 + 0.06)); const t = a.detail.text || a.label; if (t) g.add(mesh(G.box(4.5, 0.9, 0.08), new THREE.MeshStandardMaterial({ map: textTexture(t, '#1a1a1a', a.detail.second || '#e8e0c0'), roughness: 0.8 }), 0, 3.0, d / 2 + 0.08)); return g; };
 B.castle = a => { const g = new THREE.Group(); const m = mat(a.color, { flat: true }); g.add(mesh(G.box(3.2, 2.2, 3.2), m, 0, 1.1, 0)); for (const sx of [-1, 1]) for (const sz of [-1, 1]) { g.add(mesh(G.cyl(0.55, 0.6, 3.2, 8), m, sx * 1.5, 1.6, sz * 1.5)); g.add(mesh(G.cone(0.65, 0.8, 8), mat(shade(a.color, 0.7), { flat: true }), sx * 1.5, 3.6, sz * 1.5)); } for (let i = -1; i <= 1; i++) { g.add(mesh(G.box(0.4, 0.4, 0.3), m, i * 0.9, 2.4, 1.6)); g.add(mesh(G.box(0.4, 0.4, 0.3), m, i * 0.9, 2.4, -1.6)); } g.add(mesh(G.box(0.8, 1.2, 0.2), mat(shade(a.color, 0.35)), 0, 0.6, 1.65)); g.userData.height = 4; return g; };
@@ -1320,7 +1334,7 @@ const Stage = {
     const sg = new THREE.BufferGeometry(); const sp = []; const rnd = seeded(42); for (let i = 0; i < 1600; i++) { const th = rnd() * 6.283, ph = Math.acos(rnd() * 0.95); sp.push(Math.sin(ph) * Math.cos(th) * 460, Math.cos(ph) * 460, Math.sin(ph) * Math.sin(th) * 460); } sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
     this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: '#ffffff', size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.85, fog: false })); this.three.add(this.stars);
     this.ambient = new THREE.HemisphereLight('#6a6f9a', '#202030', 1.2); this.three.add(this.ambient);
-    this.sun = new THREE.DirectionalLight('#cfd6ff', 1); this.sun.castShadow = true; this.sun.shadow.mapSize.set(soft ? 640 : 1024, soft ? 640 : 1024); const sc = this.sun.shadow.camera; sc.left = sc.bottom = -40; sc.right = sc.top = 40; sc.near = 1; sc.far = 200; this.sun.shadow.bias = -0.0015; this.three.add(this.sun); this.three.add(this.sun.target);
+    this.sun = new THREE.DirectionalLight('#cfd6ff', 1); this.sun.castShadow = true; this.sun.shadow.mapSize.set(soft ? 640 : 1024, soft ? 640 : 1024); const sc = this.sun.shadow.camera; sc.left = sc.bottom = -40; sc.right = sc.top = 40; sc.near = 1; sc.far = 200; this.sun.shadow.bias = -0.0015; this.sun.shadow.normalBias = 0.035; this.three.add(this.sun); this.three.add(this.sun.target);
     this.fill = new THREE.DirectionalLight('#dfe3ff', 0.8); this.fill.castShadow = false; this.three.add(this.fill); this.three.add(this.fill.target);
     this.groundMat = new THREE.MeshStandardMaterial({ color: '#2f4a33', roughness: 1, stencilWrite: true, stencilFunc: THREE.NotEqualStencilFunc, stencilRef: 1 }); this.ground = new THREE.Mesh(new THREE.CircleGeometry(600, 48), this.groundMat); this.ground.rotation.x = -Math.PI / 2; this.ground.receiveShadow = !soft; // the largest surface in the frame, and every actor already has a contact blob this.three.add(this.ground);
     this.waterGround = new THREE.Mesh(new THREE.PlaneGeometry(600, 600, 60, 60), waterMaterial('#1f4d6e')); this.waterGround.rotation.x = -Math.PI / 2; this.waterGround.visible = false; this.three.add(this.waterGround);
@@ -1490,13 +1504,21 @@ const Stage = {
         blob.userData.noShadow = true; rec.g.add(blob); } }
       } this.applyWorld(scene.world); const mid0 = scene.beats[0] ? scene.beats[0].dur * 0.5 : 0; this.setTime(mid0); this.aimSkyLive(); this.setTime(0); this.playing = true;
   },
-  setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this._rush = 0; this._unblockDir = null; this._lastAim = null; this._lastCamOff = null; this.shotHold = null; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
+  setTime(t) { this.time = clamp(t, 0, this.scene ? this.scene.total : 0); this.cam.snap = true; this.framePick = null; this._rush = 0; this._unblockDir = null; this._lastAim = null; this._lastCamOff = null; this.shotHold = null; this._worldCut = false; this.fx = []; this.quake = 0; this.canvas.style.filter = ''; this.evaluate(0, true); },
   beatAt(t) { const bs = this.scene.beats; for (let i = bs.length - 1; i >= 0; i--) if (t >= bs[i].start) return i; return 0; },
   /* ---- evaluate all actor and world state at this.time ---- */
   evalActors(t) {
     const out = new Map(); const S = this.scene;
     for (const a of S.actors) out.set(a.id, { pos: a.pos.slice(), yaw: a.yaw, size: a.size, color: a.color, op: a.hidden ? 0 : 1, state: 'idle', say: null, moving: 0, window: 0, colorC: null });
-    for (const b of S.beats) { if (t < b.start) break; for (const x of b.actions) { if (!x.actor) continue; const st = out.get(x.actor); if (!st) continue; const a0 = b.start + x.at * b.dur, a1 = Math.min(b.start + b.dur, a0 + x.for * b.dur); const p = a1 > a0 ? clamp((t - a0) / (a1 - a0), 0, 1) : (t >= a0 ? 1 : 0); if (t < a0) continue; const e = easeInOut(p);
+    for (const b of S.beats) { if (t < b.start) break;
+      // a blackout is a change of place, and nobody carries the pose they held in the last one
+      // through it: both brothers arrived in the cave still kneeling at a manhole two beats back.
+      // It wipes the slate before the beat's own actions are read, so a beat that says "walk" --
+      // a pose that expires at the end of its window and leaves whatever was underneath -- does
+      // not leave a man kneeling in a cafe he has just walked into.
+      if (b.actions.some(x => x.effect === 'blackout')) { for (const st of out.values()) {
+        if (POSE_HELD.has(st.state)) st.state = 'idle'; } }
+      for (const x of b.actions) { if (!x.actor) continue; const st = out.get(x.actor); if (!st) continue; const a0 = b.start + x.at * b.dur, a1 = Math.min(b.start + b.dur, a0 + x.for * b.dur); const p = a1 > a0 ? clamp((t - a0) / (a1 - a0), 0, 1) : (t >= a0 ? 1 : 0); if (t < a0) continue; const e = easeInOut(p);
         if (x.move) { const from = st.pos, to = x.move; let np = [lerp(from[0], to[0], e), lerp(from[1], to[1], e), lerp(from[2], to[2], e)]; const dist = Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]); if (x.path === 'arc' && (((this.actors.get(x.actor) || {}).a || {}).kind !== 'person' || AIRBORNE_STATES.has(x.state || st.state))) np[1] += Math.sin(p * Math.PI) * Math.min(dist * 0.3, 6); if (x.path === 'circle') { const cx = (from[0] + to[0]) / 2, cz = (from[2] + to[2]) / 2, r = Math.hypot(from[0] - cx, from[2] - cz), a00 = Math.atan2(from[2] - cz, from[0] - cx); np[0] = cx + Math.cos(a00 + p * Math.PI) * r; np[2] = cz + Math.sin(a00 + p * Math.PI) * r; } if (p < 1 && dist > 0.05) { st.moving = dist / Math.max(0.5, a1 - a0); if (x.yaw === undefined && dist > 0.2) { const dx = (x.path === 'circle' ? np[0] - st.lastPos?.[0] : to[0] - from[0]) || 0, dz = (x.path === 'circle' ? np[2] - st.lastPos?.[2] : to[2] - from[2]) || 0; if (Math.hypot(dx, dz) > 0.01) st.yaw = Math.atan2(dx, dz) * 180 / Math.PI; } } else st.moving = 0; st.lastPos = np; if (p >= 1) st.pos = to.slice(); else st.pos = np; }
         if (x.yaw !== undefined) { const d = ((x.yaw - st.yaw + 540) % 360) - 180; st.yaw = st.yaw + d * e; }
         if (x.size !== undefined) st.size = lerp(st.size, x.size, e);
@@ -1504,11 +1526,6 @@ const Stage = {
         if (x.appear) st.op = Math.max(st.op, p >= 1 ? 1 : Math.min(1, p * 2)); if (x.vanish) st.op = p >= 1 ? 0 : Math.min(st.op, 1 - Math.min(1, p * 2));
         if (x.state === 'grow' || x.state === 'shrink') { const a0 = S.actors.find(q => q.id === x.actor) || {}; const base = a0.size || st.size; const lim = a0.kind === 'castle' ? 1.15 : 1.6; const tgt = x.state === 'grow' ? Math.min(st.size * 2.5, base * lim) : Math.max(st.size * 0.35, base * 0.5); st.size = lerp(st.size, tgt, e); } else if (x.state) { const transient = ['walk', 'run', 'limp', 'push', 'shake', 'spin', 'collapse', 'wave', 'dance', 'fall', 'open', 'grow', 'shrink'].includes(x.state); if (!transient || p < 1) { st.state = x.state; st.window = p; } else if (x.state === 'collapse') st.state = 'lie'; else if (x.state === 'fall') st.state = 'lie'; else if (x.state === 'open') st.state = 'open'; else if (x.state === 'grow' || x.state === 'shrink') st.state = 'idle'; }
         if (x.say && p < 1) st.say = x.say; }
-      // a blackout is a change of place, and nobody carries the pose they held in the last one
-      // through it: both brothers arrived in the cave still kneeling at a manhole two beats back
-      if (b.actions.some(x => x.effect === 'blackout')) {
-        for (const [id, st] of out) { if (b.actions.some(x => x.actor === id && x.state)) continue;
-          if (['kneel', 'sit', 'lie', 'fold', 'grieve', 'yell', 'shake', 'pockets', 'wave', 'throw', 'push'].includes(st.state)) st.state = 'idle'; } }
     }
     // whoever shares a vehicle's destination in a beat travels in it, not behind it
     for (const b of S.beats) { if (t < b.start || t > b.start + b.dur) continue;
@@ -1566,6 +1583,25 @@ const Stage = {
         if (Math.abs(st.pos[0] - fs.pos[0]) > 1.8 * fs.size || Math.abs(st.pos[2] - fs.pos[2]) > 2.2 * fs.size) continue;
         floor = Math.max(floor, fs.pos[1] + 0.62 * fs.size); }
       if (st.pos[1] > floor + 0.06) st.pos = [st.pos[0], floor, st.pos[2]]; }
+    // The separation passes run once, at load, against the positions the script wrote.  Anybody who
+    // then walks anywhere walks into somebody: two heads on one tangled body in four of the six
+    // dreams.  Hold people apart at the story time they are actually standing at.
+    { const who = [];
+      for (const a of S.actors) { if (a.kind !== 'person') continue; const st = out.get(a.id);
+        if (!st || st.op < 0.3 || st.state === 'lie' || st.state === 'sit') continue;
+        const rr = this.actors.get(a.id); if (rr && rr.g.userData.ridesIn) continue;
+        if (a.carriedBy) continue;
+        who.push({ st, r: 0.5 * (st.size || 1) }); }
+      for (let pass = 0; pass < 3 && who.length > 1; pass++) {
+        for (let i = 0; i < who.length; i++) for (let j = i + 1; j < who.length; j++) {
+          const A = who[i], B = who[j]; if (Math.abs(A.st.pos[1] - B.st.pos[1]) > 1.2) continue;
+          const min = (A.r + B.r) * 1.04; let dx = B.st.pos[0] - A.st.pos[0], dz = B.st.pos[2] - A.st.pos[2];
+          let d = Math.hypot(dx, dz); if (d >= min) continue;
+          // two people written to the same point have no direction to be pushed apart along, so
+          // give them one that does not depend on the order the map happened to be built in
+          if (d < 1e-3) { dx = Math.cos(i * 2.399 + j); dz = Math.sin(i * 2.399 + j); d = 1; }
+          const k = (min - d) / d / 2;
+          A.st.pos[0] -= dx * k; A.st.pos[2] -= dz * k; B.st.pos[0] += dx * k; B.st.pos[2] += dz * k; } } }
     this.faceEachOther(S, out);
     for (const st of out.values()) if (st.moving && st.state === 'idle') st.state = st.moving > 2.5 ? 'run' : 'walk';
     return out;
@@ -1610,7 +1646,7 @@ const Stage = {
       if (prev >= 0 && !snap) this.cam.snap = true;
       // and nothing that remembers the last shot may survive the cut, or which side of the subject
       // this beat is shot from depends on what the one before it happened to need
-      this._unblockDir = null; this._lastAim = null; this._lastCamOff = null; this._rush = 0;
+      this._unblockDir = null; this._lastAim = null; this._lastCamOff = null; this._rush = 0; this._worldCut = false;
       this.reaimSky = true; }
     if (!snap && dt > 0) { for (const x of S.beats[bi].actions) { if (!x.effect || x.effect === 'none') continue; const at = S.beats[bi].start + x.at * S.beats[bi].dur; if (t - dt < at && t >= at) this.triggerEffect(x.effect); } }
     // actors
@@ -1680,10 +1716,15 @@ const Stage = {
         for (const l of ls) { l.getWorldPosition(w0); scored.push({ l, k: (l.intensity || 1) / Math.max(2, w0.distanceTo(this.cam.look)) }); }
         scored.sort((a, b) => b.k - a.k);
         scored.forEach((q, i) => { const on = i < 4; if (q.l.visible !== on) q.l.visible = on; }); } }
-    if (this.pointLights && this.pointLights.length > 2) { const w0 = new THREE.Vector3(); const lit = [];
+    // every live point light is evaluated for every fragment of every lit surface, so indoors --
+    // where the surfaces fill the frame -- the second one costs as much as the shadow map and the
+    // labels together. Burn one, and give it the other's brightness.
+    if (this.pointLights && this.pointLights.length > 1) { const w0 = new THREE.Vector3(); const lit = [];
       for (const L of this.pointLights) { L.getWorldPosition(w0); lit.push({ L, d: w0.distanceTo(this.cam.look) }); }
       lit.sort((a, b) => a.d - b.d);
-      lit.forEach((q, i) => { const on = i < 2 && q.d < 60; if (q.L.visible !== on) q.L.visible = on; }); }
+      const near = lit.filter(q => q.d < 60).length;
+      lit.forEach((q, i) => { const on = i < 1 && q.d < 60; if (q.L.visible !== on) q.L.visible = on;
+        if (on) { const want = (q.L.userData.baseInt || q.L.intensity) * (near > 1 ? 1.45 : 1); if (q.L.intensity !== want) q.L.intensity = want; } }); }
     this.fitSky(states); this.root.traverse(o => { if (o.userData.billboard) o.quaternion.copy(this.camera.quaternion); }); this.r.render(this.three, this.camera);
     // laying out the chips is DOM measurement and reflow, and it was six to twelve per cent of
     // every frame. Twenty times a second is faster than anybody reads.
@@ -1755,8 +1796,11 @@ const Stage = {
       T.armsX = [-1.62 * p, -1.55 * p]; T.armsZ = [0.5 * p, -0.5 * p]; T.fore = [-1.15 * p, -1.1 * p];
       T.bodyX = 0.1 * p; T.torsoS = 1 - p * 0.04; }
     else if (s === 'throw') { // wind up, cast, then recover: the pose must not freeze once the stone is gone
-      const c0 = clamp(window * 2.4, 0, 1), sw2 = c0 < 0.4 ? c0 / 0.4 : 1 - (c0 - 0.4) / 0.6;
-      const rec0 = clamp((window - 0.45) / 0.35, 0, 1), k = 1 - rec0, br = Math.sin(t * 1.2) * 0.04;
+      // four people given the same throw at the same second threw in lockstep and the picture
+      // caught every one of them with their arms at their sides: stagger the release per figure
+      const wq = clamp(window - (phase % 1) * 0.2, 0, 1);
+      const c0 = clamp(wq * 2.4, 0, 1), sw2 = c0 < 0.4 ? c0 / 0.4 : 1 - (c0 - 0.4) / 0.6;
+      const rec0 = clamp((wq - 0.45) / 0.35, 0, 1), k = 1 - rec0, br = Math.sin(t * 1.2) * 0.04;
       T.armsX = [(-2.5 + c0 * 3.6) * k + br, (-0.5 + sw2 * 0.5) * k - br]; T.fore = [(-0.4 - sw2 * 0.7) * k - 0.3 * rec0, -0.5 * k - 0.3 * rec0];
       T.armsZ = [0.2, -0.3]; T.bodyX = (-0.2 + c0 * 0.55) * k; T.hipsZ = (0.1 - c0 * 0.2) * k + br * 0.6;
       T.legs = [(0.35 - c0 * 0.5) * k, (-0.3 + c0 * 0.4) * k]; T.shins = [-0.2 * k, -0.25 * k];
@@ -2112,9 +2156,7 @@ const Stage = {
       { let tries = 0; const dirIn = l.clone().sub(p); const len = dirIn.length() || 1; dirIn.divideScalar(len);
         while (tries < 7 && this.insideSolid(p, selfs)) { p = p.clone().add(dirIn.clone().multiplyScalar(0.9)); tries++; }
         if (tries && this.insideSolid(p, selfs)) p = l.clone().add(dirIn.clone().multiplyScalar(-1.6)).setY(Math.max(0.6, l.y + 1.2)); }
-      { const rm = this.roomAround(l); if (rm) { const b = rm.box, pad = 0.4;
-          p.x = clamp(p.x, b.min.x + pad, b.max.x - pad); p.z = clamp(p.z, b.min.z + pad, b.max.z - pad);
-          if (p.y > b.max.y - 0.3) p.y = b.max.y - 0.3; } }
+      { const rm = this.roomAround(l); if (rm) this.intoRoom(p, rm, l); }
       return { pos: p, look: l }; };
     let authored = c.mode === 'fixed' && !!c.pos;
     if (authored && framed.length) { const out0 = dress(settle(pos, look)); let seen = 0, fails = false;
@@ -2203,13 +2245,18 @@ const Stage = {
       // it is re-elected outright, and after that only if somebody the sentence names has left.
       // Between checkpoints it is simply held, which is what makes the frame cheap.
       if (tick !== h.tick) { const was = h.tick; h.tick = tick;
-        if (h.weak || (arriveTick >= 0 && was < arriveTick && tick >= arriveTick)) this.shotHold = null;
+        // the beat's own world arriving is a second cut inside the sentence, not a move: the shot
+        // elected before the cave existed is eleven metres from the one elected after it, and at
+        // two and a half metres a second the lens was still in the rock when the beat ended
+        if (arriveTick >= 0 && was < arriveTick && tick >= arriveTick) { this.shotHold = null; this._worldCut = true; }
+        else if (h.weak) this.shotHold = null;
         else { const p2 = T.clone().add(h.off), l2 = T.clone().add(h.lookOff);
           for (const f of framed) { if (f.w < 1) continue; if (!this.seenWell(p2, l2, f, false)) { this.shotHold = null; break; } } } }
       if (this.shotHold) holding = this.shotHold;
     }
     if (holding) { pos = T.clone().add(holding.off); look = T.clone().add(holding.lookOff);
-      { const rm0 = this.roomAround(look); if (rm0 && pos.y > rm0.box.max.y - 0.3) pos.y = rm0.box.max.y - 0.3; }
+      // the hold rides the subject, and the subject can carry it into a wall
+      { const rm0 = this.roomAround(look); if (rm0) this.intoRoom(pos, rm0, look); }
       const fl0 = Math.min(0.4, T.y + 0.5); if (pos.y < fl0) pos.y = fl0;
     } else {
     let drifted = false;
@@ -2493,6 +2540,7 @@ const Stage = {
       // whole solve runs on every frame of that beat, which is fifteen milliseconds of JavaScript
       // and most of the frame -- but it is re-elected at every one of them rather than kept.
       this.shotHold = { beat: this.lastBeat, off: pos.clone().sub(T), lookOff: look.clone().sub(T), tick, weak: this._shotOk === false };
+      if (this._worldCut) { this._worldCut = false; if (this.cam.pos.distanceTo(pos) > 2) this._snapNow = true; }
     }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const rm2 = this.roomAround(look); if (rm2 && pos.y > rm2.box.max.y - 0.3) pos.y = rm2.box.max.y - 0.3; }
@@ -2627,10 +2675,26 @@ const Stage = {
   roomAround(p) {
     // a cave is a room you are inside of: keeping the lens in the room was written for rooms, and
     // the beat that says "we were down in the hold" was shot from outside the hold, on its back
-    if (!this._rooms) { this._rooms = []; for (const rec of this.actors.values()) { if (!['room', 'corridor', 'cave', 'tent'].includes(rec.a.kind)) continue; const box = new THREE.Box3().setFromObject(rec.g); this._rooms.push({ rec, box }); } }
+    if (!this._rooms) { this._rooms = []; for (const rec of this.actors.values()) { if (!['room', 'corridor', 'cave', 'tent'].includes(rec.a.kind)) continue; const box = new THREE.Box3().setFromObject(rec.g);
+      // ...and a cave is not a box. Its corners are outside the rock, so a lens clamped into the
+      // bounding box of the hold stood in the wall of it and shot the whole beat through stone.
+      const round = rec.a.kind === 'cave' || rec.a.kind === 'tent';
+      this._rooms.push({ rec, box, round, c: box.getCenter(new THREE.Vector3()), h: box.getSize(new THREE.Vector3()).multiplyScalar(0.5) }); } }
     for (const r of this._rooms) { if (!r.rec.g.visible) continue; const b = r.box; if (p.x > b.min.x && p.x < b.max.x && p.z > b.min.z && p.z < b.max.z && p.y < b.max.y) return r; }
     return null;
   },
+  // put a point inside the room it belongs to: a box gets its walls, a cave gets the ellipsoid
+  // that actually fits inside its shell, pulled toward the look point rather than to a corner
+  intoRoom(p, r, l) { const b = r.box, pad = 0.4;
+    p.x = clamp(p.x, b.min.x + pad, b.max.x - pad); p.z = clamp(p.z, b.min.z + pad, b.max.z - pad);
+    if (p.y > b.max.y - 0.3) p.y = b.max.y - 0.3;
+    if (r.round) { const hx = Math.max(0.5, r.h.x - pad), hz = Math.max(0.5, r.h.z - pad);
+      const q = Math.hypot((p.x - r.c.x) / hx, (p.z - r.c.z) / hz);
+      if (q > 0.78) { const k = 0.78 / q; p.x = r.c.x + (p.x - r.c.x) * k; p.z = r.c.z + (p.z - r.c.z) * k;
+        // and never so far in that it is standing on the person it is looking at
+        if (l) { const d0 = Math.hypot(p.x - l.x, p.z - l.z);
+          if (d0 < 1.8) { const k2 = d0 > 0.05 ? 1.8 / d0 : 0; p.x = l.x + (p.x - l.x) * k2 + (k2 ? 0 : 1.8); p.z = l.z + (p.z - l.z) * k2; } } } }
+    return p; },
   unblock(look, pos, self) {
     const sol = this.solidsNow; if (!sol || !sol.length) return pos;
     const off = pos.clone().sub(look); const len = off.length(); if (len < 0.5) return pos;
