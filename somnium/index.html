@@ -631,11 +631,29 @@ function normalizeScene(raw, dreamText) {
     if (!t || t.kind !== 'person' || t.pos[1] < -0.5) continue;
     if (!b.actions.some(x => x.actor === tid && (x.say || FACE_STATE.has(x.state)))) continue;
     const need = Math.min(4.5, (b.camera.distance || 8) * 0.8);
-    const fx = Math.sin(t.yaw * Math.PI / 180), fz = Math.cos(t.yaw * Math.PI / 180);
+    const blocked = (yaw) => { const gx = Math.sin(yaw * Math.PI / 180), gz = Math.cos(yaw * Math.PI / 180); let bk = 0;
+      for (const f of actors) { if (!['table', 'bed', 'desk', 'sofa', 'wall', 'car', 'truck', 'bus'].includes(f.kind)) continue;
+        const hw = Math.max((f.detail.width || 1.6) * f.size, 0.4) / 2, hd = Math.max((f.detail.depth || 0.9) * f.size, 0.4) / 2;
+        const r = f.yaw * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r);
+        for (let k = 0.4; k <= need; k += 0.4) { const px = t.pos[0] + gx * k, pz = t.pos[2] + gz * k;
+          const lx = (px - f.pos[0]) * cs - (pz - f.pos[2]) * sn, lz = (px - f.pos[0]) * sn + (pz - f.pos[2]) * cs;
+          if (Math.abs(lx) < hw + 0.2 && Math.abs(lz) < hd + 0.2) { bk = Math.max(bk, need - k + 0.5); break; } } }
+      return bk; };
+    // she is talking to the people, not to the furniture: a dreamer facing a twelve-metre table has
+    // no front for a camera to stand in, whatever else is moved. Turn her to whoever is with her,
+    // but only when what she faces is actually in the way -- so a second pass finds nothing to do.
+    if (blocked(t.yaw) > 0.05) { const others = [];
+      for (const x of b.actions) { if (!x.actor || x.actor === tid) continue;
+        const o = actors.find(q => q.id === x.actor); if (!o || (o.kind !== 'person' && o.kind !== 'crowd')) continue;
+        if (Math.hypot(o.pos[0] - t.pos[0], o.pos[2] - t.pos[2]) > 9) continue; others.push(o); }
+      if (others.length) { let ox = 0, oz = 0; for (const o of others) { ox += o.pos[0] - t.pos[0]; oz += o.pos[2] - t.pos[2]; }
+        if (Math.hypot(ox, oz) > 0.3) { const want = Math.round(Math.atan2(ox, oz) * 180 / Math.PI * 100) / 100;
+          if (blocked(want) < 0.05) t.yaw = ((want % 360) + 360) % 360; } } }
     let back = 0;
     for (const f of actors) { if (!['table', 'bed', 'desk', 'sofa', 'wall', 'car', 'truck', 'bus'].includes(f.kind)) continue;
       const hw = Math.max((f.detail.width || 1.6) * f.size, 0.4) / 2, hd = Math.max((f.detail.depth || 0.9) * f.size, 0.4) / 2;
       const r = f.yaw * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r);
+      const fx = Math.sin(t.yaw * Math.PI / 180), fz = Math.cos(t.yaw * Math.PI / 180);
       for (let k = 0.4; k <= need; k += 0.4) { const px = t.pos[0] + fx * k, pz = t.pos[2] + fz * k;
         const lx = (px - f.pos[0]) * cs - (pz - f.pos[2]) * sn, lz = (px - f.pos[0]) * sn + (pz - f.pos[2]) * cs;
         if (Math.abs(lx) < hw + 0.2 && Math.abs(lz) < hd + 0.2) { back = Math.max(back, need - k + 0.5); break; } } }
@@ -873,7 +891,11 @@ B.room = a => { const g = new THREE.Group(); const w = a.detail.width || 8, d = 
   const ceil = mesh(G.plane(w, d), mat(shade(a.color, 0.62), { rough: 1 }), 0, h - 0.02, 0); ceil.rotation.x = Math.PI / 2; ceil.castShadow = false; ceil.receiveShadow = false; g.add(ceil); g.userData.ceiling = ceil;
   g.add(mesh(G.box(1, 2.1, 0.08), mat(shade(a.color, 0.4)), 0, 1.05, d / 2 - 0.05));
   const win = mesh(G.box(1.4, 1.1, 0.06), mat('#bcd8ff', { emissive: '#8fb0ff', ei: 0.5 }), -w / 2 + 0.04, 1.7, 0); win.rotation.y = Math.PI / 2; g.add(win);
-  const lamp = new THREE.PointLight('#ffe0b0', 20, w + d, 1.6); lamp.position.set(0, h - 0.3, 0); g.add(lamp); g.add(mesh(G.sph(0.15, 8), mat('#fff4d0', { emissive: '#fff0c0', ei: 1.5 }), 0, h - 0.3, 0));
+  const lamp = new THREE.PointLight('#ffe0b0', 20, w + d, 1.6); lamp.position.set(0, h - 0.3, 0); g.add(lamp);
+  // a bare glowing sphere on a gradient ceiling is a sun in a dusk sky. Give it a shade.
+  g.add(mesh(G.sph(0.1, 8), mat('#fff4d0', { emissive: '#fff0c0', ei: 1.1 }), 0, h - 0.34, 0));
+  { const sh = mesh(G.cone(0.34, 0.3, 12), mat(shade(a.color, 0.5), { rough: 1, side: THREE.DoubleSide }), 0, h - 0.16, 0); sh.castShadow = false; g.add(sh);
+    g.add(mesh(G.cyl(0.015, 0.015, 0.22, 5), mat('#4a463f'), 0, h - 0.06, 0)); }
   g.userData.height = h; g.userData.big = true; g.userData.room = { w, d, h }; return g; };
 B.wall = a => { const g = new THREE.Group(); g.add(mesh(G.box(a.detail.width || 6, a.detail.height || 2.5, 0.3), mat(a.color), 0, (a.detail.height || 2.5) / 2, 0)); g.userData.height = a.detail.height || 2.5; return g; };
 B.grating = a => { const g = new THREE.Group(); const w = a.detail.width || 2.2, d = a.detail.depth || 2.2, m = mat(a.color, { metal: 0.5, rough: 0.6 });
@@ -1150,6 +1172,10 @@ const Stage = {
     this.scene = scene; this.root.clear(); this.actors.clear(); this.labelsEl.innerHTML = ''; this.lastBeat = -1; this.fx = []; this.time = 0; this.cam.snap = true; this.user.on = false; $('#resetCam').classList.remove('primary');
     for (const a of scene.actors) { const g = buildActor(a); g.position.set(a.pos[0], a.pos[1], a.pos[2]); g.rotation.y = a.yaw * Math.PI / 180; this.root.add(g); const lbl = document.createElement('div'); lbl.className = 'lbl'; lbl.textContent = a.label; lbl.hidden = !a.label; this.labelsEl.appendChild(lbl); this.actors.set(a.id, { a, g, lbl, st: null, mats: null }); }
     for (const rec of this.actors.values()) { if (rec.g.userData.shadow) { const r = rec.g.userData.shadow; const blob = new THREE.Mesh(new THREE.CircleGeometry(r, 20), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.renderOrder = 1; this.root.add(blob); rec.blob = blob; } const mats = []; const seen = new Map(); rec.g.traverse(o => { if (o.isMesh && !o.material.userData.water && !o.material.isShaderMaterial) { let m = seen.get(o.material); if (!m) { m = o.material.clone(); m.userData = { ...o.material.userData, baseOpacity: o.material.opacity, baseColor: o.material.color.clone(), baseEmissive: o.material.emissive ? o.material.emissive.clone() : null }; seen.set(o.material, m); mats.push(m); } o.material = m; } }); rec.mats = mats; }
+    // every point light in the scene costs every lit fragment, which is why a fourteen-thousand
+    // triangle street was slower than a forty-eight-thousand triangle snowfield. Keep the two
+    // nearest the action and switch the rest off.
+    this.pointLights = []; this.root.traverse(o => { if (o.isPointLight) { o.userData.baseInt = o.intensity; this.pointLights.push(o); } });
     this.solids = []; this.waterMats = [this.waterGround.material]; this.root.traverse(o => { if (o.userData.solid) this.solids.push(o); if (o.isMesh && o.material && o.material.userData.water) this.waterMats.push(o.material); }); this.boxTick = 0; this._rooms = null;
     this.pits = []; for (const r of this.actors.values()) { if (r.a.kind !== 'pit') continue; this.pits.push({ x: r.a.pos[0], z: r.a.pos[2], r: (r.a.detail.radius || 1.5) * r.a.size + 0.2 }); }
     this.root.updateMatrixWorld(true);
@@ -1381,7 +1407,10 @@ const Stage = {
     { const inside = this.roomAround(this.camera.position); for (const rec of this.actors.values()) { const cl = rec.g.userData.ceiling; if (cl) cl.visible = !!inside && inside.rec === rec; } }
     // a disc aimed once, at the middle of beat 1, is nailed to that world point and has left the
     // frame by beat 3: re-aim it at every cut, when the new beat's camera has been solved
-    if (this.reaimSky) { this.reaimSky = false; this.aimSkyLive(); }
+    // a body in the sky has one place in the world; only walking indoors moves it, and only onto
+    // the wall. Re-deriving it from the camera at every cut teleported it a hundred metres.
+    if (this.reaimSky) { this.reaimSky = false; const inRoom = !!this.roomAround(this.camera.position);
+      if (inRoom || this._skyIndoor) { this.aimSkyLive(); this._skyIndoor = inRoom; } }
     // every point light in the scene is evaluated for every fragment of a full-screen ground and
     // sky. Five street lamps and a fire put a 400 ms floor under a beat with ten thousand
     // triangles in it; the lamps at the far end of the road contribute nothing to what is on
@@ -1391,6 +1420,10 @@ const Stage = {
         for (const l of ls) { l.getWorldPosition(w0); scored.push({ l, k: (l.intensity || 1) / Math.max(2, w0.distanceTo(this.cam.look)) }); }
         scored.sort((a, b) => b.k - a.k);
         scored.forEach((q, i) => { const on = i < 4; if (q.l.visible !== on) q.l.visible = on; }); } }
+    if (this.pointLights && this.pointLights.length > 2) { const w0 = new THREE.Vector3(); const lit = [];
+      for (const L of this.pointLights) { L.getWorldPosition(w0); lit.push({ L, d: w0.distanceTo(this.cam.look) }); }
+      lit.sort((a, b) => a.d - b.d);
+      lit.forEach((q, i) => { const on = i < 2 && q.d < 60; if (q.L.visible !== on) q.L.visible = on; }); }
     this.fitSky(states); this.root.traverse(o => { if (o.userData.billboard) o.quaternion.copy(this.camera.quaternion); }); this.r.render(this.three, this.camera); this.updateLabels(states);
     if (this.onTime) this.onTime(t, false);
   },
@@ -1672,7 +1705,7 @@ const Stage = {
     // grieving is a two-shot, and turning to one of their faces loses the other
     const bowed = beat.actions.some(x => x.actor === c.target && (x.state === 'fold' || x.state === 'grieve' || x.state === 'kneel'));
     const faceIsSubject = beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state))) && FACED.has((rec && rec.a.kind) || '')
-      && !beat.actions.some(x => x.actor && x.actor !== c.target && (x.say || FACE_STATE.has(x.state)));
+      && !beat.actions.some(x => x.actor && x.actor !== c.target && x.say);
     const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state) || ((tg.moving || 0) < 0.3 && x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
     // the clamps a settled shot still has to pass. They used to run only on the pose finally chosen,
     // after the search had already scored a different one, so the search kept electing shots the
@@ -1681,7 +1714,9 @@ const Stage = {
       if (facesMatter && c.mode !== 'pov' && !out.steep) { const len0 = p.distanceTo(l);
         // a bowed head hides its own face from any lens above it: fold and grieve want the camera
         // almost level, not the usual half-rise
-        const fl = Math.hypot(p.x - l.x, p.z - l.z); const up = l.y + (bowed ? Math.max(0.1, fl * 0.1) : Math.max(0.6, fl * 0.5));
+        // a head bowed thirty-six degrees hides its face from any lens at or above its own height: to
+        // see a face fold you have to be under it, looking up
+        const fl = Math.hypot(p.x - l.x, p.z - l.z); const up = l.y + (bowed ? -0.25 : Math.max(0.6, fl * 0.5));
         if (p.y > up) { // lower the lens but keep the range the shot was framed at
           p.y = up; const wantFlat = Math.sqrt(Math.max(0.25, len0 * len0 - (up - l.y) * (up - l.y)));
           const nowFlat = Math.hypot(p.x - l.x, p.z - l.z) || 0.001; const k = wantFlat / nowFlat;
@@ -2056,7 +2091,7 @@ const Stage = {
     const c2 = this._cam2 || (this._cam2 = new THREE.PerspectiveCamera(50, 1, 0.1, 1200));
     c2.fov = this.camera.fov; c2.aspect = this.camera.aspect; c2.position.copy(pos); c2.up.set(0, 1, 0); c2.lookAt(look); c2.updateMatrixWorld(true); c2.updateProjectionMatrix();
     const v = point.clone().project(c2);
-    if (v.z > 1 || Math.abs(v.x) > 0.9 || Math.abs(v.y) > 0.82) return false;
+    if (v.z > 1 || Math.abs(v.x) > 0.8 || Math.abs(v.y) > 0.76) return false;
     return !this.occluded(pos, point, own);
   },
   roomAround(p) {

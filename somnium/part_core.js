@@ -413,11 +413,29 @@ function normalizeScene(raw, dreamText) {
     if (!t || t.kind !== 'person' || t.pos[1] < -0.5) continue;
     if (!b.actions.some(x => x.actor === tid && (x.say || FACE_STATE.has(x.state)))) continue;
     const need = Math.min(4.5, (b.camera.distance || 8) * 0.8);
-    const fx = Math.sin(t.yaw * Math.PI / 180), fz = Math.cos(t.yaw * Math.PI / 180);
+    const blocked = (yaw) => { const gx = Math.sin(yaw * Math.PI / 180), gz = Math.cos(yaw * Math.PI / 180); let bk = 0;
+      for (const f of actors) { if (!['table', 'bed', 'desk', 'sofa', 'wall', 'car', 'truck', 'bus'].includes(f.kind)) continue;
+        const hw = Math.max((f.detail.width || 1.6) * f.size, 0.4) / 2, hd = Math.max((f.detail.depth || 0.9) * f.size, 0.4) / 2;
+        const r = f.yaw * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r);
+        for (let k = 0.4; k <= need; k += 0.4) { const px = t.pos[0] + gx * k, pz = t.pos[2] + gz * k;
+          const lx = (px - f.pos[0]) * cs - (pz - f.pos[2]) * sn, lz = (px - f.pos[0]) * sn + (pz - f.pos[2]) * cs;
+          if (Math.abs(lx) < hw + 0.2 && Math.abs(lz) < hd + 0.2) { bk = Math.max(bk, need - k + 0.5); break; } } }
+      return bk; };
+    // she is talking to the people, not to the furniture: a dreamer facing a twelve-metre table has
+    // no front for a camera to stand in, whatever else is moved. Turn her to whoever is with her,
+    // but only when what she faces is actually in the way -- so a second pass finds nothing to do.
+    if (blocked(t.yaw) > 0.05) { const others = [];
+      for (const x of b.actions) { if (!x.actor || x.actor === tid) continue;
+        const o = actors.find(q => q.id === x.actor); if (!o || (o.kind !== 'person' && o.kind !== 'crowd')) continue;
+        if (Math.hypot(o.pos[0] - t.pos[0], o.pos[2] - t.pos[2]) > 9) continue; others.push(o); }
+      if (others.length) { let ox = 0, oz = 0; for (const o of others) { ox += o.pos[0] - t.pos[0]; oz += o.pos[2] - t.pos[2]; }
+        if (Math.hypot(ox, oz) > 0.3) { const want = Math.round(Math.atan2(ox, oz) * 180 / Math.PI * 100) / 100;
+          if (blocked(want) < 0.05) t.yaw = ((want % 360) + 360) % 360; } } }
     let back = 0;
     for (const f of actors) { if (!['table', 'bed', 'desk', 'sofa', 'wall', 'car', 'truck', 'bus'].includes(f.kind)) continue;
       const hw = Math.max((f.detail.width || 1.6) * f.size, 0.4) / 2, hd = Math.max((f.detail.depth || 0.9) * f.size, 0.4) / 2;
       const r = f.yaw * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r);
+      const fx = Math.sin(t.yaw * Math.PI / 180), fz = Math.cos(t.yaw * Math.PI / 180);
       for (let k = 0.4; k <= need; k += 0.4) { const px = t.pos[0] + fx * k, pz = t.pos[2] + fz * k;
         const lx = (px - f.pos[0]) * cs - (pz - f.pos[2]) * sn, lz = (px - f.pos[0]) * sn + (pz - f.pos[2]) * cs;
         if (Math.abs(lx) < hw + 0.2 && Math.abs(lz) < hd + 0.2) { back = Math.max(back, need - k + 0.5); break; } } }

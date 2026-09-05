@@ -154,7 +154,11 @@ B.room = a => { const g = new THREE.Group(); const w = a.detail.width || 8, d = 
   const ceil = mesh(G.plane(w, d), mat(shade(a.color, 0.62), { rough: 1 }), 0, h - 0.02, 0); ceil.rotation.x = Math.PI / 2; ceil.castShadow = false; ceil.receiveShadow = false; g.add(ceil); g.userData.ceiling = ceil;
   g.add(mesh(G.box(1, 2.1, 0.08), mat(shade(a.color, 0.4)), 0, 1.05, d / 2 - 0.05));
   const win = mesh(G.box(1.4, 1.1, 0.06), mat('#bcd8ff', { emissive: '#8fb0ff', ei: 0.5 }), -w / 2 + 0.04, 1.7, 0); win.rotation.y = Math.PI / 2; g.add(win);
-  const lamp = new THREE.PointLight('#ffe0b0', 20, w + d, 1.6); lamp.position.set(0, h - 0.3, 0); g.add(lamp); g.add(mesh(G.sph(0.15, 8), mat('#fff4d0', { emissive: '#fff0c0', ei: 1.5 }), 0, h - 0.3, 0));
+  const lamp = new THREE.PointLight('#ffe0b0', 20, w + d, 1.6); lamp.position.set(0, h - 0.3, 0); g.add(lamp);
+  // a bare glowing sphere on a gradient ceiling is a sun in a dusk sky. Give it a shade.
+  g.add(mesh(G.sph(0.1, 8), mat('#fff4d0', { emissive: '#fff0c0', ei: 1.1 }), 0, h - 0.34, 0));
+  { const sh = mesh(G.cone(0.34, 0.3, 12), mat(shade(a.color, 0.5), { rough: 1, side: THREE.DoubleSide }), 0, h - 0.16, 0); sh.castShadow = false; g.add(sh);
+    g.add(mesh(G.cyl(0.015, 0.015, 0.22, 5), mat('#4a463f'), 0, h - 0.06, 0)); }
   g.userData.height = h; g.userData.big = true; g.userData.room = { w, d, h }; return g; };
 B.wall = a => { const g = new THREE.Group(); g.add(mesh(G.box(a.detail.width || 6, a.detail.height || 2.5, 0.3), mat(a.color), 0, (a.detail.height || 2.5) / 2, 0)); g.userData.height = a.detail.height || 2.5; return g; };
 B.grating = a => { const g = new THREE.Group(); const w = a.detail.width || 2.2, d = a.detail.depth || 2.2, m = mat(a.color, { metal: 0.5, rough: 0.6 });

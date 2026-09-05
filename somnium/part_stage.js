@@ -55,6 +55,10 @@ const Stage = {
     this.scene = scene; this.root.clear(); this.actors.clear(); this.labelsEl.innerHTML = ''; this.lastBeat = -1; this.fx = []; this.time = 0; this.cam.snap = true; this.user.on = false; $('#resetCam').classList.remove('primary');
     for (const a of scene.actors) { const g = buildActor(a); g.position.set(a.pos[0], a.pos[1], a.pos[2]); g.rotation.y = a.yaw * Math.PI / 180; this.root.add(g); const lbl = document.createElement('div'); lbl.className = 'lbl'; lbl.textContent = a.label; lbl.hidden = !a.label; this.labelsEl.appendChild(lbl); this.actors.set(a.id, { a, g, lbl, st: null, mats: null }); }
     for (const rec of this.actors.values()) { if (rec.g.userData.shadow) { const r = rec.g.userData.shadow; const blob = new THREE.Mesh(new THREE.CircleGeometry(r, 20), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false })); blob.rotation.x = -Math.PI / 2; blob.renderOrder = 1; this.root.add(blob); rec.blob = blob; } const mats = []; const seen = new Map(); rec.g.traverse(o => { if (o.isMesh && !o.material.userData.water && !o.material.isShaderMaterial) { let m = seen.get(o.material); if (!m) { m = o.material.clone(); m.userData = { ...o.material.userData, baseOpacity: o.material.opacity, baseColor: o.material.color.clone(), baseEmissive: o.material.emissive ? o.material.emissive.clone() : null }; seen.set(o.material, m); mats.push(m); } o.material = m; } }); rec.mats = mats; }
+    // every point light in the scene costs every lit fragment, which is why a fourteen-thousand
+    // triangle street was slower than a forty-eight-thousand triangle snowfield. Keep the two
+    // nearest the action and switch the rest off.
+    this.pointLights = []; this.root.traverse(o => { if (o.isPointLight) { o.userData.baseInt = o.intensity; this.pointLights.push(o); } });
     this.solids = []; this.waterMats = [this.waterGround.material]; this.root.traverse(o => { if (o.userData.solid) this.solids.push(o); if (o.isMesh && o.material && o.material.userData.water) this.waterMats.push(o.material); }); this.boxTick = 0; this._rooms = null;
     this.pits = []; for (const r of this.actors.values()) { if (r.a.kind !== 'pit') continue; this.pits.push({ x: r.a.pos[0], z: r.a.pos[2], r: (r.a.detail.radius || 1.5) * r.a.size + 0.2 }); }
     this.root.updateMatrixWorld(true);
@@ -286,7 +290,10 @@ const Stage = {
     { const inside = this.roomAround(this.camera.position); for (const rec of this.actors.values()) { const cl = rec.g.userData.ceiling; if (cl) cl.visible = !!inside && inside.rec === rec; } }
     // a disc aimed once, at the middle of beat 1, is nailed to that world point and has left the
     // frame by beat 3: re-aim it at every cut, when the new beat's camera has been solved
-    if (this.reaimSky) { this.reaimSky = false; this.aimSkyLive(); }
+    // a body in the sky has one place in the world; only walking indoors moves it, and only onto
+    // the wall. Re-deriving it from the camera at every cut teleported it a hundred metres.
+    if (this.reaimSky) { this.reaimSky = false; const inRoom = !!this.roomAround(this.camera.position);
+      if (inRoom || this._skyIndoor) { this.aimSkyLive(); this._skyIndoor = inRoom; } }
     // every point light in the scene is evaluated for every fragment of a full-screen ground and
     // sky. Five street lamps and a fire put a 400 ms floor under a beat with ten thousand
     // triangles in it; the lamps at the far end of the road contribute nothing to what is on
@@ -296,6 +303,10 @@ const Stage = {
         for (const l of ls) { l.getWorldPosition(w0); scored.push({ l, k: (l.intensity || 1) / Math.max(2, w0.distanceTo(this.cam.look)) }); }
         scored.sort((a, b) => b.k - a.k);
         scored.forEach((q, i) => { const on = i < 4; if (q.l.visible !== on) q.l.visible = on; }); } }
+    if (this.pointLights && this.pointLights.length > 2) { const w0 = new THREE.Vector3(); const lit = [];
+      for (const L of this.pointLights) { L.getWorldPosition(w0); lit.push({ L, d: w0.distanceTo(this.cam.look) }); }
+      lit.sort((a, b) => a.d - b.d);
+      lit.forEach((q, i) => { const on = i < 2 && q.d < 60; if (q.L.visible !== on) q.L.visible = on; }); }
     this.fitSky(states); this.root.traverse(o => { if (o.userData.billboard) o.quaternion.copy(this.camera.quaternion); }); this.r.render(this.three, this.camera); this.updateLabels(states);
     if (this.onTime) this.onTime(t, false);
   },
@@ -577,7 +588,7 @@ const Stage = {
     // grieving is a two-shot, and turning to one of their faces loses the other
     const bowed = beat.actions.some(x => x.actor === c.target && (x.state === 'fold' || x.state === 'grieve' || x.state === 'kneel'));
     const faceIsSubject = beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state))) && FACED.has((rec && rec.a.kind) || '')
-      && !beat.actions.some(x => x.actor && x.actor !== c.target && (x.say || FACE_STATE.has(x.state)));
+      && !beat.actions.some(x => x.actor && x.actor !== c.target && x.say);
     const facesMatter = speakerHere || (FACED.has((rec && rec.a.kind) || '') && beat.actions.some(x => x.actor === c.target && (x.say || FACE_STATE.has(x.state) || ((tg.moving || 0) < 0.3 && x.state && x.state !== 'idle' && !['walk', 'run', 'limp', 'fly', 'swim', 'crawl'].includes(x.state)))));
     // the clamps a settled shot still has to pass. They used to run only on the pose finally chosen,
     // after the search had already scored a different one, so the search kept electing shots the
@@ -586,7 +597,9 @@ const Stage = {
       if (facesMatter && c.mode !== 'pov' && !out.steep) { const len0 = p.distanceTo(l);
         // a bowed head hides its own face from any lens above it: fold and grieve want the camera
         // almost level, not the usual half-rise
-        const fl = Math.hypot(p.x - l.x, p.z - l.z); const up = l.y + (bowed ? Math.max(0.1, fl * 0.1) : Math.max(0.6, fl * 0.5));
+        // a head bowed thirty-six degrees hides its face from any lens at or above its own height: to
+        // see a face fold you have to be under it, looking up
+        const fl = Math.hypot(p.x - l.x, p.z - l.z); const up = l.y + (bowed ? -0.25 : Math.max(0.6, fl * 0.5));
         if (p.y > up) { // lower the lens but keep the range the shot was framed at
           p.y = up; const wantFlat = Math.sqrt(Math.max(0.25, len0 * len0 - (up - l.y) * (up - l.y)));
           const nowFlat = Math.hypot(p.x - l.x, p.z - l.z) || 0.001; const k = wantFlat / nowFlat;
@@ -961,7 +974,7 @@ const Stage = {
     const c2 = this._cam2 || (this._cam2 = new THREE.PerspectiveCamera(50, 1, 0.1, 1200));
     c2.fov = this.camera.fov; c2.aspect = this.camera.aspect; c2.position.copy(pos); c2.up.set(0, 1, 0); c2.lookAt(look); c2.updateMatrixWorld(true); c2.updateProjectionMatrix();
     const v = point.clone().project(c2);
-    if (v.z > 1 || Math.abs(v.x) > 0.9 || Math.abs(v.y) > 0.82) return false;
+    if (v.z > 1 || Math.abs(v.x) > 0.8 || Math.abs(v.y) > 0.76) return false;
     return !this.occluded(pos, point, own);
   },
   roomAround(p) {
