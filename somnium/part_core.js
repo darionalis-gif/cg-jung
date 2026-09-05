@@ -217,18 +217,20 @@ function normalizeScene(raw, dreamText) {
       for (const a of actors) { if (a === p || a.pos[1] < -0.5) continue; if (a.kind === 'pit' || COVERS.has(a.kind) || LID(a)) continue;
         const dx = a.pos[0] - p.pos[0], dz = a.pos[2] - p.pos[2]; const d = Math.hypot(dx, dz);
         const own = (a.detail.radius || 0) * a.size; if (d < r + own + 0.4) { const n = d > 0.01 ? [dx / d, dz / d] : [1, 0]; const out = r + own + 1.1; a.pos = [p.pos[0] + n[0] * out, a.pos[1], p.pos[2] + n[1] * out]; } } } }
-  // a beat that arrives somewhere should show the place, not spend itself on the journey
-  const PLACE = new Set(['room', 'corridor', 'house', 'shop', 'building', 'church', 'cave', 'city', 'tower']);
-  { const cur = new Map(actors.map(a => [a.id, a.pos.slice()]));
-    for (const b of beats) {
-      const jump = b.actions.some(x => x.effect === 'blackout') || b.actions.some(x => x.world && x.world.ground !== undefined)
-        || b.actions.some(x => x.appear && PLACE.has((actors.find(q => q.id === x.actor) || {}).kind));
-      for (const x of b.actions) { if (!x.actor || !x.move) continue; const from = cur.get(x.actor); if (!from) continue;
-        if (jump) { const far = Math.hypot(x.move[0] - from[0], x.move[2] - from[2]), drop = Math.abs(x.move[1] - from[1]);
-          if ((far > 15 || drop > 5) && x.for > 0.4) x.for = 0.3; }
-        cur.set(x.actor, x.move.slice()); } } }
-  // an appear so late in its beat that it cannot be seen is a mistake; one at 0.4 or 0.6 is a
-  // sequence -- one by one each tooth fell out -- and dragging them all to the front destroys it
+  // the camera for a beat about somebody's face has to stand in front of that face. When the script
+  // puts the other people there instead, every shot of the face is a shot of somebody's back.
+  for (const b of beats) {
+    const tid = b.camera.target; const t = actors.find(q => q.id === tid);
+    if (!t || t.kind !== 'person') continue;
+    if (!b.actions.some(x => x.actor === tid && (x.say || FACE_STATE.has(x.state)))) continue;
+    const fx = Math.sin(t.yaw * Math.PI / 180), fz = Math.cos(t.yaw * Math.PI / 180);
+    for (const x of b.actions) { if (!x.actor || x.actor === tid) continue;
+      const a = actors.find(q => q.id === x.actor); if (!a || a.kind !== 'person') continue;
+      const dx = a.pos[0] - t.pos[0], dz = a.pos[2] - t.pos[2], d = Math.hypot(dx, dz);
+      if (d < 0.1 || d > 4.2) continue;
+      const cosA = (dx * fx + dz * fz) / d; if (cosA < 0.86) continue; // outside a thirty-degree wedge
+      const side = (dx * fz - dz * fx) >= 0 ? 1 : -1, ang = t.yaw * Math.PI / 180 + side * 0.96;
+      a.pos[0] = t.pos[0] + Math.sin(ang) * d; a.pos[2] = t.pos[2] + Math.cos(ang) * d; } }
   for (const b of beats) for (const x of b.actions) if (x.appear && x.at > 0.82) x.at = 0.7;
   let t = 0; for (const b of beats) { b.start = t; t += b.dur; }
   // a flight over the timberland has to end above the timberland
@@ -371,6 +373,18 @@ function normalizeScene(raw, dreamText) {
           // and a coat covers the body colour entirely, so it has to be told too
           if (a.detail.wear && a.detail.wearColor) { const W = hex2(a.detail.wearColor);
             a.detail.wearColor = '#' + mix(W[0], 235) + mix(W[1], 205) + mix(W[2], 55); } } } } }
+  // a beat that arrives somewhere should show the place, not spend itself on the journey
+  const PLACE = new Set(['room', 'corridor', 'house', 'shop', 'building', 'church', 'cave', 'city', 'tower']);
+  { const cur = new Map(actors.map(a => [a.id, a.pos.slice()]));
+    for (const b of beats) {
+      const jump = b.actions.some(x => x.effect === 'blackout') || b.actions.some(x => x.world && x.world.ground !== undefined)
+        || b.actions.some(x => x.appear && PLACE.has((actors.find(q => q.id === x.actor) || {}).kind));
+      for (const x of b.actions) { if (!x.actor || !x.move) continue; const from = cur.get(x.actor); if (!from) continue;
+        if (jump) { const far = Math.hypot(x.move[0] - from[0], x.move[2] - from[2]), drop = Math.abs(x.move[1] - from[1]);
+          if ((far > 15 || drop > 5) && x.for > 0.4) x.for = 0.3; }
+        cur.set(x.actor, x.move.slice()); } } }
+  // an appear so late in its beat that it cannot be seen is a mistake; one at 0.4 or 0.6 is a
+  // sequence -- one by one each tooth fell out -- and dragging them all to the front destroys it
   // a pass that reads its own output has to see the same numbers: round everything the passes
   // above may have arrived at by a slightly different route
   { const r4 = v => Math.round(v * 10000) / 10000;

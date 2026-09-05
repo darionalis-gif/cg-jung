@@ -523,7 +523,8 @@ const Stage = {
     // frame the actors the sentence names, not only the camera's target: try the shot, then a few wider or turned variants
     const framed = [];
     const cut = beat.actions.some(x => x.effect === 'blackout');
-    for (const x of beat.actions) { if (!x.actor) continue; if (cut && !x.appear && !x.say && !x.move) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; // somebody the sentence names is in the shot whether or not the script gave them something to
+    for (const x of beat.actions) { if (!x.actor) continue; if (cut && !x.appear && !x.say && !x.move) continue;
+      if (x.vanish && !x.say && !x.move && !x.appear) continue; const st2 = states.get(x.actor), r2 = this.actors.get(x.actor); if (!st2 || st2.op < 0.3 || !r2 || r2.g.userData.flat) continue; // somebody the sentence names is in the shot whether or not the script gave them something to
       // do: standing still was costing them every guarantee, which all key on a weight of 1
       let weight = (x.say || x.move || x.appear || (x.state && x.state !== 'idle') || FACED.has(r2.a.kind) || x.actor === c.target) ? 1 : 0.35; const prev = framed.find(q => q.id === x.actor); if (prev) { prev.w = Math.max(prev.w, weight); prev.speaks = prev.speaks || !!x.say || FACE_STATE.has(x.state); continue; } const shrink = ['sit', 'lie', 'crouch', 'kneel', 'crawl'].includes(st2.state) ? 0.55 : 1; framed.push({ id: x.actor, g: r2.g, w: weight, faced: FACED.has(r2.a.kind), speaks: !!x.say || FACE_STATE.has(x.state), h: r2.g.userData.baseHeight * (st2.size / r2.a.size) * shrink, p: new THREE.Vector3(st2.pos[0], st2.pos[1] + Math.min(r2.g.userData.baseHeight * (st2.size / r2.a.size) * 0.5, 6), st2.pos[2]) }); }
     for (const a2 of this.scene.actors) { if (!a2.carriedBy) continue; if (!framed.some(q => q.id === a2.carriedBy)) continue;
@@ -672,8 +673,13 @@ const Stage = {
           // head across the bottom of the shot. It is a heavy cost and not a rejection: three
           // people two metres apart at a three-metre camera cannot all be held, and refusing every
           // such shot outright sent the camera a full half-circle round to the subject's back.
-          let cropAtLens = 0; for (const f of framed) { if (f.w < 1 || f.seen) continue;
-            if (f.p.distanceTo(out.pos) < Math.max(3.2, out.pos.distanceTo(out.look) * 0.55)) cropAtLens += 1; }
+          let cropAtLens = 0, atTheLens = false; for (const f of framed) { if (f.w < 1 || f.seen) continue;
+            const dl = f.p.distanceTo(out.pos), reach = out.pos.distanceTo(out.look);
+            if (dl < Math.max(3.2, reach * 0.55)) cropAtLens += 1;
+            // and a body half the shot's distance away, filling the frame and cut off by its edge,
+            // is not a cost to weigh: there is nothing in the shot behind it
+            if (dl < Math.max(2.2, reach * 0.35)) atTheLens = true; }
+          if (atTheLens) { if (this.debugFrames) this.frameScan.push({ az, mul, lift, rejected: 'atTheLens' }); continue; }
           for (const b of bodies) {
             const bc = b.box.getCenter(this._bc2 || (this._bc2 = new THREE.Vector3()));
             const fwd0 = out.look.clone().sub(out.pos); if (bc.sub(out.pos).dot(fwd0) <= 0) continue;
@@ -754,8 +760,17 @@ const Stage = {
     // be rendered, and if the answer is no, go and find one where it is yes.
     if (!this.user.on) {
       const must = framed.filter(f => f.w >= 1);
-      const lost = (p1, l1) => { let n = 0; for (const f of must) if (!this.inShot(p1, l1, f.p, f.g)) n++; return n; };
-      let bad = must.length ? lost(pos, look) : 0;
+      // losing the person whose face the beat is about is worth more than losing two bystanders
+      // standing idle behind them: a close shot of six named actors cannot hold all six.
+      const lost = (p1, l1) => { let n = 0; for (const f of must) if (!this.inShot(p1, l1, f.p, f.g)) n += (faceIsSubject && f.id === c.target) ? 3 : 1; return n; };
+      // judge the camera the viewer is looking through, not the pose it is easing toward: a pose
+      // that holds everybody is no help while the lens is still three metres behind it
+      const badPose = must.length ? lost(pos, look) : 0;
+      const badCam = must.length && !snap ? lost(this.cam.pos, this.cam.look) : 0;
+      // when the pose holds everybody and the lens does not, the answer is not another pose: it is
+      // to be at this one. Cut to it.
+      if (!badPose && badCam) this._snapNow = true;
+      let bad = badPose;
       if (this.debugFrames) this.saveDbg = { bad, n: must.length, ids: must.map(f => f.id + (this.inShot(pos, look, f.p, f.g) ? '+' : '-')), saves: this.framePick.saves || 0 };
       if (bad) {
         let bq = pos, bl = look, bb = bad, bAz = null, bMul = 1, bLift = 0;
@@ -770,7 +785,10 @@ const Stage = {
           // at most, and the alternative is the subject missing from the shot the viewer sees
           // cut to it the first time in a beat; after that ease, so a subject who keeps walking is
           // kept in frame without the camera snapping at them every few frames
-          pos = bq; look = bl; if ((this.framePick.saves || 0) <= 1) this._snapNow = true; } } }
+          // and take a big correction now rather than easing into it: easing means the frames in
+          // between are the ones that lose the subject, which is the whole thing being fixed
+          const jump = bq.distanceTo(pos); pos = bq; look = bl;
+          if ((this.framePick.saves || 0) <= 1 || jump > 2) this._snapNow = true; } } }
     if (this.user.on) { const u = this.user; look = look.clone(); pos = look.clone().add(new THREE.Vector3(Math.sin(u.theta) * Math.cos(u.phi) * u.dist, Math.sin(u.phi) * u.dist, Math.cos(u.theta) * Math.cos(u.phi) * u.dist)); if (pos.y < minY) pos.y = minY; }
     { const rm2 = this.roomAround(look); if (rm2 && pos.y > rm2.box.max.y - 0.3) pos.y = rm2.box.max.y - 0.3; }
     { const wantFov = 50 + (this.wallSqueeze || 0) * 22; this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 3); this.camera.updateProjectionMatrix(); this.wallSqueeze = 0; }
@@ -1013,7 +1031,7 @@ const Stage = {
   },
   /* metrics for the harness: which actors of the current beat are on screen */
   metrics() {
-    if (!this.scene) return null; const bi = this.beatAt(this.time), b = this.scene.beats[bi]; const ids = new Set(b.actions.filter(x => x.actor).map(x => x.actor)); ids.add(b.camera.target); if (b.camera.mode === 'pov') ids.delete(b.camera.target); const v = new THREE.Vector3(); const res = [];
+    if (!this.scene) return null; const bi = this.beatAt(this.time), b = this.scene.beats[bi]; const ids = new Set(b.actions.filter(x => x.actor && !(x.vanish && !x.say && !x.move && !x.appear)).map(x => x.actor)); ids.add(b.camera.target); if (b.camera.mode === 'pov') ids.delete(b.camera.target); const v = new THREE.Vector3(); const res = [];
     for (const id of ids) { const rec = this.actors.get(id), st = this.states.get(id); if (!rec || !st) continue; const top = rec.g.userData.baseHeight * (st.size / rec.a.size); v.set(st.pos[0], st.pos[1] + top / 2, st.pos[2]); const dist = v.distanceTo(this.camera.position); const occ = rec.g.userData.members ? !this.anyPointSeen(this.camera.position, v, rec, st) : this.occluded(this.camera.position, v.clone(), rec.g); v.project(this.camera); res.push({ id, visible: st.op > 0.05, onScreen: st.op > 0.05 && !occ && v.z < 1 && Math.abs(v.x) < 1 && Math.abs(v.y) < 1, occluded: occ, dist: +dist.toFixed(1), x: +v.x.toFixed(2), y: +v.y.toFixed(2) }); }
     const ft = this.frameTimes.slice(-120); const avg = ft.length ? ft.reduce((a, b) => a + b, 0) / ft.length : 0; return { beat: bi, time: +this.time.toFixed(2), camera: { pos: this.camera.position.toArray().map(q => +q.toFixed(1)), look: this.cam.look.toArray().map(q => +q.toFixed(1)), mode: b.camera.mode }, fog: +this.three.fog.density.toFixed(4), actors: res, frameMs: +avg.toFixed(1), submitMs: +(((this.submitTimes || []).slice(-120).reduce((a, b) => a + b, 0)) / Math.max(1, (this.submitTimes || []).slice(-120).length)).toFixed(1), tris: this.r.info.render.triangles, calls: this.r.info.render.calls };
   }
